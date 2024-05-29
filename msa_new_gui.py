@@ -63,11 +63,19 @@ class App:
         root.columnconfigure(3, weight=1)
         root.rowconfigure(5, weight=1)
         root.columnconfigure(5, weight=1)
-        self.ListBox_1=tk.Listbox(root, borderwidth="1px", fg="#333333",
-                                  justify="center", font=('Times',10))
-        self.ListBox_1.grid(row=0, column=0, rowspan=7, columnspan=2, sticky="nsew",padx=2,pady=2)
-        self.ListBox_1.bind('<<ListboxSelect>>', self.On_File_Selection)
 
+        # File name listbox, scrollbar, and frame that encapsulates them
+        frm = tk.Frame(root)
+        frm.grid(row=0, column=0, rowspan=7, columnspan=2, sticky="nsew",padx=2,pady=2)
+        scrollbar = tk.Scrollbar(frm, orient="horizontal")
+        scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+        self.ListBox_1=tk.Listbox(frm, xscrollcommand=scrollbar.set, borderwidth="1px", fg="#333333",
+                                  justify="center", font=('Times',10))
+        self.ListBox_1.pack(expand=True, fill=tk.BOTH)
+        self.ListBox_1.bind('<<ListboxSelect>>', self.On_File_Selection)
+        scrollbar.config(command=self.ListBox_1.xview)
+
+        # Add, Delete, and Analyze Buttons
         Button_Add=tk.Button(root,bg="#e9e9ed",fg="#000000",justify="center",
                              font=('Times',10),text="Add Files",
                              command=self.Button_Add_command)
