@@ -35,7 +35,7 @@ class App:
             widget["font"] = ft
             widget["fg"] = "#000000"
             return widget
-        
+
         self.files = []
         self.isAnalyzed = False
 
@@ -44,7 +44,7 @@ class App:
         root.title("Multispectral Analysis")
         
         #setting window size
-        width=600
+        width=800
         height=500
         screenwidth = root.winfo_screenwidth()
         screenheight = root.winfo_screenheight()
@@ -52,102 +52,80 @@ class App:
                                     (screenheight - height) / 2)
         root.geometry(alignstr)
         root.resizable(True, True) 
-        
-        X_MARGIN = 20
-        Y_MARGIN = 10
-        LISTBOX_WIDTH = 132
-        LISTBOX_HEIGHT = 235
-        BUTTON_HEIGHT = 30
-        x_usuable = width - X_MARGIN*2
 
         ####################################
         ######## LEFT PANEL WIDGETS ########
         ####################################
+
+        root.rowconfigure(1, weight=1)
+        root.columnconfigure(1, weight=1)
+        root.rowconfigure(3, weight=1)
+        root.columnconfigure(3, weight=1)
+        root.rowconfigure(5, weight=1)
+        root.columnconfigure(5, weight=1)
         self.ListBox_1=tk.Listbox(root, borderwidth="1px", fg="#333333",
                                   justify="center", font=('Times',10))
-        self.ListBox_1.place(x=X_MARGIN,y=Y_MARGIN,width=LISTBOX_WIDTH,
-                             height=LISTBOX_HEIGHT)
+        self.ListBox_1.grid(row=0, column=0, rowspan=7, columnspan=2, sticky="nsew",padx=2,pady=2)
         self.ListBox_1.bind('<<ListboxSelect>>', self.On_File_Selection)
 
         Button_Add=tk.Button(root,bg="#e9e9ed",fg="#000000",justify="center",
                              font=('Times',10),text="Add Files",
                              command=self.Button_Add_command)
-        Button_Add.place(x=X_MARGIN,y=LISTBOX_HEIGHT+Y_MARGIN,
-                         width=LISTBOX_WIDTH,height=BUTTON_HEIGHT)
+        Button_Add.grid(row=7, column=0, rowspan=1, columnspan=2, sticky="nsew",padx=2)
 
         Button_Delete=tk.Button(root,bg="#e9e9ed",fg="#000000",justify="center",
                                 font=('Times',10), text="Delete Files",
                                 command=self.Button_Delete_command)
-        Button_Delete.place(x=X_MARGIN,y=LISTBOX_HEIGHT+Y_MARGIN+BUTTON_HEIGHT,
-                            width=LISTBOX_WIDTH,height=BUTTON_HEIGHT)
+        Button_Delete.grid(row=8, column=0, rowspan=1, columnspan=2, sticky="nsew",padx=2)
 
-        button_analyze_y = LISTBOX_HEIGHT+Y_MARGIN+BUTTON_HEIGHT*2
         Button_Analyze=tk.Button(root,bg="#e9e9ed",fg="#000000",justify="center",
                                 font=('Times',10), text="Analyze",
                                 command=self.Button_Analyze_command)
-        Button_Analyze.place(x=X_MARGIN,y=button_analyze_y,
-                             width=LISTBOX_WIDTH,height=BUTTON_HEIGHT*2)
+        Button_Analyze.grid(row=9, column=0, rowspan=2, columnspan=2, sticky="nsew",padx=2)
 
-        ####################################
-        ######## RIGHT PANEL WIDGETS #######
-        ####################################
-        LS = 20 # Large Space
-        SS = 10 # Small Space
-        x_usuable_right = x_usuable - LISTBOX_WIDTH - LS
-        self.IMG_HEIGHT = LISTBOX_HEIGHT+Y_MARGIN+BUTTON_HEIGHT*2-LS
-        self.IMG_WIDTH = x_usuable_right
+        # ####################################
+        # ######## RIGHT PANEL WIDGETS #######
+        # ####################################
 
         self.img_panel = tk.Label(root)
         self.panel_img = ""
-        self.img_panel.place(x=170,y=10,
-                             width=self.IMG_WIDTH,height=self.IMG_HEIGHT)
+        self.img_panel.grid(row=0, column=2, rowspan=9, columnspan=4, sticky="nsew",padx=2, pady=2)
 
         self.Button_Filename=tk.Button(root,bg="#e9e9ed",fg="#000000",
-                                       justify="center", font=('Times',8),
+                                       justify="center", font=('Times',10),
                                        text="Filename")
-        self.Button_Filename.place(x=X_MARGIN+LISTBOX_WIDTH+LS,y=button_analyze_y,
-                                   width=x_usuable_right,height=BUTTON_HEIGHT)
+        self.Button_Filename.grid(row=9, column=2, rowspan=1, columnspan=4, sticky="nsew",padx=2)
 
         self.Button_Statistics=tk.Button(root,bg="#e9e9ed",fg="#000000",
                                          justify="center", font=('Times',10),
                                          text="Statistics")
-        self.Button_Statistics.place(x=X_MARGIN+LISTBOX_WIDTH+LS,
-                                     y=button_analyze_y+BUTTON_HEIGHT,
-                                     width=x_usuable_right,
-                                     height=BUTTON_HEIGHT)
+        self.Button_Statistics.grid(row=10, column=2, rowspan=1, columnspan=4, sticky="nsew",padx=2)
 
-        ####################################
-        ########## ENTRY WIDGETS ###########
-        ####################################
+        # ####################################
+        # ########## ENTRY WIDGETS ###########
+        # ####################################
 
-        entry_width = x_usuable//6
-        wavenum_y = LISTBOX_HEIGHT+Y_MARGIN+BUTTON_HEIGHT*4+10
-        wavenum_y2 = wavenum_y + BUTTON_HEIGHT + SS
         # Natural Wavenumber (nw)
         nw_text=tk.Label(root,bg="#e9e9ed",fg="#333333",
                          justify="left", font=('Times',10),
                          text="Natural (cm-1):")
-        nw_text.place(x=X_MARGIN,y=wavenum_y,
-                      width=entry_width,height=BUTTON_HEIGHT)
+        nw_text.grid(row=11, column=0, rowspan=1, columnspan=1, sticky="nsew")
         
         # Natural Wavenumber (nw) Entry
         nw=tk.StringVar()
         self.nw_entry = tk.Entry(root,textvariable = nw, font=('Times',10,'normal'))
-        self.nw_entry.place(x=X_MARGIN+entry_width,y=wavenum_y,
-                       width=entry_width,height=BUTTON_HEIGHT)
+        self.nw_entry.grid(row=11, column=1, rowspan=1, columnspan=1, sticky="nsew")
 
         # Natural Correction Wavenumber (ncw)
         ncw_text=tk.Label(root,bg="#e9e9ed",fg="#333333",justify="left",
-                          font=tkFont.Font(family='Times',size=9),
-                          text="Correction (cm-1):")
-        ncw_text.place(x=X_MARGIN+entry_width*2,y=wavenum_y,
-                       width=entry_width,height=BUTTON_HEIGHT)
+                          font=tkFont.Font(family='Times',size=10),
+                          text="Natural Correction (cm-1):")
+        ncw_text.grid(row=11, column=2, rowspan=1, columnspan=1, sticky="nsew")
 
         # Natural Correction Wavenumber (ncw) Entry
         ncw=tk.StringVar()
         self.ncw_entry = tk.Entry(root,textvariable = ncw,font=('Times',10,'normal'))
-        self.ncw_entry.place(x=X_MARGIN+entry_width*3,y=wavenum_y,
-                        width=entry_width,height=BUTTON_HEIGHT)
+        self.ncw_entry.grid(row=11, column=3, rowspan=1, columnspan=1, sticky="nsew")
 
         # Natural Correction Factor (ncf)
         ncf_text=tk.Label(root)
@@ -155,15 +133,13 @@ class App:
         ncf_text["font"] = ft
         ncf_text["fg"] = "#333333"
         ncf_text["justify"] = "left"
-        ncf_text["text"] = "Correct Factor:"
-        ncf_text.place(x=X_MARGIN+entry_width*4,y=wavenum_y,
-                       width=entry_width,height=BUTTON_HEIGHT)
+        ncf_text["text"] = "Natural Correction Factor:"
+        ncf_text.grid(row=11, column=4, rowspan=1, columnspan=1, sticky="nsew")
 
         natural_cf=tk.StringVar()
         self.ncf_entry = tk.Entry(root,textvariable = natural_cf,
                                     font=('Times',10,'normal'))
-        self.ncf_entry.place(x=X_MARGIN+entry_width*5,y=wavenum_y,
-                               width=entry_width,height=BUTTON_HEIGHT)
+        self.ncf_entry.grid(row=11, column=5, rowspan=1, columnspan=1, sticky="nsew")
 
         # Label Wavenumber (lw)
         lw_text=tk.Label(root)
@@ -171,14 +147,12 @@ class App:
         lw_text["fg"] = "#333333"
         lw_text["justify"] = "left"
         lw_text["text"] = "Label (cm-1):"
-        lw_text.place(x=X_MARGIN,y=wavenum_y2,
-                      width=entry_width,height=BUTTON_HEIGHT)
+        lw_text.grid(row=12, column=0, rowspan=1, columnspan=1, sticky="nsew")
 
         label_wavenum=tk.StringVar()
         self.lw_entry = tk.Entry(root,textvariable = label_wavenum,
                                        font=('Times',10,'normal'))
-        self.lw_entry.place(x=X_MARGIN+entry_width,y=wavenum_y2,
-                                  width=entry_width,height=BUTTON_HEIGHT)
+        self.lw_entry.grid(row=12, column=1, rowspan=1, columnspan=1, sticky="nsew")
 
         # Label Correction Wavenumber (lcw)
         lcw_text=tk.Label(root)
@@ -186,15 +160,13 @@ class App:
         lcw_text["font"] = ft
         lcw_text["fg"] = "#333333"
         lcw_text["justify"] = "left"
-        lcw_text["text"] = "Correction (cm-1):"
-        lcw_text.place(x=X_MARGIN+entry_width*2,y=wavenum_y2,
-                       width=entry_width,height=BUTTON_HEIGHT)
+        lcw_text["text"] = "Label Correction (cm-1):"
+        lcw_text.grid(row=12, column=2, rowspan=1, columnspan=1, sticky="nsew")
 
         lcw=tk.StringVar()
         self.lcw_entry = tk.Entry(root,textvariable = lcw,
                              font=('Times',10,'normal'))
-        self.lcw_entry.place(x=X_MARGIN+entry_width*3,y=wavenum_y2,
-                        width=entry_width,height=BUTTON_HEIGHT)
+        self.lcw_entry.grid(row=12, column=3, rowspan=1, columnspan=1, sticky="nsew")
 
         # Label Correction Factor (lcf)
         lcf_text=tk.Label(root)
@@ -202,15 +174,13 @@ class App:
         lcf_text["font"] = ft
         lcf_text["fg"] = "#333333"
         lcf_text["justify"] = "left"
-        lcf_text["text"] = "Correct Factor:"
-        lcf_text.place(x=X_MARGIN+entry_width*4,y=wavenum_y2,
-                       width=entry_width,height=BUTTON_HEIGHT)
+        lcf_text["text"] = "Label Correction Factor:"
+        lcf_text.grid(row=12, column=4, rowspan=1, columnspan=1, sticky="nsew")
         
         lcf=tk.StringVar()
         self.lcf_entry = tk.Entry(root,textvariable = lcf,
                              font=('Times',10,'normal'))
-        self.lcf_entry.place(x=X_MARGIN+entry_width*5,y=wavenum_y2,
-                        width=entry_width,height=BUTTON_HEIGHT)
+        self.lcf_entry.grid(row=12, column=5, rowspan=1, columnspan=1, sticky="nsew")
         
         # Threshold
         threshold_text=tk.Label(root)
@@ -219,16 +189,12 @@ class App:
         threshold_text["fg"] = "#333333"
         threshold_text["justify"] = "left"
         threshold_text["text"] = "Threshold"
-        threshold_text.place(x=X_MARGIN+entry_width*4,
-                      y=wavenum_y2+BUTTON_HEIGHT+SS,
-                      width=entry_width,height=BUTTON_HEIGHT)
+        threshold_text.grid(row=13, column=4, rowspan=1, columnspan=1, sticky="nsew")
         
         threshold=tk.StringVar()
         self.threshold_entry = tk.Entry(root,textvariable = threshold,
                              font=('Times',10,'normal'))
-        self.threshold_entry.place(x=X_MARGIN+entry_width*5,y=wavenum_y2+BUTTON_HEIGHT+SS,
-                        width=entry_width,height=BUTTON_HEIGHT)
-
+        self.threshold_entry.grid(row=13, column=5, rowspan=1, columnspan=1, sticky="nsew")
 
         self.nw_entry.insert(0, "1744")
         self.lw_entry.insert(0, "1703")
@@ -238,7 +204,6 @@ class App:
         self.lcf_entry.insert(0, ".61")
         self.threshold_entry.insert(0,"0.15")
 
-
         # Open Analysis Folder Button
         Button_ExportFolder=tk.Button(root)
         Button_ExportFolder["bg"] = "#e9e9ed"
@@ -247,16 +212,14 @@ class App:
         Button_ExportFolder["fg"] = "#000000"
         Button_ExportFolder["justify"] = "center"
         Button_ExportFolder["text"] = "Export Folder:"
-        Button_ExportFolder.place(x=X_MARGIN,y=wavenum_y2+BUTTON_HEIGHT+SS,
-                                 width=LISTBOX_WIDTH,height=BUTTON_HEIGHT)
+        Button_ExportFolder.grid(row=13, column=0, rowspan=1, columnspan=1, sticky="nsew")
         Button_ExportFolder["command"] = self.Button_ExportFolder_command
 
         # Folder Listbox
-        self.Listbox_ExportFolder=tk.Listbox(root, borderwidth="1px", fg="#333333",
-                                  justify="center", font=('Times',10))
-        self.Listbox_ExportFolder.place(x=X_MARGIN+LISTBOX_WIDTH+SS,
-                                 y=wavenum_y2+BUTTON_HEIGHT+SS,
-                                 width=LISTBOX_WIDTH*1.75,height=BUTTON_HEIGHT)
+        self.Listbox_ExportFolder=tk.Label(root,bg="#e9e9ed",fg="#333333",
+                         justify="left", font=('Times',10),
+                         text="Export Folder Path")
+        self.Listbox_ExportFolder.grid(row=13, column=1, rowspan=1, columnspan=3, sticky="nsew")
 
         def donothing():
             return
