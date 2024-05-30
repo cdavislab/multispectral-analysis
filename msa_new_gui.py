@@ -288,14 +288,14 @@ class App:
         plt.clf()
         plt.imshow(np.loadtxt(filepath, delimiter=','), cmap='CMRmap',vmin=0)
         plt.colorbar()
-        plt.savefig(title + ".jpg")
+        plt.savefig(title + ".jpg", dpi = 300)
         plt.clf()
         return
     
     def save_ratio_image(self, ratio, title):
         plt.imshow(ratio, cmap='CMRmap',vmin=0)
         plt.colorbar()
-        plt.savefig(title + ".jpg")
+        plt.savefig(title + ".jpg", dpi = 300)
         return
 
     def compute_ratio(self, label_fname, natural_fname,
@@ -308,13 +308,12 @@ class App:
         # Correct data
         try:
             label_corrected = msa.correct_spectra(label_data,correction_data,
-                                                  self.lcf)
+                                                    self.lcf)
             natural_corrected = msa.correct_spectra(natural_data,
                                                     correction_data,
                                                     self.natural_cf)
             natural_thresholded, maxsignal = msa.threshold(natural_corrected,
-                                                           self.threshold)
-
+                                                            self.threshold)
             ratio = msa.compute_ratio(label_corrected, natural_thresholded)
         except:
             print('Error in ' + label_fname + " or other wavenumbers")
@@ -344,9 +343,12 @@ class App:
     def display_images(self, index, value):
         index = int(index//3)
         fname = str(index) + "_" + Path(value).stem
+
+        img_width = self.img_panel.winfo_width()
+        img_height = self.img_panel.winfo_height()
+
         self.panel_img = ImageTk.PhotoImage(Image.open(fname + ".jpg")
-                                            .resize((self.IMG_WIDTH,
-                                                     self.IMG_HEIGHT)))
+                                            .resize((img_width,img_height)))
         self.img_panel.configure(image=self.panel_img)
         return
         
@@ -402,9 +404,9 @@ class App:
         self.label_wavenum = self.lw_entry.get()
         self.natural_wavenum = self.nw_entry.get()
         self.correction_wavenum = self.lcw_entry.get()
-        self.threshold = self.threshold_entry.get()
-        self.lcf = self.lcf_entry.get()
-        self.natural_cf = self.ncf_entry.get()
+        self.threshold = float(self.threshold_entry.get())
+        self.lcf = float(self.lcf_entry.get())
+        self.natural_cf = float(self.ncf_entry.get())
 
         groups = self.group_files(self.ListBox_1.get(0, tk.END))
         groups = np.array(groups)
