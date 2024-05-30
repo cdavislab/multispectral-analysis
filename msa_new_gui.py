@@ -443,7 +443,6 @@ class App:
                                   .stem.replace(self.label_wavenum, "")
                                   + "ratio")
             self.summary_df.loc[self.summary_df.shape[0]] = summary[0]
-        self.summary_df.to_csv("test.csv", mode='a')
     def Button_NaturalImage_command(self):
         print("command")
 
