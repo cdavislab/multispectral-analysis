@@ -28,17 +28,11 @@ class App:
 ####################################
 
     def __init__(self, root):
+        
 
-        def set_tk_defaults(widget, font_size=10):
-            widget["bg"] = "#e9e9ed"
-            ft = tkFont.Font(family='Times',size=font_size)
-            widget["font"] = ft
-            widget["fg"] = "#000000"
-            return widget
-
+        self.df = pd.DataFrame(columns=['fpath','fname','impath','histpath','stats put more detail here'])
         self.files = []
         self.isAnalyzed = False
-
 
         #setting title
         root.title("Multispectral Analysis")
@@ -136,12 +130,9 @@ class App:
         self.ncw_entry.grid(row=11, column=3, rowspan=1, columnspan=1, sticky="nsew")
 
         # Natural Correction Factor (ncf)
-        ncf_text=tk.Label(root)
-        ft = tkFont.Font(family='Times',size=10)
-        ncf_text["font"] = ft
-        ncf_text["fg"] = "#333333"
-        ncf_text["justify"] = "left"
-        ncf_text["text"] = "Natural Correction Factor:"
+        ncf_text=tk.Label(root,bg="#e9e9ed",fg="#333333",justify="left",
+                          font=tkFont.Font(family='Times',size=10),
+                          text="Natural Correction Factor:")
         ncf_text.grid(row=11, column=4, rowspan=1, columnspan=1, sticky="nsew")
 
         natural_cf=tk.StringVar()
@@ -150,11 +141,9 @@ class App:
         self.ncf_entry.grid(row=11, column=5, rowspan=1, columnspan=1, sticky="nsew")
 
         # Label Wavenumber (lw)
-        lw_text=tk.Label(root)
-        lw_text["font"] = ft
-        lw_text["fg"] = "#333333"
-        lw_text["justify"] = "left"
-        lw_text["text"] = "Label (cm-1):"
+        lw_text=tk.Label(root,bg="#e9e9ed",fg="#333333",justify="left",
+                          font=tkFont.Font(family='Times',size=10),
+                          text="Label (cm-1):")
         lw_text.grid(row=12, column=0, rowspan=1, columnspan=1, sticky="nsew")
 
         label_wavenum=tk.StringVar()
@@ -163,12 +152,9 @@ class App:
         self.lw_entry.grid(row=12, column=1, rowspan=1, columnspan=1, sticky="nsew")
 
         # Label Correction Wavenumber (lcw)
-        lcw_text=tk.Label(root)
-        ft = tkFont.Font(family='Times',size=9)
-        lcw_text["font"] = ft
-        lcw_text["fg"] = "#333333"
-        lcw_text["justify"] = "left"
-        lcw_text["text"] = "Label Correction (cm-1):"
+        lcw_text=tk.Label(root,bg="#e9e9ed",fg="#333333",justify="left",
+                          font=tkFont.Font(family='Times',size=10),
+                          text="Label Correction (cm-1):")
         lcw_text.grid(row=12, column=2, rowspan=1, columnspan=1, sticky="nsew")
 
         lcw=tk.StringVar()
@@ -177,12 +163,9 @@ class App:
         self.lcw_entry.grid(row=12, column=3, rowspan=1, columnspan=1, sticky="nsew")
 
         # Label Correction Factor (lcf)
-        lcf_text=tk.Label(root)
-        ft = tkFont.Font(family='Times',size=10)
-        lcf_text["font"] = ft
-        lcf_text["fg"] = "#333333"
-        lcf_text["justify"] = "left"
-        lcf_text["text"] = "Label Correction Factor:"
+        lcf_text=tk.Label(root,bg="#e9e9ed",fg="#333333",justify="left",
+                          font=tkFont.Font(family='Times',size=10),
+                          text="Label Correction Factor:")
         lcf_text.grid(row=12, column=4, rowspan=1, columnspan=1, sticky="nsew")
         
         lcf=tk.StringVar()
@@ -191,12 +174,9 @@ class App:
         self.lcf_entry.grid(row=12, column=5, rowspan=1, columnspan=1, sticky="nsew")
         
         # Threshold
-        threshold_text=tk.Label(root)
-        ft = tkFont.Font(family='Times',size=10)
-        threshold_text["font"] = ft
-        threshold_text["fg"] = "#333333"
-        threshold_text["justify"] = "left"
-        threshold_text["text"] = "Threshold"
+        threshold_text=tk.Label(root,bg="#e9e9ed",fg="#333333",justify="left",
+                          font=tkFont.Font(family='Times',size=10),
+                          text="Threshold")
         threshold_text.grid(row=13, column=4, rowspan=1, columnspan=1, sticky="nsew")
         
         threshold=tk.StringVar()
@@ -213,13 +193,9 @@ class App:
         self.threshold_entry.insert(0,"0.15")
 
         # Open Analysis Folder Button
-        Button_ExportFolder=tk.Button(root)
-        Button_ExportFolder["bg"] = "#e9e9ed"
-        ft = tkFont.Font(family='Times',size=10)
-        Button_ExportFolder["font"] = ft
-        Button_ExportFolder["fg"] = "#000000"
-        Button_ExportFolder["justify"] = "center"
-        Button_ExportFolder["text"] = "Export Folder:"
+        Button_ExportFolder=tk.Button(root,bg="#e9e9ed",fg="#333333",justify="center",
+                          font=tkFont.Font(family='Times',size=10),
+                          text="Export Folder:")
         Button_ExportFolder.grid(row=13, column=0, rowspan=1, columnspan=1, sticky="nsew")
         Button_ExportFolder["command"] = self.Button_ExportFolder_command
 
