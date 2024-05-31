@@ -53,19 +53,13 @@ def summarize(data, header_name: str = ''):#, fname: str = None):
     data_foravg = data[data != 0] #remove the thresholded pixels that have been set to 0
     mean_value = np.mean(data_foravg)
     median_value = np.median(data_foravg)
+    max_signal = np.max(data_foravg)
     std_deviation = np.std(data_foravg)
     standard_error = std_deviation / np.sqrt(np.size(data_foravg))
     size = np.size(data_foravg)
-    summary = f"data_set = {header_name}, avg = {mean_value}, median = {median_value}, \
-            std = {std_deviation}, se = {standard_error}, size = {size}"
-
-    # if fname != None:
-    #     with open(fname + '.csv', mode='a', newline='') as file:
-    #         writer = csv.writer(file)
-    #         writer.writerow([header_name, mean_value, median_value, std_deviation, standard_error, size])
     
-    return np.array([[header_name, mean_value, median_value, std_deviation, standard_error, size],\
-        ['Name','Average','Median','Std','Se','n']])
+    return np.array([[mean_value, median_value, max_signal, std_deviation, standard_error, size],\
+        ['Average','Median','Max', 'Std','Se','n']])
 
 #histogram function This produces an automatic histogram using seaborn from your data 
 def histogram(data, fname: str = None, lower_bound: float = None, upper_bound: float = None):

@@ -30,9 +30,15 @@ class App:
     def __init__(self, root):
         
 
-        self.df = pd.DataFrame(columns=['fpath','fname','impath','histpath','stats put more detail here'])
+        self.df = pd.DataFrame(columns=['fpath','fname','im_path','hist_path',
+                                        'Mean', 'Median','Standard Deviation',
+                                        'Standard Error', 'Size', 'Max_Signal'])
         self.files = []
         self.isAnalyzed = False
+        self.dpi = 300
+        self.export_folder = "msa_analysis"
+        self.show_fullpath = False
+        self.subdivide_files = True
 
         #setting title
         root.title("Multispectral Analysis")
@@ -205,26 +211,13 @@ class App:
                          text="Export Folder Path")
         self.Listbox_ExportFolder.grid(row=13, column=1, rowspan=1, columnspan=3, sticky="nsew")
 
-        def donothing():
-            return
-
+        # Menu bar at top of screen
         menubar = tk.Menu(root)
         filemenu = tk.Menu(menubar, tearoff=0)
         filemenu.add_command(label="Open Config", command=self.open_config)
         filemenu.add_command(label="Save Config", command=self.save_config)
         root.config(menu=menubar)
         menubar.add_cascade(label="Config", menu=filemenu)
-        # Save Preferences
-
-
-        # Checkbutton1 = tk.IntVar() 
-  
-        # Button1 = tk.Checkbutton(root, text = "Export All Files", 
-        #                          variable = Checkbutton1)
-        # Button1.toggle()
-        # Button1.place(x=X_MARGIN+LISTBOX_WIDTH*2+LS,
-        #               y=wavenum_y2+BUTTON_HEIGHT+SS,
-        #               width=LISTBOX_WIDTH,height=BUTTON_HEIGHT)
 
     ####################################
     ######  ADDITIONAL FUNCTIONS  ######
@@ -264,14 +257,14 @@ class App:
         plt.clf()
         plt.imshow(np.loadtxt(filepath, delimiter=','), cmap='CMRmap',vmin=0)
         plt.colorbar()
-        plt.savefig(title + ".jpg", dpi = 300)
+        plt.savefig(title + ".jpg", dpi = self.dpi)
         plt.clf()
         return
     
     def save_ratio_image(self, ratio, title):
         plt.imshow(ratio, cmap='CMRmap',vmin=0)
         plt.colorbar()
-        plt.savefig(title + ".jpg", dpi = 300)
+        plt.savefig(title + ".jpg", dpi = self.dpi)
         return
 
     def compute_ratio(self, label_fname, natural_fname,
@@ -315,54 +308,51 @@ class App:
                 warnings.warn("Warning: " + file
                               + " could not be sorted into a wavenumber group")
         return label_file, natural_file, correction_file
-    
-    def display_images(self, index, value):
-        index = int(index//3)
-        fname = str(index) + "_" + Path(value).stem
-
-        img_width = self.img_panel.winfo_width()
-        img_height = self.img_panel.winfo_height()
-
-        self.panel_img = ImageTk.PhotoImage(Image.open(fname + ".jpg")
-                                            .resize((img_width,img_height)))
-        self.img_panel.configure(image=self.panel_img)
-        return
-        
-    def display_statistics(self, index, value):
-        index = int(index//3)
-        # fname = str(index) + "_" + Path(value).stem#.replace(self.label_wavenum, "").replace(self.natural_wavenum, "").replace(self.correction_wavenum, "")
-        stats = np.round(self.summary_df.loc[0][1:].astype(float),3)
-        stats = ("Mean:"+ str(stats[0]) +", Median:"+str(stats[1])+
-                 ", Stdev:"+str(stats[2])+", SE:"+str(stats[3])+
-                 ", Count:"+str(stats[4])+", Max : "+str(stats[5]))
-        self.Button_Statistics.configure(text=stats)
-    def On_File_Selection(self,evt):
-        w = evt.widget
-        index = int(w.curselection()[0])
-        value = w.get(index)
-        print('You selected item %d: "%s"' % (index, value))
-        if self.isAnalyzed:
-            self.Button_Filename.configure(text=Path(value).stem)
-            self.display_images(index, value)
-            self.display_statistics(index,value)
 
     ####################################
     #########  GUI WIDGETS   ###########
     ####################################
+
+    def update_listbox(self):
+        self.ListBox_1.delete(0,tk.END)
+        if self.show_fullpath:
+            self.ListBox_1.insert(tk.END, *self.df['fpath'].values)
+            return
+        self.ListBox_1.insert(tk.END, *self.df['fname'].values)
+        return
 
     def Button_Add_command(self):
         # Add files to the listbox
         ## Open file dialog
         files = tk.filedialog.askopenfilenames(
             filetypes=(("Comma Delimited", "*.csv"), ("All files", "*.*"),))
+        
+        outfolder = self.export_folder
+        if self.subdivide_files:
+            parent = Path(files[0]).parent.name
+            outfolder = os.path.join(self.export_folder, parent)
+        Path(outfolder).mkdir(parents=True, exist_ok=True)
         for file in files:
-            self.ListBox_1.insert(tk.END, file)
+            # If the file is not already in the dataframe, add it
+            if file not in self.df['fpath'].unique():
+                outpath = os.path.join(outfolder, Path(file).stem)
+                im_path = outpath + ".jpg"
+                summary = msa.summarize(np.loadtxt(file, delimiter=','))
+                print(summary)
+                summary = list(summary[0].astype('float'))
+                self.df.loc[self.df.shape[0]] = [file, Path(file).stem,
+                                                 im_path,""] + summary
+                self.save_wavenum_image(file, outpath)
+                
+        self.update_listbox()
 
     def Button_Delete_command(self):
         idx_to_del = list(self.ListBox_1.curselection())
         idx_to_del.sort()
         for i in range(len(idx_to_del)):
             self.ListBox_1.delete(idx_to_del[i]-i)
+        self.df = self.df.drop(idx_to_del).reset_index(drop=True)
+        print(self.df['fname'].values)
 
     def show_analyzed_files(self,files):
         self.ListBox_1.delete(0,tk.END)
@@ -426,13 +416,39 @@ class App:
         print("command")
 
     def Button_ExportFolder_command(self):
-        folder = tk.filedialog.askdirectory()
-        self.Listbox_ExportFolder.insert(tk.END, folder)
-        self.Listbox_ExportFolder.xview_moveto(1)
-        # self.img_panel
+        self.export_folder = tk.filedialog.askdirectory()
+        self.Listbox_ExportFolder['text'] = self.export_folder
 
     def Button_ExportStats_command(self):
         self.summary_df.to_csv("Summary.csv", mode='a')
+
+    def display_images(self, index):
+        # index = int(index//3)
+        im_path = self.df['im_path'][index]
+        img_width = self.img_panel.winfo_width()
+        img_height = self.img_panel.winfo_height()
+
+        self.panel_img = ImageTk.PhotoImage(Image.open(im_path)
+                                            .resize((img_width,img_height)))
+        self.img_panel.configure(image=self.panel_img)
+        return
+        
+    def display_statistics(self, index):
+        # fname = str(index) + "_" + Path(value).stem#.replace(self.label_wavenum, "").replace(self.natural_wavenum, "").replace(self.correction_wavenum, "")
+        stats = np.round(self.df.loc[index][4:].astype(float),3)
+        stats = ("Mean:"+ str(stats[0]) +", Median:"+str(stats[1])+
+                 ", Max:"+str(stats[2])+", Stdev:"+str(stats[3])+
+                 ", SE:"+str(stats[4])+",  Count: "+str(int(stats[5])))
+        self.Button_Statistics.configure(text=stats)
+
+    def On_File_Selection(self,evt):
+        w = evt.widget
+        index = int(w.curselection()[0])
+        value = w.get(index)
+        print('You selected item %d: "%s"' % (index, value))
+        self.Button_Filename.configure(text=Path(value).stem)
+        self.display_images(index)
+        self.display_statistics(index)
 
     def open_config(self):
         return
