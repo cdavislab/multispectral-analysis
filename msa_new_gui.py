@@ -223,6 +223,13 @@ class App:
     ######  ADDITIONAL FUNCTIONS  ######
     ####################################
 
+    def match_csv(self, csv1, target):
+        for line in csv1:
+            if line.replace(csv1,"") == target:
+                return line
+        warnings.warn("Warning: " + target + " could not be matched to natural/correction files")
+        return
+
     def group_files(self, file_list):
         label_csvs = []
         natural_csvs = []
@@ -240,17 +247,14 @@ class App:
                     
         groups = []
         for i in range(len(label_csvs)):
+            target = label_csvs[i].replace(self.label_wavenum,"")
             groups.append([label_csvs[i]])
-            for line in natural_csvs:
-                if line.replace(self.natural_wavenum,"") ==\
-                      label_csvs[i].replace(self.label_wavenum,""):
-                    groups[i].append(line)
-                    break
-            for line in correction_csvs:
-                if line.replace(self.correction_wavenum,"") ==\
-                      label_csvs[i].replace(self.label_wavenum,""):
-                    groups[i].append(line)
-                    break
+
+            # Iterate through csv files to find matching natural and
+            # correction files. Break early if found
+            groups[i].append(self.match_csv(natural_csvs, target))
+            groups[i].append(self.match_csv(correction_csvs, target))
+            
         return groups
     
     def save_wavenum_image(self, filepath, title):
@@ -374,7 +378,7 @@ class App:
         self.lcf = float(self.lcf_entry.get())
         self.natural_cf = float(self.ncf_entry.get())
 
-        groups = self.group_files(self.ListBox_1.get(0, tk.END))
+        groups = self.group_files(self.df['fpath'])
         groups = np.array(groups)
         groups_flat = groups.flatten()
 
@@ -390,7 +394,6 @@ class App:
         #     groupstr += str(i) + ": " + str(groups[i]) + "\n"
         # tk.messagebox.showinfo("Groups", groupstr)
 
-        self.isAnalyzed = True
         self.show_analyzed_files(groups_flat)
         for i in range(len(groups)):
             # TODO: Confirm groups
