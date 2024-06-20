@@ -36,6 +36,8 @@ class MultispectralModel:
         correction_csvs = []
         excess_csvs = []
         correction_wavenum = label_correction_wavenum
+        correction_wavenum = natural_correction_wavenum
+        # TODO: Have two separate correction wavenumbers
         # Categorize files into label, natural, correction, and excess groups
         for line in file_list:
             if label_wavenum in line:
@@ -55,7 +57,12 @@ class MultispectralModel:
             groups[i].append(self.match_csv(natural_csvs, natural_wavenum, target))
             groups[i].append(self.match_csv(correction_csvs, correction_wavenum, target))
 
-        return groups
+        # Iterate through the groups and assign group numbers
+        for group_number, group in enumerate(groups):
+            self.df.loc[self.df['fpath'].isin(group), 'group'] = group_number
+
+        print(self.df[['fname','group']])
+        return
 
     # Function to save an image representation of a wavenumber data file
     def save_wavenum_image(self, filepath, title):
@@ -71,75 +78,77 @@ class MultispectralModel:
         return
 
     # Function to compute ratio images from label, natural, and correction files
-    def ratio_images(self, label_fname, natural_fname, correction_fname, lcf, natural_cf, threshold):
-        # Load data
-        correction_data = np.loadtxt(correction_fname, delimiter=',')
-        label_data = np.loadtxt(label_fname, delimiter=',')
-        natural_data = np.loadtxt(natural_fname, delimiter=',')
-
+    def ratio_images(self, label_data, natural_data, label_correction_data, natural_correction_data, lcf, ncf, threshold):
         # Correct data and compute ratios
-        try:
-            label_corrected = msa.correct_spectra(label_data, correction_data, lcf)
-            natural_corrected = msa.correct_spectra(natural_data, correction_data, natural_cf)
-            natural_thresholded, maxsignal = msa.threshold(natural_corrected, threshold)
-            ratio = msa.compute_ratio(label_corrected, natural_thresholded)
-        except:
-            print('Error in ' + label_fname + " or other wavenumbers")
-
+        label_corrected = msa.correct_spectra(label_data, label_correction_data, lcf)
+        natural_corrected = msa.correct_spectra(natural_data, natural_correction_data, ncf)
+        natural_thresholded, _ = msa.threshold(natural_corrected, threshold)
+        ratio = msa.compute_ratio(label_corrected, natural_thresholded)
         return ratio
 
     # Function to sort files in a group into label, natural, and correction
-    def sort_wavenumbers(self, group, label_wavenum, natural_wavenum, correction_wavenum):
+    def sort_wavenumbers(self, group, label_wavenum, natural_wavenum, 
+                         label_correction_wavenum, natural_correction_wavenum):
         for file in group:
             if label_wavenum in file:
                 label_file = file
             elif natural_wavenum in file:
                 natural_file = file
-            elif correction_wavenum in file:
-                correction_file = file
+            elif label_correction_wavenum in file:
+                label_correction_file = file
+            elif natural_correction_wavenum in file:
+                natural_correction_file = file
             else:
                 warnings.warn("Warning: " + file + " could not be sorted into a wavenumber group")
-        return label_file, natural_file, correction_file
+        if label_correction_wavenum == natural_correction_wavenum:
+            natural_correction_file = label_correction_file
+        return label_file, natural_file, label_correction_file, natural_correction_file
 
     # Function to add files to the model and process them
-    def add_files(self, files, label_wavenum, natural_wavenum, correction_wavenum, threshold, lcf, natural_cf):
+    def add_files(self, files):
         outfolder = self.export_folder
         if self.subdivide_files:
             parent = Path(files[0]).parent.name
             outfolder = os.path.join(self.export_folder, parent)
         Path(outfolder).mkdir(parents=True, exist_ok=True)
 
-        # Process each file
+        # Add each unique file to the DataFrame with a summary and create an image
         for file in files:
             if file not in self.df['fpath'].unique():
                 outpath = os.path.join(outfolder, Path(file).stem)
-                im_path = outpath + ".jpg"
+                image_path = outpath + ".jpg"
                 summary = msa.summarize(np.loadtxt(file, delimiter=','))
                 summary = list(summary[0].astype('float'))
-                self.df.loc[self.df.shape[0]] = [file, Path(file).stem, im_path, "", 0] + summary
+                self.df.loc[self.df.shape[0]] = [file, Path(file).stem, image_path, "", 0] + summary
                 self.save_wavenum_image(file, outpath)
 
     # Function to analyze files and compute ratio images
-    def analyze_files(self, label_wavenum, natural_wavenum, correction_wavenum, threshold, lcf, natural_cf):
-        groups = self.group_files(self.df['fpath'], label_wavenum, natural_wavenum, correction_wavenum)
-        groups = np.array(groups)
-        groups_flat = groups.flatten()
+    def analyze_files(self, label_wavenum, natural_wavenum, label_correction_wavenum, natural_correction_wavenum, threshold, lcf, natural_cf):
+        
+        correction_wavenum = natural_correction_wavenum
+        
+        
+        self.group_files(self.df['fpath'], label_wavenum, natural_wavenum,
+                        label_correction_wavenum, natural_correction_wavenum)
+        
+        groups = self.df['group'].unique()
+        for group_idx in groups:
+            group = self.df[self.df['group'] == group_idx]['fpath'].values
+            label_file, natural_file, label_correction_file, natural_correction_file = self.sort_wavenumbers(group, label_wavenum, natural_wavenum,
+                                                                              label_correction_wavenum, natural_correction_wavenum)
+            label_data = np.loadtxt(label_file, delimiter=',')
+            natural_data = np.loadtxt(natural_file, delimiter=',')
+            label_correction_data = np.loadtxt(label_correction_file, delimiter=',') #Don't load twice if not necessary #TODO
+            natural_correction_data = np.loadtxt(natural_correction_file, delimiter=',')
 
-        ratio_array = np.zeros(len(groups)).astype('str')
-        for i in range(len(groups)):
-            label_file, _, _ = self.sort_wavenumbers(groups[i], label_wavenum, natural_wavenum, correction_wavenum)
-            ratio_array[i] = (str(i) + "_" + Path(label_file).stem.replace(label_wavenum, "") + "ratio")
-
-        for i in range(len(groups)):
-            label_file, natural_file, correction_file = self.sort_wavenumbers(groups[i], label_wavenum, natural_wavenum, correction_wavenum)
-            ratio = self.ratio_images(label_file, natural_file, correction_file, lcf, natural_cf, threshold)
-            ratio_fname = Path(label_file).stem.replace(label_wavenum, "_") + "ratio"
+            ratio = self.ratio_images(label_data, natural_data, label_correction_data, natural_correction_data,
+                                      lcf, natural_cf, threshold)
+            ratio_fname = Path(label_file).stem.replace(label_wavenum, "") + "_ratio"
             ratio_im_path = os.path.join(self.export_folder, ratio_fname)
             self.save_image(ratio, ratio_im_path)
             summary = msa.summarize(ratio)
             summary = list(summary[0].astype('float'))
-            self.df.loc[self.df.shape[0]] = [ratio_fname, ratio_fname, ratio_im_path + ".jpg", "", i] + summary
-
+            self.df.loc[self.df.shape[0]] = [ratio_fname, ratio_fname, ratio_im_path + ".jpg", "", group_idx] + summary
     # Function to export the statistics to a CSV file
     def export_stats(self):
         self.df.to_csv(os.path.join(self.export_folder, "Summary.csv"), mode='a')
@@ -296,15 +305,15 @@ class MultispectralView:
                                              text="Export Folder Path")
         self.Listbox_ExportFolder.grid(row=13, column=1, rowspan=1, columnspan=3, sticky="nsew")
 
-        menubar = tk.Menu(self.root)
-        settings_menu = tk.Menu(menubar, tearoff=0)
-        settings_menu.add_command(label="Open Config")
-        settings_menu.add_command(label="Save Config")
-        file_menu = tk.Menu(menubar, tearoff=0)
-        file_menu.add_command(label="Export Statistics")
-        self.root.config(menu=menubar)
-        menubar.add_cascade(label="File", menu=file_menu)
-        menubar.add_cascade(label="Settings", menu=settings_menu)
+        self.menubar = tk.Menu(self.root)
+        self.settings_menu = tk.Menu(self.menubar, tearoff=0)
+        self.settings_menu.add_command(label="Open Config")
+        self.settings_menu.add_command(label="Save Config")
+        self.file_menu = tk.Menu(self.menubar, tearoff=0)
+        self.file_menu.add_command(label="Export Statistics")
+        self.root.config(menu=self.menubar)
+        self.menubar.add_cascade(label="File", menu=self.file_menu)
+        self.menubar.add_cascade(label="Settings", menu=self.settings_menu)
 
 # Controller class to manage the logic between the Model and the View
 class MultispectralController:
@@ -319,18 +328,15 @@ class MultispectralController:
         self.view.Button_Delete.config(command=self.delete_files)
         self.view.Button_Analyze.config(command=self.analyze_files)
         self.view.Button_ExportFolder.config(command=self.set_export_folder)
+        # self.view.menubar.entryconfig("Export Statistics", command=self.export_stats)
+        # self.view.root.config(menu=self.view.menubar)
+        self.view.file_menu.entryconfig('Export Statistics', command=self.export_stats)
         self.view.ListBox_1.bind('<<ListboxSelect>>', self.on_file_selection)
 
     # Method to handle adding files
     def add_files(self):
         files = askopenfilenames(filetypes=(("Comma Delimited", "*.csv"), ("All files", "*.*"),))
-        self.model.add_files(files,
-                             self.view.lw_entry.get(),
-                             self.view.nw_entry.get(),
-                             self.view.lcw_entry.get(),
-                             float(self.view.threshold_entry.get()),
-                             float(self.view.lcf_entry.get()),
-                             float(self.view.ncf_entry.get()))
+        self.model.add_files(files)
         self.update_listbox()
 
     # Method to handle deleting files
@@ -347,9 +353,11 @@ class MultispectralController:
         self.model.analyze_files(self.view.lw_entry.get(),
                                  self.view.nw_entry.get(),
                                  self.view.lcw_entry.get(),
+                                 self.view.ncw_entry.get(),
                                  float(self.view.threshold_entry.get()),
                                  float(self.view.lcf_entry.get()),
                                  float(self.view.ncf_entry.get()))
+        print("I'm about to update listbox in analyze files")
         self.update_listbox()
 
     # Method to handle setting the export folder
@@ -359,7 +367,8 @@ class MultispectralController:
 
     # Method to update the listbox in the view
     def update_listbox(self):
-        self.model.df.sort_values(["group", "fpath"], ascending=[False, True], ignore_index=True)
+        self.model.df = self.model.df.sort_values(by=["group", "fpath"], ascending=[True, True], ignore_index=True)
+
         self.view.ListBox_1.delete(0, tk.END)
         if self.model.show_fullpath:
             self.view.ListBox_1.insert(tk.END, *self.model.df['fpath'].values)
@@ -393,6 +402,9 @@ class MultispectralController:
         self.view.Button_Filename.configure(text=Path(value).stem)
         self.display_images(index)
         self.display_statistics(index)
+
+    def export_stats(self):
+        self.model.export_stats()
 
 if __name__ == "__main__":
     root = tk.Tk()
