@@ -11,8 +11,8 @@ class MultispectralModel:
     def __init__(self):
         # Initialize an empty DataFrame with specific columns
         self.df = pd.DataFrame(columns=['fpath', 'fname', 'im_path', 'hist_path', 'group',
-                                        'Mean', 'Median', 'Standard Deviation',
-                                        'Standard Error', 'Size', 'Max_Signal'])
+                                        'Mean', 'Median', 'Max_Signal', 'Standard Deviation',
+                                        'Standard Error', 'Size'])
         self.files = []  # List to hold file paths
         self.isAnalyzed = False  # Flag to check if files are analyzed
         self.dpi = 300  # DPI setting for image saving
