@@ -38,7 +38,6 @@ def correct_spectra(data, reference, correction_factor: float) :
 
 def threshold(data,threshpercent=0.05): # the thresholdpercent is automatically set to 5% but can be changed by inputting that variable#
     maxsignal = np.max(data)
-    print('max signal =', maxsignal)
     threshval = maxsignal * threshpercent
     #threshold out low lipid areas
     data[data<threshval] = 0
