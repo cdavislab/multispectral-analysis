@@ -12,7 +12,7 @@ class MultispectralModel:
         # Initialize an empty DataFrame with specific columns
         self.df = pd.DataFrame(columns=['fpath', 'fname', 'im_path', 'hist_path', 'group',
                                         'Mean', 'Median', 'Max_Signal', 'Standard Deviation',
-                                        'Standard Error', 'Size'])
+                                        'Standard Error', 'Count'])
         self.files = []  # List to hold file paths
         self.isAnalyzed = False  # Flag to check if files are analyzed
         self.dpi = 300  # DPI setting for image saving
@@ -388,7 +388,8 @@ class MultispectralController:
 
     # Method to display statistics of the selected file in the view
     def display_statistics(self, index):
-        stats = np.round(self.model.df.loc[index][4:].astype(float), 3)
+        stats = self.model.df[['Mean', 'Median', 'Max_Signal', 'Standard Deviation', 'Standard Error', 'Count']]
+        stats = np.round(stats.iloc[index,:].astype(float), 3)
         stats = ("Mean:" + str(stats[0]) + ", Median:" + str(stats[1]) +
                  ", Max:" + str(stats[2]) + ", Stdev:" + str(stats[3]) +
                  ", SE:" + str(stats[4]) + ",  Count: " + str(int(stats[5])))
