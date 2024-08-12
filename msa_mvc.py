@@ -9,7 +9,7 @@ import multispectral_analysis as msa
 # Model class to handle data operations and business logic
 class MultispectralModel:
     def __init__(self):
-        # Initialize an empty DataFrame with specific columns
+        # Initialize master DataFrame and other variables/booleans 
         self.df = pd.DataFrame(columns=['fpath', 'fname', 'im_path', 'hist_path', 'group',
                                         'Mean', 'Median', 'Max_Signal', 'Standard Deviation',
                                         'Standard Error', 'Count'])
@@ -33,10 +33,9 @@ class MultispectralModel:
                     label_correction_wavenum, natural_correction_wavenum):
         label_csvs = []
         natural_csvs = []
-        correction_csvs = []
+        lc_csvs = []
+        nc_csvs = []
         excess_csvs = []
-        correction_wavenum = label_correction_wavenum
-        correction_wavenum = natural_correction_wavenum
         # TODO: Have two separate correction wavenumbers
         # Categorize files into label, natural, correction, and excess groups
         for line in file_list:
@@ -44,8 +43,10 @@ class MultispectralModel:
                 label_csvs.append(line)
             elif natural_wavenum in line:
                 natural_csvs.append(line)
-            elif correction_wavenum in line:
-                correction_csvs.append(line)
+            elif label_correction_wavenum in line:
+                lc_csvs.append(line)
+            elif natural_correction_wavenum in line:
+                nc_csvs.append(line)
             else:
                 excess_csvs.append(line)
 
@@ -55,7 +56,8 @@ class MultispectralModel:
             target = label_csvs[i].replace(label_wavenum, "")
             groups.append([label_csvs[i]])
             groups[i].append(self.match_csv(natural_csvs, natural_wavenum, target))
-            groups[i].append(self.match_csv(correction_csvs, correction_wavenum, target))
+            groups[i].append(self.match_csv(lc_csvs, label_correction_wavenum, target))
+            # TODO: Have two separate correction wavenumbers
 
         # Iterate through the groups and assign group numbers
         for group_number, group in enumerate(groups):
@@ -123,10 +125,7 @@ class MultispectralModel:
                 self.save_wavenum_image(file, outpath)
 
     # Function to analyze files and compute ratio images
-    def analyze_files(self, label_wavenum, natural_wavenum, label_correction_wavenum, natural_correction_wavenum, threshold, lcf, natural_cf):
-        
-        correction_wavenum = natural_correction_wavenum
-        
+    def analyze_files(self, label_wavenum, natural_wavenum, label_correction_wavenum, natural_correction_wavenum, threshold, lcf, natural_cf):        
         
         self.group_files(self.df['fpath'], label_wavenum, natural_wavenum,
                         label_correction_wavenum, natural_correction_wavenum)
@@ -152,6 +151,21 @@ class MultispectralModel:
     # Function to export the statistics to a CSV file
     def export_stats(self):
         self.df.to_csv(os.path.join(self.export_folder, "Summary.csv"), mode='a')
+        return
+    
+    def export_filelist(self):
+        self.df['fpath'].to_csv(os.path.join(self.export_folder, f"fpaths_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv"), index=False, mode = 'w')
+        return
+    
+    def import_filelist(self):
+        file_of_files = askopenfilenames(filetypes=(("Comma Delimited", "*.csv"), ("All files", "*.*"),))
+        df = pd.read_csv(file_of_files[0])
+        df = df[~df.applymap(lambda x: isinstance(x, str) and "ratio" in x.lower()).any(axis=1)]
+        filelist = df['fpath'].tolist()
+        print(filelist)
+        self.add_files(filelist)
+        return
+
 
 import tkinter as tk
 import tkinter.font as tkFont
@@ -311,6 +325,8 @@ class MultispectralView:
         self.settings_menu.add_command(label="Save Config")
         self.file_menu = tk.Menu(self.menubar, tearoff=0)
         self.file_menu.add_command(label="Export Statistics")
+        self.file_menu.add_command(label="Export File List")
+        self.file_menu.add_command(label="Import File List")
         self.root.config(menu=self.menubar)
         self.menubar.add_cascade(label="File", menu=self.file_menu)
         self.menubar.add_cascade(label="Settings", menu=self.settings_menu)
@@ -331,6 +347,8 @@ class MultispectralController:
         # self.view.menubar.entryconfig("Export Statistics", command=self.export_stats)
         # self.view.root.config(menu=self.view.menubar)
         self.view.file_menu.entryconfig('Export Statistics', command=self.export_stats)
+        self.view.file_menu.entryconfig('Export File List', command=self.export_filelist)
+        self.view.file_menu.entryconfig('Import File List', command=self.import_filelist)
         self.view.ListBox_1.bind('<<ListboxSelect>>', self.on_file_selection)
 
     # Method to handle adding files
@@ -406,6 +424,13 @@ class MultispectralController:
 
     def export_stats(self):
         self.model.export_stats()
+
+    def export_filelist(self):
+        self.model.export_filelist()
+
+    def import_filelist(self):
+        self.model.import_filelist()
+        self.update_listbox()
 
 if __name__ == "__main__":
     root = tk.Tk()
