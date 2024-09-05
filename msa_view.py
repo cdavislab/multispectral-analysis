@@ -26,6 +26,14 @@ class MultispectralView:
         self.root.rowconfigure(5, weight=1)
         self.root.columnconfigure(5, weight=1)
 
+        self.build_file_viewer()
+        self.build_image_viewer()
+        self.build_user_buttons()
+        self.build_wavenumber_inputs()
+        self.build_menubar()
+        self.set_defaults()
+
+    def build_file_viewer(self):
         frm = tk.Frame(self.root)
         frm.grid(row=0, column=0, rowspan=7, columnspan=2, sticky="nsew", padx=2, pady=2)
         scrollbar = tk.Scrollbar(frm, orient="horizontal")
@@ -35,6 +43,12 @@ class MultispectralView:
         self.ListBox_1.pack(expand=True, fill=tk.BOTH)
         scrollbar.config(command=self.ListBox_1.xview)
 
+    def build_image_viewer(self):
+        self.img_panel = tk.Label(self.root)
+        self.panel_img = ""
+        self.img_panel.grid(row=0, column=2, rowspan=9, columnspan=4, sticky="nsew", padx=2, pady=2)
+
+    def build_user_buttons(self):
         self.Button_Add = tk.Button(self.root, bg="#e9e9ed", fg="#000000", justify="center",
                                     font=('Times', 10), text="Add Files")
         self.Button_Add.grid(row=7, column=0, rowspan=1, columnspan=2, sticky="nsew", padx=2)
@@ -47,10 +61,6 @@ class MultispectralView:
                                         font=('Times', 10), text="Analyze")
         self.Button_Analyze.grid(row=9, column=0, rowspan=2, columnspan=2, sticky="nsew", padx=2)
 
-        self.img_panel = tk.Label(self.root)
-        self.panel_img = ""
-        self.img_panel.grid(row=0, column=2, rowspan=9, columnspan=4, sticky="nsew", padx=2, pady=2)
-
         self.Button_Filename = tk.Button(self.root, bg="#e9e9ed", fg="#000000",
                                          justify="center", font=('Times', 10),
                                          text="Filename")
@@ -61,6 +71,8 @@ class MultispectralView:
                                            text="Statistics")
         self.Button_Statistics.grid(row=10, column=2, rowspan=1, columnspan=4, sticky="nsew", padx=2)
 
+    def build_wavenumber_inputs(self):
+        # Natural Wavenumber
         nw_text = tk.Label(self.root, bg="#e9e9ed", fg="#333333",
                            justify="left", font=('Times', 10),
                            text="Natural (cm-1):")
@@ -70,6 +82,7 @@ class MultispectralView:
         self.nw_entry = tk.Entry(self.root, textvariable=nw, font=('Times', 10, 'normal'))
         self.nw_entry.grid(row=11, column=1, rowspan=1, columnspan=1, sticky="nsew")
 
+        # Natural Correction Wavenumber
         ncw_text = tk.Label(self.root, bg="#e9e9ed", fg="#333333", justify="left",
                             font=tkFont.Font(family='Times', size=10),
                             text="Natural Correction (cm-1):")
@@ -79,6 +92,7 @@ class MultispectralView:
         self.ncw_entry = tk.Entry(self.root, textvariable=ncw, font=('Times', 10, 'normal'))
         self.ncw_entry.grid(row=11, column=3, rowspan=1, columnspan=1, sticky="nsew")
 
+        # Natural Correction Factor
         ncf_text = tk.Label(self.root, bg="#e9e9ed", fg="#333333", justify="left",
                             font=tkFont.Font(family='Times', size=10),
                             text="Natural Correction Factor:")
@@ -89,6 +103,7 @@ class MultispectralView:
                                   font=('Times', 10, 'normal'))
         self.ncf_entry.grid(row=11, column=5, rowspan=1, columnspan=1, sticky="nsew")
 
+        # Label Wavenumber
         lw_text = tk.Label(self.root, bg="#e9e9ed", fg="#333333", justify="left",
                            font=tkFont.Font(family='Times', size=10),
                            text="Label (cm-1):")
@@ -99,6 +114,7 @@ class MultispectralView:
                                  font=('Times', 10, 'normal'))
         self.lw_entry.grid(row=12, column=1, rowspan=1, columnspan=1, sticky="nsew")
 
+        # Label Correction Wavenumber
         lcw_text = tk.Label(self.root, bg="#e9e9ed", fg="#333333", justify="left",
                             font=tkFont.Font(family='Times', size=10),
                             text="Label Correction (cm-1):")
@@ -109,6 +125,7 @@ class MultispectralView:
                                   font=('Times', 10, 'normal'))
         self.lcw_entry.grid(row=12, column=3, rowspan=1, columnspan=1, sticky="nsew")
 
+        # Label Correction Factor
         lcf_text = tk.Label(self.root, bg="#e9e9ed", fg="#333333", justify="left",
                             font=tkFont.Font(family='Times', size=10),
                             text="Label Correction Factor:")
@@ -119,6 +136,7 @@ class MultispectralView:
                                   font=('Times', 10, 'normal'))
         self.lcf_entry.grid(row=12, column=5, rowspan=1, columnspan=1, sticky="nsew")
 
+        # Threshold
         threshold_text = tk.Label(self.root, bg="#e9e9ed", fg="#333333", justify="left",
                                   font=tkFont.Font(family='Times', size=10),
                                   text="Threshold")
@@ -129,14 +147,7 @@ class MultispectralView:
                                         font=('Times', 10, 'normal'))
         self.threshold_entry.grid(row=13, column=5, rowspan=1, columnspan=1, sticky="nsew")
 
-        self.nw_entry.insert(0, "1744")
-        self.lw_entry.insert(0, "1703")
-        self.ncw_entry.insert(0, "1655")
-        self.lcw_entry.insert(0, "1655")
-        self.ncf_entry.insert(0, ".31")
-        self.lcf_entry.insert(0, ".61")
-        self.threshold_entry.insert(0, "0.15")
-
+        # Export Folder
         Button_ExportFolder = tk.Button(self.root, bg="#e9e9ed", fg="#333333", justify="center",
                                         font=tkFont.Font(family='Times', size=10),
                                         text="Export Folder:")
@@ -148,6 +159,7 @@ class MultispectralView:
                                              text="Export Folder Path")
         self.Listbox_ExportFolder.grid(row=13, column=1, rowspan=1, columnspan=3, sticky="nsew")
 
+    def build_menubar(self):
         self.menubar = tk.Menu(self.root)
         self.settings_menu = tk.Menu(self.menubar, tearoff=0)
         self.settings_menu.add_command(label="Open Config")
@@ -159,3 +171,13 @@ class MultispectralView:
         self.root.config(menu=self.menubar)
         self.menubar.add_cascade(label="File", menu=self.file_menu)
         self.menubar.add_cascade(label="Settings", menu=self.settings_menu)
+
+    def set_defaults(self):
+        self.nw_entry.insert(0, "1744")
+        self.lw_entry.insert(0, "1703")
+        self.ncw_entry.insert(0, "1655")
+        self.lcw_entry.insert(0, "1655")
+        self.ncf_entry.insert(0, ".31")
+        self.lcf_entry.insert(0, ".61")
+        self.threshold_entry.insert(0, "0.15")
+
