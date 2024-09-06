@@ -3,6 +3,7 @@ from tkinter.filedialog import askopenfilenames, askdirectory
 from pathlib import Path
 from PIL import ImageTk, Image
 import numpy as np
+import pandas as pd
 
 # Controller class to manage the logic between the Model and the View
 class MultispectralController:
@@ -48,7 +49,6 @@ class MultispectralController:
                                  float(self.view.threshold_entry.get()),
                                  float(self.view.lcf_entry.get()),
                                  float(self.view.ncf_entry.get()))
-        print("I'm about to update listbox in analyze files")
         self.update_listbox()
 
     # Method to handle setting the export folder
@@ -102,5 +102,7 @@ class MultispectralController:
         self.model.export_filelist()
 
     def import_filelist(self):
-        self.model.import_filelist()
+        file_of_files = askopenfilenames(filetypes=(("Comma Delimited", "*.csv"), ("All files", "*.*"),))
+        df = pd.read_csv(file_of_files[0])
+        self.model.import_filelist(df)
         self.update_listbox()

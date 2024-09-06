@@ -156,11 +156,11 @@ class MultispectralModel:
         self.df['fpath'].to_csv(os.path.join(self.export_folder, f"fpaths_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv"), index=False, mode = 'w')
         return
     
-    def import_filelist(self):
-        file_of_files = askopenfilenames(filetypes=(("Comma Delimited", "*.csv"), ("All files", "*.*"),))
-        df = pd.read_csv(file_of_files[0])
-        df = df[~df.applymap(lambda x: isinstance(x, str) and "ratio" in x.lower()).any(axis=1)]
-        filelist = df['fpath'].tolist()
+    def import_filelist(self, file_df):
+        # file_of_files = askopenfilenames(filetypes=(("Comma Delimited", "*.csv"), ("All files", "*.*"),))
+        # df = pd.read_csv(file_of_files[0])
+        file_df = file_df[~file_df.applymap(lambda x: isinstance(x, str) and "ratio" in x.lower()).any(axis=1)]
+        filelist = file_df['fpath'].tolist()
         print(filelist)
         self.add_files(filelist)
         return
