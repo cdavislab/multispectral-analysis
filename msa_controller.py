@@ -25,13 +25,11 @@ class MultispectralController:
         self.view.file_menu.entryconfig('Import File List', command=self.import_filelist)
         self.view.ListBox_1.bind('<<ListboxSelect>>', self.on_file_selection)
 
-    # Method to handle adding files
     def add_files(self):
         files = askopenfilenames(filetypes=(("Comma Delimited", "*.csv"), ("All files", "*.*"),))
         self.model.add_files(files)
         self.update_listbox()
 
-    # Method to handle deleting files
     def delete_files(self):
         idx_to_del = list(self.view.ListBox_1.curselection())
         idx_to_del.sort()
@@ -40,7 +38,6 @@ class MultispectralController:
         self.model.df = self.model.df.drop(idx_to_del).reset_index(drop=True)
         self.update_listbox()
 
-    # Method to handle analyzing files
     def analyze_files(self):
         self.model.analyze_files(self.view.lw_entry.get(),
                                  self.view.nw_entry.get(),
@@ -51,12 +48,10 @@ class MultispectralController:
                                  float(self.view.ncf_entry.get()))
         self.update_listbox()
 
-    # Method to handle setting the export folder
     def set_export_folder(self):
         self.model.export_folder = askdirectory()
         self.view.Listbox_ExportFolder['text'] = self.model.export_folder
 
-    # Method to update the listbox in the view
     def update_listbox(self):
         self.model.df = self.model.df.sort_values(by=["group", "fpath"], ascending=[True, True], ignore_index=True)
 
@@ -67,7 +62,6 @@ class MultispectralController:
         self.view.ListBox_1.insert(tk.END, *self.model.df['fname'].values)
         return
 
-    # Method to display selected image in the view
     def display_images(self, index):
         im_path = self.model.df['im_path'][index]
         img_width = self.view.img_panel.winfo_width()
@@ -77,7 +71,6 @@ class MultispectralController:
         self.view.img_panel.configure(image=self.view.panel_img)
         return
 
-    # Method to display statistics of the selected file in the view
     def display_statistics(self, index):
         stats = self.model.df[['Mean', 'Median', 'Max_Signal', 'Standard Deviation', 'Standard Error', 'Count']]
         stats = np.round(stats.iloc[index,:].astype(float), 3)
@@ -86,7 +79,6 @@ class MultispectralController:
                  ", SE:" + str(stats[4]) + ",  Count: " + str(int(stats[5])))
         self.view.Button_Statistics.configure(text=stats)
 
-    # Method to handle file selection from the listbox
     def on_file_selection(self, evt):
         w = evt.widget
         index = int(w.curselection()[0])

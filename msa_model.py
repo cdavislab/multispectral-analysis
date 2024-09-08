@@ -19,50 +19,58 @@ class MultispectralModel:
         self.show_fullpath = False  # Flag to show full file paths
         self.subdivide_files = True  # Flag to subdivide files into folders
 
-    # Function to match a target file in a list of CSVs by removing a specific wavenumber from file names
-    def match_csv(self, csv1, csv_wavenum, target):
-        for line in csv1:
-            if line.replace(csv_wavenum, "") == target:
-                return line
-        warnings.warn("Warning: " + target + " could not be matched to natural/correction files")
-        return
+    def group_files(self, file_list: list, label: str, natural: str, label_corr:str, natural_corr: str) -> pd.DataFrame:
+        """
+        Groups files based on shared common name
+        Parameters
+        -----------
+        file_list : list
+            List of file names.
+        label: str
+            Wavenumber used as the label.
+        natural: str
+            Wavenumber used as the control/natural.
+        label_corr: str
+            Wavenumber used to correct label wavenumber intensity.
+        natural_corr: str
+            Wavenumber used to correct label wavenumber intensity.
 
-    # Function to group files based on wavenumbers
-    def group_files(self, file_list, label_wavenum, natural_wavenum,
-                    label_correction_wavenum, natural_correction_wavenum):
-        label_csvs = []
-        natural_csvs = []
-        lc_csvs = []
-        nc_csvs = []
-        excess_csvs = []
-        # TODO: Have two separate correction wavenumbers
-        # Categorize files into label, natural, correction, and excess groups
-        for line in file_list:
-            if label_wavenum in line:
-                label_csvs.append(line)
-            elif natural_wavenum in line:
-                natural_csvs.append(line)
-            elif label_correction_wavenum in line:
-                lc_csvs.append(line)
-            elif natural_correction_wavenum in line:
-                nc_csvs.append(line)
-            else:
-                excess_csvs.append(line)
+        Returns
+        -------
+        df : pandas.DataFrame
+            DataFrame containing the grouped files.
+        """
+        df = pd.DataFrame(columns=["identifier", "label", "natural", "label_corr", "natural_corr"], dtype=str)
+        for file in file_list:
+            identifier = (file
+                          .replace(label, "")
+                          .replace(natural, "")
+                          .replace(label_corr, "")
+                          .replace(natural_corr, ""))
+            if identifier not in df["identifier"].values:
+                df.loc[df.shape[0]] = [identifier, "", "", "", "",]
+            idx = df[df["identifier"] == identifier].index[0]
+            if label in file:
+                df.loc[idx, "label"] = file
+            elif natural in file:
+                df.loc[idx, "natural"] = file
+            elif label_corr in file:
+                df.loc[idx, "label_corr"] = file
+            elif natural_corr in file:
+                df.loc[idx, "natural_corr"] = file
 
-        groups = []
-        # Create groups of related files (label, natural, correction)
-        for i in range(len(label_csvs)):
-            target = label_csvs[i].replace(label_wavenum, "")
-            groups.append([label_csvs[i]])
-            groups[i].append(self.match_csv(natural_csvs, natural_wavenum, target))
-            groups[i].append(self.match_csv(lc_csvs, label_correction_wavenum, target))
-            # TODO: Have two separate correction wavenumbers
+        return df
 
-        # Iterate through the groups and assign group numbers
-        for group_number, group in enumerate(groups):
-            self.df.loc[self.df['fpath'].isin(group), 'group'] = group_number
+    def request_group_check(self, groups_df: pd.DataFrame):
+        #TODO: Implement a GUI to ask user if groups are correct 
+        return groups_df
 
-        print(self.df[['fname','group']])
+    def assign_groups(self, groups_df: pd.DataFrame):
+        for idx, row in groups_df.iterrows():
+            # Slice columns from [1:] to remove identifier column
+            for column in groups_df.columns[1:]:
+                ## Place group number in row for each group in the class-wide dataframe
+                self.df.loc[self.df['fpath'] == row[column], 'group'] = idx
         return
 
     # Function to save an image representation of a wavenumber data file
@@ -123,22 +131,53 @@ class MultispectralModel:
                 self.df.loc[self.df.shape[0]] = [file, Path(file).stem, image_path, "", 0] + summary
                 self.save_wavenum_image(file, outpath)
 
+        return
+    
+    def load_files(self, *filepaths):
+        """
+        Loads multiple files using np.loadtxt and returns the loaded data.
+        
+        Parameters
+        ----------
+        *filepaths : str
+            Any number of file paths to load.
+
+        Returns
+        --------
+        out : list
+        A list of numpy arrays containing the data from the files.
+        """
+        loaded_data = []
+        
+        for filepath in filepaths:
+            try:
+                data = np.loadtxt(filepath, delimiter=',')
+                loaded_data.append(data)
+            except Exception as e:
+                print(f"Error loading file {filepath}: {e}")
+        
+        return loaded_data
+
     # Function to analyze files and compute ratio images
     def analyze_files(self, label_wavenum, natural_wavenum, label_correction_wavenum, natural_correction_wavenum, threshold, lcf, natural_cf):        
-        
-        self.group_files(self.df['fpath'], label_wavenum, natural_wavenum,
+        """
+        Main function to analyze files. Groups files, asks if groups are correct, and computes ratio images. 
+        """
+
+
+        groups_df = self.group_files(self.df['fpath'], label_wavenum, natural_wavenum,
                         label_correction_wavenum, natural_correction_wavenum)
+        self.request_group_check(groups_df)
+        self.assign_groups(groups_df)
         
         groups = self.df['group'].unique()
         for group_idx in groups:
             group = self.df[self.df['group'] == group_idx]['fpath'].values
             label_file, natural_file, label_correction_file, natural_correction_file = self.sort_wavenumbers(group, label_wavenum, natural_wavenum,
                                                                               label_correction_wavenum, natural_correction_wavenum)
-            label_data = np.loadtxt(label_file, delimiter=',')
-            natural_data = np.loadtxt(natural_file, delimiter=',')
-            label_correction_data = np.loadtxt(label_correction_file, delimiter=',') #Don't load twice if not necessary #TODO
-            natural_correction_data = np.loadtxt(natural_correction_file, delimiter=',')
-
+            label_data, natural_data, label_correction_data, natural_correction_data = self.load_files(
+                label_file, natural_file, label_correction_file, natural_correction_file
+                )
             ratio = self.ratio_images(label_data, natural_data, label_correction_data, natural_correction_data,
                                       lcf, natural_cf, threshold)
             ratio_fname = Path(label_file).stem.replace(label_wavenum, "") + "_ratio"
