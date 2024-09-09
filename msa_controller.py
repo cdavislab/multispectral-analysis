@@ -54,7 +54,7 @@ class MultispectralController:
 
     def set_export_folder(self):
         self.model.export_folder = askdirectory()
-        self.view.Listbox_ExportFolder['text'] = self.model.export_folder
+        self.view.Button_ExportFolder['text'] = self.model.export_folder
 
     def update_listbox(self):
         self.model.df = self.model.df.sort_values(by=["group", "fpath"], ascending=[True, True], ignore_index=True)
@@ -87,6 +87,7 @@ class MultispectralController:
         return
 
     def display_images(self, index):
+        # TODO: Display 4x4 
         im_path = self.model.df['im_path'][index]
         img_width = self.view.img_panel.winfo_width()
         img_height = self.view.img_panel.winfo_height()
