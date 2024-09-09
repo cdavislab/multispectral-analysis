@@ -9,7 +9,7 @@ import multispectral_analysis as msa
 class MultispectralModel:
     def __init__(self):
         # Initialize master DataFrame and other variables/booleans 
-        self.df = pd.DataFrame(columns=['fpath', 'fname', 'im_path', 'hist_path', 'group',
+        self.df = pd.DataFrame(columns=['fpath', 'fname', 'im_path', 'hist_path', 'group', 'isRatio',
                                         'Mean', 'Median', 'Max_Signal', 'Standard Deviation',
                                         'Standard Error', 'Count'])
         self.files = []  # List to hold file paths
@@ -17,6 +17,7 @@ class MultispectralModel:
         self.dpi = 300  # DPI setting for image saving
         self.export_folder = "msa_analysis"  # Default export folder
         self.show_fullpath = False  # Flag to show full file paths
+        self.show_parent = False  # Flag to show parent folder
         self.subdivide_files = True  # Flag to subdivide files into folders
 
     def group_files(self, file_list: list, label: str, natural: str, label_corr:str, natural_corr: str) -> pd.DataFrame:
@@ -128,7 +129,7 @@ class MultispectralModel:
                 image_path = outpath + ".jpg"
                 summary = msa.summarize(np.loadtxt(file, delimiter=','))
                 summary = list(summary[0].astype('float'))
-                self.df.loc[self.df.shape[0]] = [file, Path(file).stem, image_path, "", 0] + summary
+                self.df.loc[self.df.shape[0]] = [file, Path(file).stem, image_path, "", 0, False] + summary
                 self.save_wavenum_image(file, outpath)
 
         return
@@ -167,7 +168,7 @@ class MultispectralModel:
 
         groups_df = self.group_files(self.df['fpath'], label_wavenum, natural_wavenum,
                         label_correction_wavenum, natural_correction_wavenum)
-        self.request_group_check(groups_df)
+        groups_df = self.request_group_check(groups_df)
         self.assign_groups(groups_df)
         
         groups = self.df['group'].unique()
@@ -185,7 +186,7 @@ class MultispectralModel:
             self.save_image(ratio, ratio_im_path)
             summary = msa.summarize(ratio)
             summary = list(summary[0].astype('float'))
-            self.df.loc[self.df.shape[0]] = [ratio_fname, ratio_fname, ratio_im_path + ".jpg", "", group_idx] + summary
+            self.df.loc[self.df.shape[0]] = [ratio_fname, ratio_fname, ratio_im_path + ".jpg", "", group_idx, True] + summary
     # Function to export the statistics to a CSV file
     def export_stats(self):
         self.df.to_csv(os.path.join(self.export_folder, "Summary.csv"), mode='a')

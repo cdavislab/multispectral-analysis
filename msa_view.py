@@ -161,16 +161,31 @@ class MultispectralView:
 
     def build_menubar(self):
         self.menubar = tk.Menu(self.root)
-        self.settings_menu = tk.Menu(self.menubar, tearoff=0)
-        self.settings_menu.add_command(label="Open Config")
-        self.settings_menu.add_command(label="Save Config")
+        self.root.config(menu=self.menubar)
+
         self.file_menu = tk.Menu(self.menubar, tearoff=0)
+        self.menubar.add_cascade(label="File", menu=self.file_menu)
         self.file_menu.add_command(label="Export Statistics")
         self.file_menu.add_command(label="Export File List")
         self.file_menu.add_command(label="Import File List")
-        self.root.config(menu=self.menubar)
-        self.menubar.add_cascade(label="File", menu=self.file_menu)
+
+        self.settings_menu = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="Settings", menu=self.settings_menu)
+        self.settings_menu.add_command(label="Open Config")
+        self.settings_menu.add_command(label="Save Config")
+
+        self.show_groups = tk.BooleanVar()
+        self.show_single = tk.BooleanVar()
+        self.show_ratio = tk.BooleanVar()
+        self.show_single.set(True)
+        self.show_ratio.set(True)
+        self.view_menu = tk.Menu(self.menubar, tearoff=0)
+        self.menubar.add_cascade(label="View", menu=self.view_menu)
+        self.view_menu.add_checkbutton(label="View Groups", onvalue=1, offvalue=0, variable=self.show_groups)
+        self.view_menu.add_checkbutton(label="Show Single-Wavenumber", onvalue=1, offvalue=0, variable=self.show_single)
+        self.view_menu.add_checkbutton(label="Show Ratios", onvalue=1, offvalue=0, variable=self.show_ratio)
+
+        return
 
     def set_defaults(self):
         self.nw_entry.insert(0, "1744")

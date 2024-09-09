@@ -25,6 +25,10 @@ class MultispectralController:
         self.view.file_menu.entryconfig('Import File List', command=self.import_filelist)
         self.view.ListBox_1.bind('<<ListboxSelect>>', self.on_file_selection)
 
+        self.view.view_menu.entryconfig('View Groups', command=self.update_listbox)
+        self.view.view_menu.entryconfig('Show Single-Wavenumber', command=self.update_listbox)
+        self.view.view_menu.entryconfig('Show Ratios', command=self.update_listbox)
+
     def add_files(self):
         files = askopenfilenames(filetypes=(("Comma Delimited", "*.csv"), ("All files", "*.*"),))
         self.model.add_files(files)
@@ -56,10 +60,30 @@ class MultispectralController:
         self.model.df = self.model.df.sort_values(by=["group", "fpath"], ascending=[True, True], ignore_index=True)
 
         self.view.ListBox_1.delete(0, tk.END)
+
+        # Determine if column should read full path or just filename
         if self.model.show_fullpath:
-            self.view.ListBox_1.insert(tk.END, *self.model.df['fpath'].values)
+            col = 'fpath'
+        elif self.model.show_parent:
+            raise NotImplementedError #TODO: Implement parent folder showing too
+        else:
+            col = 'fname'
+        
+
+        if self.view.show_groups.get(): # List only groups in the listbox
+            self.view.ListBox_1.insert(tk.END, *self.model.df['group'].unique())
             return
-        self.view.ListBox_1.insert(tk.END, *self.model.df['fname'].values)
+        
+        else:
+            desired_groups = []
+            if self.view.show_single.get(): # Show
+                desired_groups.append(0)
+            if self.view.show_ratio.get():
+                desired_groups.append(1)
+            self.view.ListBox_1.insert(tk.END, *self.model.df.loc[
+                (self.model.df['isRatio'].isin(desired_groups)),col]
+                .values)
+
         return
 
     def display_images(self, index):
