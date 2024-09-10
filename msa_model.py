@@ -5,11 +5,12 @@ import matplotlib.pyplot as plt
 import warnings
 from pathlib import Path
 import multispectral_analysis as msa
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 class MultispectralModel:
     def __init__(self):
         # Initialize master DataFrame and other variables/booleans 
-        self.df = pd.DataFrame(columns=['fpath', 'fname', 'im_path', 'hist_path', 'group', 'isRatio',
+        self.df = pd.DataFrame(columns=['fpath', 'fname', 'im_path', 'hist_path', 'group', 'type',
                                         'Mean', 'Median', 'Max_Signal', 'Standard Deviation',
                                         'Standard Error', 'Count'])
         self.files = []  # List to hold file paths
@@ -102,12 +103,16 @@ class MultispectralModel:
         for file in group:
             if label_wavenum in file:
                 label_file = file
+                self.df.loc[self.df['fpath'] == file, 'type'] = 'Label'
             elif natural_wavenum in file:
                 natural_file = file
+                self.df.loc[self.df['fpath'] == file, 'type'] = 'Natural'
             elif label_correction_wavenum in file:
                 label_correction_file = file
+                self.df.loc[self.df['fpath'] == file, 'type'] = 'Label_Corr'
             elif natural_correction_wavenum in file:
                 natural_correction_file = file
+                self.df.loc[self.df['fpath'] == file, 'type'] = 'Natural_Corr'
             else:
                 warnings.warn("Warning: " + file + " could not be sorted into a wavenumber group")
         if label_correction_wavenum == natural_correction_wavenum:
@@ -129,7 +134,7 @@ class MultispectralModel:
                 image_path = outpath + ".jpg"
                 summary = msa.summarize(np.loadtxt(file, delimiter=','))
                 summary = list(summary[0].astype('float'))
-                self.df.loc[self.df.shape[0]] = [file, Path(file).stem, image_path, "", 0, False] + summary
+                self.df.loc[self.df.shape[0]] = [file, Path(file).stem, image_path, "", 0, None] + summary
                 self.save_wavenum_image(file, outpath)
 
         return
@@ -164,18 +169,18 @@ class MultispectralModel:
         """
         Main function to analyze files. Groups files, asks if groups are correct, and computes ratio images. 
         """
-
-
         groups_df = self.group_files(self.df['fpath'], label_wavenum, natural_wavenum,
                         label_correction_wavenum, natural_correction_wavenum)
         groups_df = self.request_group_check(groups_df)
         self.assign_groups(groups_df)
         
         groups = self.df['group'].unique()
+        self.group_images = [None for _ in range(len(groups))]
         for group_idx in groups:
             group = self.df[self.df['group'] == group_idx]['fpath'].values
-            label_file, natural_file, label_correction_file, natural_correction_file = self.sort_wavenumbers(group, label_wavenum, natural_wavenum,
-                                                                              label_correction_wavenum, natural_correction_wavenum)
+            label_file, natural_file, label_correction_file, natural_correction_file = self.sort_wavenumbers(
+                group, label_wavenum, natural_wavenum, label_correction_wavenum, natural_correction_wavenum
+                )
             label_data, natural_data, label_correction_data, natural_correction_data = self.load_files(
                 label_file, natural_file, label_correction_file, natural_correction_file
                 )
@@ -186,7 +191,176 @@ class MultispectralModel:
             self.save_image(ratio, ratio_im_path)
             summary = msa.summarize(ratio)
             summary = list(summary[0].astype('float'))
-            self.df.loc[self.df.shape[0]] = [ratio_fname, ratio_fname, ratio_im_path + ".jpg", "", group_idx, True] + summary
+            self.df.loc[self.df.shape[0]] = [ratio_fname, ratio_fname, ratio_im_path + ".jpg", "", group_idx, 'Ratio'] + summary
+            self.group_images[group_idx] = self.create_group_image(group_idx, ratio)
+        print(self.group_images)
+        return
+    
+    def create_group_image(self, group_id, ratio):
+        layout_mapping = {
+            1: (1, 1),
+            2: (1, 2),
+            3: (1, 3),
+            4: (2, 2),
+            5: (2, 3)
+        }
+
+        df_slice = self.get_df_slice(group_id, is_group=True, show_single=True, show_ratio=True)
+        plot_layout = layout_mapping[df_slice.shape[0]]
+        type_list = ['Natural', 'Label', 'Natural_Corr', 'Label_Corr', 'Ratio']
+
+        # Create the figure and subplots
+        fig, axs = plt.subplots(plot_layout[0], plot_layout[1], figsize=(10, 5))
+        axs = axs.flatten()
+        # Initialize tracker of max value for single-wavenumber images
+        max_value = 0
+        i = 0
+        # First pass to compute max_value among non-ratio images
+        for img_type in type_list:
+            if img_type in df_slice['type'].values and img_type != 'Ratio':
+                row = df_slice.loc[df_slice['type'] == img_type, :]
+                data = np.loadtxt(row['fpath'].values[0], delimiter=',')
+                if data.max() > max_value:
+                    max_value = data.max()
+
+        # Second pass to plot images and add colorbars
+        i = 0
+        for img_type in type_list:
+            if img_type not in df_slice['type'].values:
+                continue
+
+            ax = axs[i]
+            if img_type == 'Ratio':
+                im = ax.imshow(ratio, cmap='CMRmap', vmin=0, vmax=ratio.max())
+                ax.set_title(img_type)
+                ax.axis('off')
+            else:
+                row = df_slice.loc[df_slice['type'] == img_type, :]
+                data = np.loadtxt(row['fpath'].values[0], delimiter=',')
+                im = ax.imshow(data, cmap='CMRmap', vmin=0, vmax=max_value)
+                ax.set_title(img_type)
+                ax.axis('off')
+
+            # Create a divider for the existing axes instance
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes("right", size="5%", pad=0.05)
+
+            # Create the colorbar for each subplot
+            plt.colorbar(im, cax=cax)
+            i += 1
+
+        img_path = os.path.join(self.export_folder, "group_" + str(group_id)+".jpg")
+        plt.savefig(img_path, dpi=self.dpi)
+        plt.close()
+        return img_path
+
+    def get_df_slice(self, index, is_group, show_single, show_ratio):
+        """ Helper function to get a slice of the DataFrame
+        based on the given index and filter options. """
+        if is_group:
+            return self.get_group_slice(index, show_single, show_ratio)
+        else:
+            return self.get_single_slice(index, show_single, show_ratio)
+            
+        
+
+    def get_single_slice(self, index: int, show_single: bool, show_ratio: bool) -> pd.DataFrame:
+        """
+        Get a single slice of data from the DataFrame based on the given index and filter options.
+        Index received is position in listbox, which is affected by if singles/ratios/groups are shown.
+
+        Parameters:
+            index (int): The position of the desired image/slice in the listbox.
+            show_single (bool): If True, singles are shown.
+            show_ratio (bool): If True, ratios are shown.
+
+        Returns:
+            pandas.DataFrame: The single row of data as a pandas DataFrame object.
+        """
+        df_slice = self.df
+        if show_single and not show_ratio:
+            df_slice = self.df[self.df['type'] != 'Ratio']
+        elif show_ratio and not show_single:
+            df_slice = self.df[self.df['type'] == 'Ratio']
+        return df_slice.iloc[index,:]
+    
+    def get_group_slice(self, group_idx: int, show_single: bool, show_ratio: bool) -> pd.DataFrame:
+            """
+            Get a slice of the DataFrame for a specific group.
+
+            Parameters:
+            group_idx (int): Group number to filter by.
+            show_single (bool): If True, singles are shown.
+            show_ratio (bool): If True, ratios are shown.
+
+            Returns:
+            pd.DataFrame: A slice of the DataFrame filtered by the group index and desired groups.
+            """
+            df_slice = self.df[self.df['group'] == group_idx]
+            if (show_single) and (not show_ratio):
+                df_slice = df_slice[df_slice['type'] != 'Ratio']
+            elif (not show_single) and (show_ratio):
+                df_slice = df_slice[df_slice['type'] != 'Ratio']
+            return df_slice
+
+    # Generates a matplotlib plot with 1-5 subplots depending on number of files provided. At most,
+    # df_slice will contain a single-wavenumber image for the following wavenumbers: natural, label,
+    # natural correction, label correction, and the ratio image. At a minimum, it will only contain
+    # one of the single-wavenumber images. Function achieves its goal in this order: loads data with
+    # np.loadtxt(), creates and adds subplot with plt.imshow() to main plot. Return main plot.
+    # Additionally, option to set the colorbar for the single-wavenumber images to the same.
+    """def get_image(self, df_slice):
+        layout_mapping = {
+            1: (1, 1),
+            2: (1, 2),
+            3: (1, 3),
+            4: (2, 2),
+            5: (2, 3)
+        }
+        # Determine number of subplots to create
+        if len(df_slice.shape) == 1:
+            fig, ax = plt.subplots(1, 1, figsize=(10, 5))
+            data = np.loadtxt(df_slice['fpath'], delimiter=',')
+            cax = ax.imshow(data, cmap='CMRmap')
+            ax.set_title(df_slice['fname'])
+            ax.axis('off')
+            cax.set_clim(0, data.max())
+            # im_path = df_slice['im_path']
+            # plt.savefig(im_path, dpi=self.dpi)
+            # plt.close()
+            return fig
+        
+        plot_layout = layout_mapping[df_slice.shape[0]]
+        
+        # Create the figure and subplots
+        fig, axs = plt.subplots(plot_layout[0], plot_layout[1], figsize=(10, 5))
+
+        # Initialize tracker of max value for single-wavenumber images
+        max_value = 0
+        caxs = [None for _ in range(df_slice.shape[0])]
+        for i, row in df_slice.iterrows():
+            data = np.loadtxt(row['fpath'], delimiter=',')
+            if (data.max() > max_value) and (row['isRatio'] == False):
+                max_value = data.max()
+            caxs[i] = axs[i].imshow(data, cmap='CMRmap')
+            axs[i].set_title(row['fname'])
+            axs[i].axis('off')
+        # Set colorbar to same scale for all single-wavenumber images and add colorbar
+        for cax in caxs:
+            if not row['isRatio']:
+                cax.set_clim(0, max_value)
+        
+        #save the figure
+        plt.savefig(row['im_path'], dpi=self.dpi)
+
+        return fig"""
+
+    def get_single_image(self, df_slice):
+        return df_slice.loc['im_path']
+
+    def get_group_image(self, group_id):
+        return self.group_images[group_id]
+
     # Function to export the statistics to a CSV file
     def export_stats(self):
         self.df.to_csv(os.path.join(self.export_folder, "Summary.csv"), mode='a')

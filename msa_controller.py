@@ -4,6 +4,7 @@ from pathlib import Path
 from PIL import ImageTk, Image
 import numpy as np
 import pandas as pd
+import os
 
 # Controller class to manage the logic between the Model and the View
 class MultispectralController:
@@ -77,24 +78,57 @@ class MultispectralController:
         else:
             desired_groups = []
             if self.view.show_single.get(): # Show
-                desired_groups.append(0)
+                desired_groups += ['Natural', 'Label', 'Natural_Corr', 'Label_Corr', None]
             if self.view.show_ratio.get():
-                desired_groups.append(1)
+                desired_groups.append('Ratio')
             self.view.ListBox_1.insert(tk.END, *self.model.df.loc[
-                (self.model.df['isRatio'].isin(desired_groups)),col]
+                (self.model.df['type'].isin(desired_groups)),col]
                 .values)
 
         return
 
     def display_images(self, index):
-        # TODO: Display 4x4 
-        im_path = self.model.df['im_path'][index]
-        img_width = self.view.img_panel.winfo_width()
-        img_height = self.view.img_panel.winfo_height()
+        def modify_fpath(fpath):
+            base = os.path.splitext(fpath)[0]
+            return f"{base}.jpg"
 
-        self.view.panel_img = ImageTk.PhotoImage(Image.open(im_path).resize((img_width, img_height)))
-        self.view.img_panel.configure(image=self.view.panel_img)
+        if self.view.show_groups.get():
+            self.view.display(self.model.get_group_image(index))
+            return
+        
+        df_slice = self.model.get_df_slice(
+            index, self.view.show_groups.get(),
+            self.view.show_single.get(), self.view.show_ratio.get())
+        self.view.display(self.model.get_single_image(df_slice))
         return
+
+        
+        
+        # mask = self.model.df.index.isin(df_slice.index)
+        # self.model.df.loc[mask,'im_path'] = self.model.df.loc[mask,'fpath'].apply(modify_fpath)
+        img = self.model.get_image(df_slice)
+        self.view.display(img)
+        return
+    
+    def profile_display_images(self, index):
+        import cProfile
+        import pstats
+        # Create a profiler object
+        profiler = cProfile.Profile()
+        
+        # Enable profiling
+        profiler.enable()
+        
+        # Call the method you want to profile
+        self.display_images(index)
+        
+        # Disable profiling
+        profiler.disable()
+        
+        # Print the profile results
+        stats = pstats.Stats(profiler)
+        stats.sort_stats(pstats.SortKey.TIME)  # Sort by time
+        stats.print_stats(10)  # Print top 10 results
 
     def display_statistics(self, index):
         stats = self.model.df[['Mean', 'Median', 'Max_Signal', 'Standard Deviation', 'Standard Error', 'Count']]
@@ -106,6 +140,8 @@ class MultispectralController:
 
     def on_file_selection(self, evt):
         w = evt.widget
+        if len(w.curselection()) == 0:
+            return
         index = int(w.curselection()[0])
         value = w.get(index)
         self.view.Button_Filename.configure(text=Path(value).stem)

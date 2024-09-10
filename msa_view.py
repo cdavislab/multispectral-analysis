@@ -1,6 +1,7 @@
 import tkinter as tk
 import tkinter.font as tkFont
 from pathlib import Path
+from PIL import Image, ImageTk
 
 # View class to handle the GUI components
 class MultispectralView:
@@ -195,3 +196,10 @@ class MultispectralView:
         self.lcf_entry.insert(0, ".61")
         self.threshold_entry.insert(0, "0.15")
 
+    def display(self, img_path):
+        img_width = self.img_panel.winfo_width()
+        img_height = self.img_panel.winfo_height()
+
+        self.panel_img = ImageTk.PhotoImage(Image.open(img_path).resize((img_width, img_height)))
+        self.img_panel.configure(image=self.panel_img)
+        return
