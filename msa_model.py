@@ -20,6 +20,7 @@ class MultispectralModel:
         self.show_fullpath = False  # Flag to show full file paths
         self.show_parent = False  # Flag to show parent folder
         self.subdivide_files = True  # Flag to subdivide files into folders
+        self.types = ['Natural', 'Label', 'Natural_Corr', 'Label_Corr', 'Ratio']
 
     def group_files(self, file_list: list, label: str, natural: str, label_corr:str, natural_corr: str) -> pd.DataFrame:
         """
@@ -192,11 +193,18 @@ class MultispectralModel:
             summary = msa.summarize(ratio)
             summary = list(summary[0].astype('float'))
             self.df.loc[self.df.shape[0]] = [ratio_fname, ratio_fname, ratio_im_path + ".jpg", "", group_idx, 'Ratio'] + summary
-            self.group_images[group_idx] = self.create_group_image(group_idx, ratio)
+            files = {'label': label_data, 'natural': natural_data,
+                     'Label_Corr': label_correction_data, 'Natural_Corr': natural_correction_data,
+                     'Ratio': ratio}
+            if label_correction_file == natural_correction_file:
+                files.pop('Natural_Corr') # HACK: Should be named correction if the same 
+            self.group_images[group_idx] = self.create_group_image(files, group_idx)
+            # self.group_histograms[group_idx] = self.create_group_histogram(files, group_idx)
+
         print(self.group_images)
         return
     
-    def create_group_image(self, group_id, ratio):
+    def generate_group_figure(self, num_images):
         layout_mapping = {
             1: (1, 1),
             2: (1, 2),
@@ -205,51 +213,47 @@ class MultispectralModel:
             5: (2, 3)
         }
 
-        df_slice = self.get_df_slice(group_id, is_group=True, show_single=True, show_ratio=True)
-        plot_layout = layout_mapping[df_slice.shape[0]]
-        type_list = ['Natural', 'Label', 'Natural_Corr', 'Label_Corr', 'Ratio']
-
         # Create the figure and subplots
+        plot_layout = layout_mapping[num_images]
         fig, axs = plt.subplots(plot_layout[0], plot_layout[1], figsize=(10, 5))
         axs = axs.flatten()
-        # Initialize tracker of max value for single-wavenumber images
-        max_value = 0
-        i = 0
-        # First pass to compute max_value among non-ratio images
-        for img_type in type_list:
-            if img_type in df_slice['type'].values and img_type != 'Ratio':
-                row = df_slice.loc[df_slice['type'] == img_type, :]
-                data = np.loadtxt(row['fpath'].values[0], delimiter=',')
-                if data.max() > max_value:
-                    max_value = data.max()
+        return fig, axs
+    
+    def create_group_histogram(self, group_id):
+        df_slice = self.get_df_slice(group_id, is_group=True, show_single=True, show_ratio=True) #TODO: Are show_single and show_ratio needed?
+        fig, axs = self.generate_group_figure(len(df_slice))
+        return
 
-        # Second pass to plot images and add colorbars
-        i = 0
-        for img_type in type_list:
-            if img_type not in df_slice['type'].values:
-                continue
+    def find_max_value(self, df: pd.DataFrame, include_ratio=False) -> float:
+        """ Helper function to find the maximum value among matrices in a DataFrame.
+        Optionally include ratio images. """
+        idx = df['type'] != 'Ratio'
+        if include_ratio:
+            idx = slice(None)
+        return df.loc[idx, 'Max_Signal'].max()
 
+    def create_group_image(self, data, group_id):
+        df_slice = self.get_df_slice(group_id, is_group=True, show_single=True, show_ratio=True)
+        fig, axs = self.generate_group_figure(len(df_slice))
+        max_value = self.find_max_value(df_slice) # First 4 elements are non-ratio matrices
+
+        for i, description in enumerate(data.keys()): # Note: Only works in Python 3.7+. Otherwise, data is not ordered.
+            selected = data[description]
             ax = axs[i]
-            if img_type == 'Ratio':
-                im = ax.imshow(ratio, cmap='CMRmap', vmin=0, vmax=ratio.max())
-                ax.set_title(img_type)
+            if description == 'Ratio':
+                im = ax.imshow(selected, cmap='CMRmap', vmin=0, vmax=selected.max())
+                ax.set_title(description)
                 ax.axis('off')
-            else:
-                row = df_slice.loc[df_slice['type'] == img_type, :]
-                data = np.loadtxt(row['fpath'].values[0], delimiter=',')
-                im = ax.imshow(data, cmap='CMRmap', vmin=0, vmax=max_value)
-                ax.set_title(img_type)
-                ax.axis('off')
+                continue
+            im = ax.imshow(selected, cmap='CMRmap', vmin=0, vmax=max_value)
+            ax.set_title(description)
+            ax.axis('off')
 
-            # Create a divider for the existing axes instance
             divider = make_axes_locatable(ax)
             cax = divider.append_axes("right", size="5%", pad=0.05)
-
-            # Create the colorbar for each subplot
             plt.colorbar(im, cax=cax)
-            i += 1
 
-        img_path = os.path.join(self.export_folder, "group_" + str(group_id)+".jpg")
+        img_path = os.path.join(self.export_folder, "group_" + str(group_id)+".jpg") #TODO: Make exporting a different function
         plt.savefig(img_path, dpi=self.dpi)
         plt.close()
         return img_path
@@ -262,8 +266,6 @@ class MultispectralModel:
         else:
             return self.get_single_slice(index, show_single, show_ratio)
             
-        
-
     def get_single_slice(self, index: int, show_single: bool, show_ratio: bool) -> pd.DataFrame:
         """
         Get a single slice of data from the DataFrame based on the given index and filter options.

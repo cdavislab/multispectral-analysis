@@ -88,10 +88,6 @@ class MultispectralController:
         return
 
     def display_images(self, index):
-        def modify_fpath(fpath):
-            base = os.path.splitext(fpath)[0]
-            return f"{base}.jpg"
-
         if self.view.show_groups.get():
             self.view.display(self.model.get_group_image(index))
             return
@@ -102,33 +98,17 @@ class MultispectralController:
         self.view.display(self.model.get_single_image(df_slice))
         return
 
+    def display_histograms(self, index):
+        if self.view.show_groups.get():
+            self.view.display(self.model.get_group_histogram(index))
+            return
         
-        
-        # mask = self.model.df.index.isin(df_slice.index)
-        # self.model.df.loc[mask,'im_path'] = self.model.df.loc[mask,'fpath'].apply(modify_fpath)
-        img = self.model.get_image(df_slice)
-        self.view.display(img)
+        df_slice = self.model.get_df_slice(
+            index, self.view.show_groups.get(),
+            self.view.show_single.get(), self.view.show_ratio.get())
+        self.view.display(self.model.get_single_histogram(df_slice))
         return
-    
-    def profile_display_images(self, index):
-        import cProfile
-        import pstats
-        # Create a profiler object
-        profiler = cProfile.Profile()
         
-        # Enable profiling
-        profiler.enable()
-        
-        # Call the method you want to profile
-        self.display_images(index)
-        
-        # Disable profiling
-        profiler.disable()
-        
-        # Print the profile results
-        stats = pstats.Stats(profiler)
-        stats.sort_stats(pstats.SortKey.TIME)  # Sort by time
-        stats.print_stats(10)  # Print top 10 results
 
     def display_statistics(self, index):
         stats = self.model.df[['Mean', 'Median', 'Max_Signal', 'Standard Deviation', 'Standard Error', 'Count']]
