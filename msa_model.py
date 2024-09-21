@@ -177,6 +177,7 @@ class MultispectralModel:
         
         groups = self.df['group'].unique()
         self.group_images = [None for _ in range(len(groups))]
+        self.group_histograms = [None for _ in range(len(groups))]
         for group_idx in groups:
             group = self.df[self.df['group'] == group_idx]['fpath'].values
             label_file, natural_file, label_correction_file, natural_correction_file = self.sort_wavenumbers(
@@ -199,7 +200,7 @@ class MultispectralModel:
             if label_correction_file == natural_correction_file:
                 files.pop('Natural_Corr') # HACK: Should be named correction if the same 
             self.group_images[group_idx] = self.create_group_image(files, group_idx)
-            # self.group_histograms[group_idx] = self.create_group_histogram(files, group_idx)
+            self.group_histograms[group_idx] = self.create_group_histogram(files, group_idx)
 
         print(self.group_images)
         return
@@ -216,13 +217,31 @@ class MultispectralModel:
         # Create the figure and subplots
         plot_layout = layout_mapping[num_images]
         fig, axs = plt.subplots(plot_layout[0], plot_layout[1], figsize=(10, 5))
+        plt.tight_layout()
         axs = axs.flatten()
         return fig, axs
     
-    def create_group_histogram(self, group_id):
-        df_slice = self.get_df_slice(group_id, is_group=True, show_single=True, show_ratio=True) #TODO: Are show_single and show_ratio needed?
+    def create_histogram(self, data):
+        data = data[data != 0]
+        flat = data.flatten()
+        pass
+
+    def create_group_histogram(self, data, group_id):
+        df_slice = self.get_df_slice(group_id, is_group=True, show_single=True, show_ratio=True)
         fig, axs = self.generate_group_figure(len(df_slice))
-        return
+        # max_value = self.find_max_value(df_slice) # First 4 elements are non-ratio matrices
+
+        for i, description in enumerate(data.keys()): # Note: Only works in Python 3.7+. Otherwise, data is not ordered.
+            selected = data[description]
+            ax = axs[i]
+            msa.histogram(selected, ax=ax, lower_bound=0)
+            # ax.histogram(selected, cmap='CMRmap', vmin=0, vmax=max_value) #####################
+            ax.set_title(description)
+
+        hist_path = os.path.join(self.export_folder, "group_histogram_" + str(group_id)+".jpg") #TODO: Make exporting a different function
+        plt.savefig(hist_path, dpi=self.dpi)
+        plt.close()
+        return hist_path
 
     def find_max_value(self, df: pd.DataFrame, include_ratio=False) -> float:
         """ Helper function to find the maximum value among matrices in a DataFrame.
@@ -242,10 +261,8 @@ class MultispectralModel:
             ax = axs[i]
             if description == 'Ratio':
                 im = ax.imshow(selected, cmap='CMRmap', vmin=0, vmax=selected.max())
-                ax.set_title(description)
-                ax.axis('off')
-                continue
-            im = ax.imshow(selected, cmap='CMRmap', vmin=0, vmax=max_value)
+            else:
+                im = ax.imshow(selected, cmap='CMRmap', vmin=0, vmax=max_value) 
             ax.set_title(description)
             ax.axis('off')
 

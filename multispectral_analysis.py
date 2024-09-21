@@ -61,15 +61,16 @@ def summarize(data, header_name: str = ''):#, fname: str = None):
         ['Average','Median','Max', 'Std','Se','n']])
 
 #histogram function This produces an automatic histogram using seaborn from your data 
-def histogram(data, fname: str = None, lower_bound: float = None, upper_bound: float = None):
+def histogram(data, fname: str = None, ax = None, lower_bound: float = None, upper_bound: float = None):
     data = data[data != 0]
     flat = data.flatten()
     sns.set_style('darkgrid')
-    fig, ax = plt.subplots()
-    g = sns.histplot(data = flat, kde = True)
+    if ax == None:
+        fig, ax = plt.subplots()
+    g = sns.histplot(data = flat, kde = True, ax=ax)
     if lower_bound != None or upper_bound != None:
-        plt.xlim([lower_bound,upper_bound])
-    ax.set_xlabel("Ratio")
+        ax.set_xlim([lower_bound,upper_bound])
+    # ax.set_xlabel("Ratio")
     fig = g.get_figure()
     #save = np.savetxt(directory+ output_subfolder + general_file_name + '0removed_flattened' + named + '.csv', flat, delimiter=',')
     #save_fig = fig.savefig(directory+ output_subfolder + general_file_name +  'histogram_thresh' + named + '.png')
