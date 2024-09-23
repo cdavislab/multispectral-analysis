@@ -20,7 +20,6 @@ class MultispectralModel:
         self.show_fullpath = False  # Flag to show full file paths
         self.show_parent = False  # Flag to show parent folder
         self.subdivide_files = True  # Flag to subdivide files into folders
-        self.types = ['Natural', 'Label', 'Natural_Corr', 'Label_Corr', 'Ratio']
 
     def group_files(self, file_list: list, label: str, natural: str, label_corr:str, natural_corr: str) -> pd.DataFrame:
         """
@@ -76,17 +75,14 @@ class MultispectralModel:
                 self.df.loc[self.df['fpath'] == row[column], 'group'] = idx
         return
 
-    # Function to save an image representation of a wavenumber data file
-    def save_wavenum_image(self, filepath, title):
-        self.save_image(np.loadtxt(filepath, delimiter=','), title)
-        return
-
     # Function to save a data array as an image
     def save_image(self, data, title):
         plt.clf()
+        plt.grid(False)
         plt.imshow(data, cmap='CMRmap', vmin=0)
         plt.colorbar()
         plt.savefig(title + ".jpg", dpi=self.dpi)
+        plt.close()
         return
 
     # Function to compute ratio images from label, natural, and correction files
@@ -131,12 +127,15 @@ class MultispectralModel:
         # Add each unique file to the DataFrame with a summary and create an image
         for file in files:
             if file not in self.df['fpath'].unique():
+                data = np.loadtxt(file, delimiter=',')
                 outpath = os.path.join(outfolder, Path(file).stem)
                 image_path = outpath + ".jpg"
-                summary = msa.summarize(np.loadtxt(file, delimiter=','))
+                hist_path = outpath + "_hist.jpg"
+                summary = msa.summarize(data)
                 summary = list(summary[0].astype('float'))
-                self.df.loc[self.df.shape[0]] = [file, Path(file).stem, image_path, "", 0, None] + summary
-                self.save_wavenum_image(file, outpath)
+                self.df.loc[self.df.shape[0]] = [file, Path(file).stem, image_path, hist_path, 0, None] + summary
+                self.save_image(data, outpath)
+                self.create_histogram(data, outpath)
 
         return
     
@@ -191,9 +190,10 @@ class MultispectralModel:
             ratio_fname = Path(label_file).stem.replace(label_wavenum, "") + "_ratio"
             ratio_im_path = os.path.join(self.export_folder, ratio_fname)
             self.save_image(ratio, ratio_im_path)
+            self.create_histogram(ratio, ratio_im_path)
             summary = msa.summarize(ratio)
             summary = list(summary[0].astype('float'))
-            self.df.loc[self.df.shape[0]] = [ratio_fname, ratio_fname, ratio_im_path + ".jpg", "", group_idx, 'Ratio'] + summary
+            self.df.loc[self.df.shape[0]] = [ratio_fname, ratio_fname, ratio_im_path + ".jpg", ratio_im_path+"_hist.jpg", group_idx, 'Ratio'] + summary
             files = {'label': label_data, 'natural': natural_data,
                      'Label_Corr': label_correction_data, 'Natural_Corr': natural_correction_data,
                      'Ratio': ratio}
@@ -221,13 +221,18 @@ class MultispectralModel:
         axs = axs.flatten()
         return fig, axs
     
-    def create_histogram(self, data):
-        data = data[data != 0]
-        flat = data.flatten()
-        pass
+    def create_histogram(self, data, title):
+        # fig, ax = self.generate_group_figure(1)
+        fig, ax = plt.subplots(1, 1, figsize=(10, 5))
+        plt.grid(False)
+        msa.histogram(data, ax=ax, lower_bound=0)
+        plt.savefig(title + "_hist.jpg", dpi=self.dpi)
+        plt.close()
+        return
+        
 
     def create_group_histogram(self, data, group_id):
-        df_slice = self.get_df_slice(group_id, is_group=True, show_single=True, show_ratio=True)
+        df_slice = self.df[self.df['group'] == group_id]
         fig, axs = self.generate_group_figure(len(df_slice))
         # max_value = self.find_max_value(df_slice) # First 4 elements are non-ratio matrices
 
@@ -243,16 +248,8 @@ class MultispectralModel:
         plt.close()
         return hist_path
 
-    def find_max_value(self, df: pd.DataFrame, include_ratio=False) -> float:
-        """ Helper function to find the maximum value among matrices in a DataFrame.
-        Optionally include ratio images. """
-        idx = df['type'] != 'Ratio'
-        if include_ratio:
-            idx = slice(None)
-        return df.loc[idx, 'Max_Signal'].max()
-
     def create_group_image(self, data, group_id):
-        df_slice = self.get_df_slice(group_id, is_group=True, show_single=True, show_ratio=True)
+        df_slice = self.df[self.df['group'] == group_id]
         fig, axs = self.generate_group_figure(len(df_slice))
         max_value = self.find_max_value(df_slice) # First 4 elements are non-ratio matrices
 
@@ -275,110 +272,32 @@ class MultispectralModel:
         plt.close()
         return img_path
 
-    def get_df_slice(self, index, is_group, show_single, show_ratio):
+    def find_max_value(self, df: pd.DataFrame, include_ratio=False) -> float:
+        """ Helper function to find the maximum value among matrices in a DataFrame.
+        Optionally include ratio images. """
+        idx = df['type'] != 'Ratio'
+        if include_ratio:
+            idx = slice(None)
+        return df.loc[idx, 'Max_Signal'].max()
+
+    def get_df_slice(self, index):
         """ Helper function to get a slice of the DataFrame
         based on the given index and filter options. """
-        if is_group:
-            return self.get_group_slice(index, show_single, show_ratio)
-        else:
-            return self.get_single_slice(index, show_single, show_ratio)
-            
-    def get_single_slice(self, index: int, show_single: bool, show_ratio: bool) -> pd.DataFrame:
-        """
-        Get a single slice of data from the DataFrame based on the given index and filter options.
-        Index received is position in listbox, which is affected by if singles/ratios/groups are shown.
-
-        Parameters:
-            index (int): The position of the desired image/slice in the listbox.
-            show_single (bool): If True, singles are shown.
-            show_ratio (bool): If True, ratios are shown.
-
-        Returns:
-            pandas.DataFrame: The single row of data as a pandas DataFrame object.
-        """
-        df_slice = self.df
-        if show_single and not show_ratio:
-            df_slice = self.df[self.df['type'] != 'Ratio']
-        elif show_ratio and not show_single:
-            df_slice = self.df[self.df['type'] == 'Ratio']
-        return df_slice.iloc[index,:]
+        return self.df.loc[index, :]
     
-    def get_group_slice(self, group_idx: int, show_single: bool, show_ratio: bool) -> pd.DataFrame:
-            """
-            Get a slice of the DataFrame for a specific group.
+    def get_single_histogram(self, df_slice):
+        return df_slice.loc['hist_path']
 
-            Parameters:
-            group_idx (int): Group number to filter by.
-            show_single (bool): If True, singles are shown.
-            show_ratio (bool): If True, ratios are shown.
-
-            Returns:
-            pd.DataFrame: A slice of the DataFrame filtered by the group index and desired groups.
-            """
-            df_slice = self.df[self.df['group'] == group_idx]
-            if (show_single) and (not show_ratio):
-                df_slice = df_slice[df_slice['type'] != 'Ratio']
-            elif (not show_single) and (show_ratio):
-                df_slice = df_slice[df_slice['type'] != 'Ratio']
-            return df_slice
-
-    # Generates a matplotlib plot with 1-5 subplots depending on number of files provided. At most,
-    # df_slice will contain a single-wavenumber image for the following wavenumbers: natural, label,
-    # natural correction, label correction, and the ratio image. At a minimum, it will only contain
-    # one of the single-wavenumber images. Function achieves its goal in this order: loads data with
-    # np.loadtxt(), creates and adds subplot with plt.imshow() to main plot. Return main plot.
-    # Additionally, option to set the colorbar for the single-wavenumber images to the same.
-    """def get_image(self, df_slice):
-        layout_mapping = {
-            1: (1, 1),
-            2: (1, 2),
-            3: (1, 3),
-            4: (2, 2),
-            5: (2, 3)
-        }
-        # Determine number of subplots to create
-        if len(df_slice.shape) == 1:
-            fig, ax = plt.subplots(1, 1, figsize=(10, 5))
-            data = np.loadtxt(df_slice['fpath'], delimiter=',')
-            cax = ax.imshow(data, cmap='CMRmap')
-            ax.set_title(df_slice['fname'])
-            ax.axis('off')
-            cax.set_clim(0, data.max())
-            # im_path = df_slice['im_path']
-            # plt.savefig(im_path, dpi=self.dpi)
-            # plt.close()
-            return fig
-        
-        plot_layout = layout_mapping[df_slice.shape[0]]
-        
-        # Create the figure and subplots
-        fig, axs = plt.subplots(plot_layout[0], plot_layout[1], figsize=(10, 5))
-
-        # Initialize tracker of max value for single-wavenumber images
-        max_value = 0
-        caxs = [None for _ in range(df_slice.shape[0])]
-        for i, row in df_slice.iterrows():
-            data = np.loadtxt(row['fpath'], delimiter=',')
-            if (data.max() > max_value) and (row['isRatio'] == False):
-                max_value = data.max()
-            caxs[i] = axs[i].imshow(data, cmap='CMRmap')
-            axs[i].set_title(row['fname'])
-            axs[i].axis('off')
-        # Set colorbar to same scale for all single-wavenumber images and add colorbar
-        for cax in caxs:
-            if not row['isRatio']:
-                cax.set_clim(0, max_value)
-        
-        #save the figure
-        plt.savefig(row['im_path'], dpi=self.dpi)
-
-        return fig"""
+    def get_group_histogram(self, group_id):
+        return self.group_histograms[group_id]
 
     def get_single_image(self, df_slice):
         return df_slice.loc['im_path']
 
     def get_group_image(self, group_id):
         return self.group_images[group_id]
+
+
 
     # Function to export the statistics to a CSV file
     def export_stats(self):
