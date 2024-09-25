@@ -17,8 +17,6 @@ class MultispectralModel:
         self.isAnalyzed = False  # Flag to check if files are analyzed
         self.dpi = 300  # DPI setting for image saving
         self.export_folder = "msa_analysis"  # Default export folder
-        self.show_fullpath = False  # Flag to show full file paths
-        self.show_parent = False  # Flag to show parent folder
         self.subdivide_files = True  # Flag to subdivide files into folders
 
     def group_files(self, file_list: list, label: str, natural: str, label_corr:str, natural_corr: str) -> pd.DataFrame:

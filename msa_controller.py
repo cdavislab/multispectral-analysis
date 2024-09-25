@@ -13,6 +13,8 @@ class MultispectralController:
         self.view = view
         self.connect_signals()
 
+        self.view_length = "Full" #Full, Parent, File
+
     # Connect signals from the view to controller methods
     def connect_signals(self):
         self.view.Button_Add.config(command=self.add_files)
@@ -30,9 +32,26 @@ class MultispectralController:
         self.view.view_menu.entryconfig('Histograms', command=self.reselect_index, accelerator='Ctrl+H')
         self.view.view_menu.entryconfig('Show Single-Wavenumber', command=self.update_listbox)
         self.view.view_menu.entryconfig('Show Ratios', command=self.update_listbox)
+        self.view.view_menu.entryconfig('Full File Path', command=self.change_label_and_update)
 
         # Bind the accelerator key combination to the open_file function
         self.view.root.bind('<Control-h>', lambda event: (self.toggle_checkbox(self.view.show_histograms),self.reselect_index()))
+
+    def change_label_and_update(self):
+        current_label = self.view.view_menu.entrycget(4, 'label')
+        if current_label == "Full File Path":
+            self.view.view_menu.entryconfig(4, label="Parent Folder")
+            self.view_length = "Parent"
+        elif current_label == "Parent Folder":
+            self.view.view_menu.entryconfig(4, label="Filename")
+            self.view_length = "File"
+        elif current_label == "Filename":
+            self.view.view_menu.entryconfig(4, label="Full File Path")
+            self.view_length = "Full"
+        else:
+            raise ValueError("Invalid label")
+        self.update_listbox()
+        return
 
     def toggle_checkbox(self, checkbox):
         if checkbox.get():
@@ -83,29 +102,28 @@ class MultispectralController:
 
         self.view.ListBox_1.delete(0, tk.END)
 
-        # Determine if column should read full path or just filename
-        if self.model.show_fullpath:
-            col = 'fpath'
-        elif self.model.show_parent:
-            raise NotImplementedError #TODO: Implement parent folder showing too
-        else:
-            col = 'fname'
-        
         if self.view.show_groups.get(): # List only groups in the listbox
             max_group_number = self.model.df['group'].max()
             for i in range(max_group_number + 1):
                 self.view.ListBox_1.insert(tk.END, f"Image {i}")
             return
         
+        desired_groups = []
+        if self.view.show_single.get(): # Show
+            desired_groups += ['Natural', 'Label', 'Natural_Corr', 'Label_Corr', None]
+        if self.view.show_ratio.get():
+            desired_groups.append('Ratio')
+        listbox_df = self.model.df.loc[self.model.df['type'].isin(desired_groups)]
+
+        # Determine if column should read full path or just filename
+        if self.view_length == "Full":
+            listbox_series = listbox_df['fpath']
+        elif self.view_length == "Parent":
+            listbox_series = listbox_df['fpath'].apply(lambda x: os.path.basename(os.path.dirname(x)) + "/" + os.path.basename(x))
         else:
-            desired_groups = []
-            if self.view.show_single.get(): # Show
-                desired_groups += ['Natural', 'Label', 'Natural_Corr', 'Label_Corr', None]
-            if self.view.show_ratio.get():
-                desired_groups.append('Ratio')
-            self.view.ListBox_1.insert(tk.END, *self.model.df.loc[
-                (self.model.df['type'].isin(desired_groups)),col]
-                .values)
+            listbox_series = listbox_df['fname']
+        
+        self.view.ListBox_1.insert(tk.END, *listbox_series.values)
 
         return
 
@@ -150,7 +168,6 @@ class MultispectralController:
         if self.view.show_groups.get(): #TODO Check: May need to convert to listbox type to integer
             idx = self.model.df['group'] == int(self.get_listbox_group_index(index))
             single_group_df = self.model.df.loc[idx,:]
-            print(single_group_df)
             df_idx = single_group_df.index
             return df_idx.tolist()
 

@@ -186,6 +186,7 @@ class MultispectralView:
         self.view_menu.add_checkbutton(label="Histograms", onvalue=1, offvalue=0, variable=self.show_histograms)
         self.view_menu.add_checkbutton(label="Show Single-Wavenumber", onvalue=1, offvalue=0, variable=self.show_single)
         self.view_menu.add_checkbutton(label="Show Ratios", onvalue=1, offvalue=0, variable=self.show_ratio)
+        self.view_menu.add_command(label="Full File Path")
 
         return
 
