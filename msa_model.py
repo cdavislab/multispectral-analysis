@@ -123,9 +123,14 @@ class MultispectralModel:
         Path(outfolder).mkdir(parents=True, exist_ok=True)
 
         # Add each unique file to the DataFrame with a summary and create an image
+        error_files = dict()
         for file in files:
             if file not in self.df['fpath'].unique():
-                data = np.loadtxt(file, delimiter=',')
+                try:
+                    data = np.loadtxt(file, delimiter=',')
+                except ValueError as e:
+                    error_files[file] = e
+                    continue
                 outpath = os.path.join(outfolder, Path(file).stem)
                 image_path = outpath + ".jpg"
                 hist_path = outpath + "_hist.jpg"
@@ -135,7 +140,11 @@ class MultispectralModel:
                 self.save_image(data, outpath)
                 self.create_histogram(data, outpath)
 
-        return
+        if len(error_files.keys()) > 0:
+            print("Error loading the following files:")
+            for key in error_files.keys():
+                print(f"{key} : {error_files[key]}")
+        return error_files
     
     def load_files(self, *filepaths):
         """

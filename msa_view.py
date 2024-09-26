@@ -206,3 +206,10 @@ class MultispectralView:
         self.panel_img = ImageTk.PhotoImage(Image.open(img_path).resize((img_width, img_height)))
         self.img_panel.configure(image=self.panel_img)
         return
+    
+    def show_error(self, errors):
+        error_str = "Could not add the following files:\n"
+        for error in errors:
+            error_str += error + "\n"
+        tk.messagebox.showerror("Error", error_str)
+        return

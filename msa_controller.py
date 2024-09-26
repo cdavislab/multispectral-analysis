@@ -61,8 +61,13 @@ class MultispectralController:
         return
     def add_files(self):
         files = askopenfilenames(filetypes=(("Comma Delimited", "*.csv"), ("All files", "*.*"),))
-        self.model.add_files(files)
+        errors = self.model.add_files(files)
         self.update_listbox()
+        # If there are errors, show them in a dialog box
+        if errors:
+            self.view.show_error(errors)
+        return
+        
 
     def delete_files(self):
         idx_to_del = list(self.view.ListBox_1.curselection())
