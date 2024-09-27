@@ -168,6 +168,8 @@ class MultispectralView:
         self.file_menu.add_command(label="Export Statistics")
         self.file_menu.add_command(label="Export File List")
         self.file_menu.add_command(label="Import File List")
+        self.file_menu.add_command(label="Export Settings")
+        self.file_menu.add_command(label="Import Settings")
 
         self.settings_menu = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="Settings", menu=self.settings_menu)
