@@ -201,7 +201,7 @@ class MultispectralModel:
             summary = msa.summarize(ratio)
             summary = list(summary[0].astype('float'))
             self.df.loc[self.df.shape[0]] = [ratio_fname, ratio_fname, ratio_im_path + ".jpg", ratio_im_path+"_hist.jpg", group_idx, 'Ratio'] + summary
-            files = {'label': label_data, 'natural': natural_data,
+            files = {'Label': label_data, 'Natural': natural_data,
                      'Label_Corr': label_correction_data, 'Natural_Corr': natural_correction_data,
                      'Ratio': ratio}
             if label_correction_file == natural_correction_file:
@@ -255,24 +255,34 @@ class MultispectralModel:
         plt.close()
         return hist_path
 
+    def create_image(self, data, title, ax, max_value):
+        im = ax.imshow(data, cmap='CMRmap', vmin=0, vmax=max_value)
+        ax.set_title(title)
+        ax.axis('off')
+
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+        plt.colorbar(im, cax=cax)
+
+        return
+
     def create_group_image(self, data, group_id):
         df_slice = self.df[self.df['group'] == group_id]
         fig, axs = self.generate_group_figure(len(df_slice))
         max_value = self.find_max_value(df_slice) # First 4 elements are non-ratio matrices
 
-        for i, description in enumerate(data.keys()): # Note: Only works in Python 3.7+. Otherwise, data is not ordered.
-            selected = data[description]
-            ax = axs[i]
-            if description == 'Ratio':
-                im = ax.imshow(selected, cmap='CMRmap', vmin=0, vmax=selected.max())
-            else:
-                im = ax.imshow(selected, cmap='CMRmap', vmin=0, vmax=max_value) 
-            ax.set_title(description)
-            ax.axis('off')
+        # If there is only 1 key in data.keys() with the substring "_Corr", then rename the key "Label_Corr" to "Correction"
+        if len([key for key in data.keys() if "_Corr" in key]) == 1:
+            data["Correction"] = data.pop("Label_Corr")
+        
+        ratio = data.pop("Ratio")
 
-            divider = make_axes_locatable(ax)
-            cax = divider.append_axes("right", size="5%", pad=0.05)
-            plt.colorbar(im, cax=cax)
+        for i, description in enumerate(data.keys()):
+            selected = data[description]    
+            self.create_image(selected, description, axs[i], max_value)
+
+        # Create the ratio image
+        self.create_image(ratio, "Ratio", axs[-1], ratio.max())
 
         img_path = os.path.join(self.export_folder, "group_" + str(group_id)+".jpg") #TODO: Make exporting a different function
         plt.savefig(img_path, dpi=self.dpi)
