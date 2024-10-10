@@ -14,6 +14,7 @@ class MultispectralView:
         self.default_bg = "#e9e9ed"
         self.default_fg = "#000000"
         self.setup_ui()
+        
     # Function to setup the GUI layout and components
     def setup_ui(self):
         self.root.title("Multispectral Analysis")
@@ -38,8 +39,10 @@ class MultispectralView:
         self.build_image_viewer()
         self.build_user_buttons()
         self.build_wavenumber_inputs()
-        self.build_menubar()
         self.set_defaults()
+        self.build_menubar()
+        
+        # self.root.bind("<Configure>", self.on_resize)
 
     def decorate(self,widget):
         font = tkFont.nametofont(widget.cget('font')).actual()
@@ -73,6 +76,7 @@ class MultispectralView:
         self.img_panel = tk.Label(self.root, bg='gray')
         self.panel_img = ""
         self.img_panel.grid(row=0, column=2, rowspan=9, columnspan=4, sticky="nsew", padx=2, pady=2)
+        # self.img_panel.grid_propagate(False)
 
     def build_user_buttons(self):
         self.Button_Add = self.decorate(tk.Button(self.root, text="Add Files"))
@@ -165,6 +169,7 @@ class MultispectralView:
 
         self.file_menu = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="File", menu=self.file_menu)
+        self.file_menu.add_command(label="Preferences")
         self.file_menu.add_command(label="Export Statistics")
         self.file_menu.add_command(label="Export File List")
         self.file_menu.add_command(label="Import File List")
@@ -176,10 +181,6 @@ class MultispectralView:
         self.settings_menu.add_command(label="Open Config")
         self.settings_menu.add_command(label="Save Config")
 
-        self.show_groups = tk.BooleanVar()
-        self.show_histograms = tk.BooleanVar()
-        self.show_single = tk.BooleanVar()
-        self.show_ratio = tk.BooleanVar()
         self.show_single.set(True)
         self.show_ratio.set(True)
         self.view_menu = tk.Menu(self.menubar, tearoff=0)
@@ -200,12 +201,22 @@ class MultispectralView:
         self.ncf_entry.insert(0, ".31")
         self.lcf_entry.insert(0, ".61")
         self.threshold_entry.insert(0, "0.15")
+        self.show_groups = tk.BooleanVar()
+        self.show_histograms = tk.BooleanVar()
+        self.show_single = tk.BooleanVar()
+        self.show_ratio = tk.BooleanVar()
 
     def display(self, img_path):
-        img_width = self.img_panel.winfo_width()
-        img_height = self.img_panel.winfo_height()
+        geometry = self.root.winfo_geometry()  # Get the geometry string
+        # Split the string to extract the width and height
+        screen_width, screen_height = geometry.split('x')[0], geometry.split('x')[1].split('+')[0]
+        img_width = int(int(screen_width)//1.8)
+        bottom_menu_height = self.Button_Statistics.winfo_height()*5
+        img_height = int(screen_height) - bottom_menu_height
 
-        self.panel_img = ImageTk.PhotoImage(Image.open(img_path).resize((img_width, img_height)))
+        img = Image.open(img_path)
+        img = img.resize((img_width, img_height))
+        self.panel_img = ImageTk.PhotoImage(img)
         self.img_panel.configure(image=self.panel_img)
         return
     
@@ -215,3 +226,51 @@ class MultispectralView:
             error_str += error + "\n"
         tk.messagebox.showerror("Error", error_str)
         return
+    
+    def get_settings(self):
+        settings = {
+            "nw": self.nw_entry.get(),
+            "lw": self.lw_entry.get(),
+            "ncw": self.ncw_entry.get(),
+            "lcw": self.lcw_entry.get(),
+            "ncf": self.ncf_entry.get(),
+            "lcf": self.lcf_entry.get(),
+            "threshold": self.threshold_entry.get(),
+            "export_folder": self.Button_ExportFolder.cget('text'),
+            "show_groups": self.show_groups.get(),
+            "show_histograms": self.show_histograms.get(),
+            "show_single": self.show_single.get(),
+            "show_ratio": self.show_ratio.get(),
+        }
+        return settings
+
+    class PropertiesView:
+        
+        def __init__(self, root, export_filetype):
+            # Create a new window
+            self.pref_window = tk.Toplevel(root)
+            self.pref_window.title("Preferences")
+            self.pref_window.geometry("400x400")
+            # Create a frame to hold the widgets
+            self.pref_frame = tk.Frame(self.pref_window)
+            self.pref_frame.pack(expand=True, fill='both')
+            # Create the widgets
+            self.export_filetype_label= tk.Label(self.pref_frame, text="Export File Type (e.g. .jpg, .png, .tiff, etc.)")
+            self.export_filetype_label.grid(row=0, column=0, sticky='w')
+            self.export_filetype_entry = tk.Entry(self.pref_frame)
+            self.export_filetype_entry.insert(0, export_filetype)
+            self.export_filetype_entry.grid(row=0, column=1)
+            self.export_filetype_hint = tk.Label(self.pref_frame, text="Choose the main file extension for future exports", fg='gray')
+            self.export_filetype_hint.grid(row=1, column=0, columnspan=2, sticky='w')
+            # self.export_fig_label = tk.Label(self.pref_frame, text="Export .fig")
+            # self.export_fig_label.grid(row=2, column=0, sticky='w')
+            # self.export_fig_checkbox = tk.Checkbutton(self.pref_frame, variable=export_fig)
+            # self.export_fig_checkbox.grid(row=2, column=1)
+            # self.export_fig_hint = tk.Label(self.pref_frame, text="Choose whether future files should be exported as .fig as well", fg='gray')
+            # self.export_fig_hint.grid(row=3, column=0, columnspan=2, sticky='w')
+
+            # Put button on the bottom to save and quit 
+            self.save_button = tk.Button(self.pref_frame, text="Save")
+            self.save_button.grid(row=4, column=0, columnspan=2)
+
+        

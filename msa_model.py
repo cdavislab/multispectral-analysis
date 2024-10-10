@@ -79,7 +79,7 @@ class MultispectralModel:
         plt.grid(False)
         plt.imshow(data, cmap='CMRmap', vmin=0)
         plt.colorbar()
-        plt.savefig(title + ".jpg", dpi=self.dpi)
+        self.saveimg(title)
         plt.close()
         return
 
@@ -132,8 +132,8 @@ class MultispectralModel:
                     error_files[file] = e
                     continue
                 outpath = os.path.join(outfolder, Path(file).stem)
-                image_path = outpath + ".jpg"
-                hist_path = outpath + "_hist.jpg"
+                image_path = outpath + self.get_ext()
+                hist_path = outpath + "_hist" + self.get_ext()
                 summary = msa.summarize(data)
                 summary = list(summary[0].astype('float'))
                 self.df.loc[self.df.shape[0]] = [file, Path(file).stem, image_path, hist_path, 0, None] + summary
@@ -200,7 +200,7 @@ class MultispectralModel:
             self.create_histogram(ratio, ratio_im_path)
             summary = msa.summarize(ratio)
             summary = list(summary[0].astype('float'))
-            self.df.loc[self.df.shape[0]] = [ratio_fname, ratio_fname, ratio_im_path + ".jpg", ratio_im_path+"_hist.jpg", group_idx, 'Ratio'] + summary
+            self.df.loc[self.df.shape[0]] = [ratio_fname, ratio_fname, ratio_im_path + self.get_ext(), ratio_im_path+"_hist"+self.get_ext(), group_idx, 'Ratio'] + summary
             files = {'Label': label_data, 'Natural': natural_data,
                      'Label_Corr': label_correction_data, 'Natural_Corr': natural_correction_data,
                      'Ratio': ratio}
@@ -208,8 +208,6 @@ class MultispectralModel:
                 files.pop('Natural_Corr') # HACK: Should be named correction if the same 
             self.group_images[group_idx] = self.create_group_image(files, group_idx)
             self.group_histograms[group_idx] = self.create_group_histogram(files, group_idx)
-
-        print(self.group_images)
         return
     
     def generate_group_figure(self, num_images):
@@ -233,7 +231,7 @@ class MultispectralModel:
         fig, ax = plt.subplots(1, 1, figsize=(10, 5))
         plt.grid(False)
         msa.histogram(data, ax=ax, lower_bound=0)
-        plt.savefig(title + "_hist.jpg", dpi=self.dpi)
+        self.saveimg(title + "_hist")
         plt.close()
         return
         
@@ -250,8 +248,8 @@ class MultispectralModel:
             # ax.histogram(selected, cmap='CMRmap', vmin=0, vmax=max_value) #####################
             ax.set_title(description)
 
-        hist_path = os.path.join(self.export_folder, "group_histogram_" + str(group_id)+".jpg") #TODO: Make exporting a different function
-        plt.savefig(hist_path, dpi=self.dpi)
+        hist_path = os.path.join(self.export_folder, "group_histogram_" + str(group_id)+self.get_ext()) #TODO: Make exporting a different function
+        self.saveimg(hist_path)
         plt.close()
         return hist_path
 
@@ -284,8 +282,8 @@ class MultispectralModel:
         # Create the ratio image
         self.create_image(ratio, "Ratio", axs[-1], ratio.max())
 
-        img_path = os.path.join(self.export_folder, "group_" + str(group_id)+".jpg") #TODO: Make exporting a different function
-        plt.savefig(img_path, dpi=self.dpi)
+        img_path = os.path.join(self.export_folder, "group_" + str(group_id)) #TODO: Make exporting a different function
+        self.saveimg(img_path)
         plt.close()
         return img_path
 
@@ -314,8 +312,21 @@ class MultispectralModel:
     def get_group_image(self, group_id):
         return self.group_images[group_id]
 
+    def get_ext(self):
+        return self.export_filetype
+    
+    def set_ext(self, filetype):
+        self.export_filetype = filetype
+        return
 
-
+    def saveimg(self, title):
+        plt.savefig(title + self.get_ext(), dpi=self.dpi)
+        return
+        # if not self.export_fig:
+        #     return
+        # # plt.savefig(title + ".fig", dpi='figure')
+        # savemat(title + ".mat", {'data': plt.gcf()})
+        
     # Function to export the statistics to a CSV file
     def export_stats(self):
         self.df.to_csv(os.path.join(self.export_folder, "Summary.csv"), mode='a')
@@ -330,6 +341,5 @@ class MultispectralModel:
         # df = pd.read_csv(file_of_files[0])
         file_df = file_df[~file_df.applymap(lambda x: isinstance(x, str) and "ratio" in x.lower()).any(axis=1)]
         filelist = file_df['fpath'].tolist()
-        print(filelist)
         self.add_files(filelist)
         return

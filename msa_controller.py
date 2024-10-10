@@ -12,8 +12,9 @@ class MultispectralController:
         self.model = model
         self.view = view
         self.connect_signals()
-
+        self.import_default_settings()
         self.view_length = "Full" #Full, Parent, File
+        
 
     # Connect signals from the view to controller methods
     def connect_signals(self):
@@ -24,6 +25,7 @@ class MultispectralController:
         
         # self.view.menubar.entryconfig("Export Statistics", command=self.export_stats)
         # self.view.root.config(menu=self.view.menubar)
+        self.view.file_menu.entryconfig('Preferences', command=self.preferences)
         self.view.file_menu.entryconfig('Export Statistics', command=self.export_stats)
         self.view.file_menu.entryconfig('Export File List', command=self.export_filelist)
         self.view.file_menu.entryconfig('Import File List', command=self.import_filelist)
@@ -39,6 +41,17 @@ class MultispectralController:
 
         # Bind the accelerator key combination to the open_file function
         self.view.root.bind('<Control-h>', lambda event: (self.toggle_checkbox(self.view.show_histograms),self.reselect_index()))
+
+    def preferences(self):
+        self.properties = self.view.PropertiesView(
+            self.view.root,self.model.get_ext())
+        self.properties.save_button.config(command=self.pref_save_and_quit)
+        return
+
+    def pref_save_and_quit(self):
+        self.model.set_ext(self.properties.export_filetype_entry.get())
+        self.properties.pref_window.destroy()
+        return
 
     def export_settings(self):
         file_path = tk.filedialog.asksaveasfilename(
@@ -59,7 +72,9 @@ class MultispectralController:
                     'show_single': self.view.show_single.get(),
                     'show_ratio': self.view.show_ratio.get(),
                     'show_histograms': self.view.show_histograms.get(),
-                    'view_length': self.view_length}
+                    'view_length': self.view_length,
+                    'export_filetype': self.model.get_ext()
+                    }
         # Save dictionary to a text file
         with open(file_path, 'w') as file:
             file.write(repr(settings))
@@ -73,7 +88,7 @@ class MultispectralController:
         # Remove the file name and append 'msa_options.txt'
         directory_path = os.path.dirname(current_file_path)
         default = os.path.join(directory_path, 'msa_options.txt')
-
+        self.import_settings(default)
         return
 
     def import_settings(self, file_path = None):
@@ -128,7 +143,9 @@ class MultispectralController:
         self.view.show_single.set(settings.get('show_single', True))
         self.view.show_ratio.set(settings.get('show_ratio', True))
         self.view.show_histograms.set(settings.get('show_histograms', False))
+        self.view.show_histograms.set(settings.get('show_histograms', False))
 
+        self.model.set_ext(settings.get('export_filetype', '.jpg'))
         # Set view_length if the key exists
         self.view_length = settings.get('view_length', 'Full')
 
