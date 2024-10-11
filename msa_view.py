@@ -35,8 +35,9 @@ class MultispectralView:
         self.root.columnconfigure(5, weight=16)
         self.root.rowconfigure(14, weight=1)
 
-        self.build_file_viewer()
-        self.build_image_viewer()
+        self.paned_window = self.build_paned_window()
+        self.build_file_viewer(self.paned_window)
+        self.build_image_viewer(self.paned_window)
         self.build_user_buttons()
         self.build_wavenumber_inputs()
         self.set_defaults()
@@ -62,22 +63,28 @@ class MultispectralView:
         widget.configure(bg=self.default_bg, fg=self.default_fg, justify=justify, font=(default_family, default_size))
         return widget
 
-    def build_file_viewer(self):
-        frm = tk.Frame(self.root)
-        frm.grid(row=0, column=0, rowspan=7, columnspan=2, sticky="nsew", padx=2, pady=2)
+    def build_paned_window(self):
+        paned_window = tk.PanedWindow(self.root, orient=tk.HORIZONTAL)
+        paned_window.grid(row=0, column=0, rowspan=7, columnspan=16, sticky="nsew", padx=2, pady=2)  # Fill the entire window
+        return paned_window
+    def build_file_viewer(self, root):
+        frm = tk.Frame(root)
+        # frm.grid(row=0, column=0, rowspan=7, columnspan=2, sticky="nsew", padx=2, pady=2)
         scrollbar = tk.Scrollbar(frm, orient="horizontal")
         scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
         self.ListBox_1 = self.decorate(tk.Listbox(frm, xscrollcommand=scrollbar.set))
         self.ListBox_1.configure(fg="#333333", borderwidth="1px")
         self.ListBox_1.pack(expand=True, fill=tk.BOTH)
         scrollbar.config(command=self.ListBox_1.xview)
-
-    def build_image_viewer(self):
-        self.img_panel = tk.Label(self.root, bg='gray')
+        root.add(frm)
+        return
+    def build_image_viewer(self, root):
+        self.img_panel = tk.Label(root, bg='gray')
         self.panel_img = ""
-        self.img_panel.grid(row=0, column=2, rowspan=9, columnspan=4, sticky="nsew", padx=2, pady=2)
+        # self.img_panel.grid(row=0, column=2, rowspan=9, columnspan=4, sticky="nsew", padx=2, pady=2)
+        root.add(self.img_panel)
         # self.img_panel.grid_propagate(False)
-
+        return
     def build_user_buttons(self):
         self.Button_Add = self.decorate(tk.Button(self.root, text="Add Files"))
         self.Button_Add.grid(row=7, column=0, rowspan=1, columnspan=2, sticky="nsew", padx=2)
@@ -87,13 +94,13 @@ class MultispectralView:
 
         self.Button_Analyze = self.decorate(tk.Button(self.root, text="Analyze"))
         # self.Button_Analyze.configure(bg=self.default_blue)
-        self.Button_Analyze.grid(row=9, column=0, rowspan=2, columnspan=2, sticky="nsew", padx=2)
+        self.Button_Analyze.grid(row=9, column=0, rowspan=1, columnspan=2, sticky="nsew", padx=2)
 
         self.Button_Filename = self.decorate(tk.Button(self.root, text="Filename"))
-        self.Button_Filename.grid(row=9, column=2, rowspan=1, columnspan=4, sticky="nsew", padx=2)
+        self.Button_Filename.grid(row=7, column=2, rowspan=1, columnspan=4, sticky="nsew", padx=2)
 
         self.Button_Statistics = self.decorate(tk.Button(self.root, text="Statistics"))
-        self.Button_Statistics.grid(row=10, column=2, rowspan=1, columnspan=4, sticky="nsew", padx=2)
+        self.Button_Statistics.grid(row=8, column=2, rowspan=2, columnspan=4, sticky="nsew", padx=2)
 
     def build_wavenumber_inputs(self):
         # Natural Wavenumber
@@ -210,12 +217,23 @@ class MultispectralView:
         geometry = self.root.winfo_geometry()  # Get the geometry string
         # Split the string to extract the width and height
         screen_width, screen_height = geometry.split('x')[0], geometry.split('x')[1].split('+')[0]
-        img_width = int(int(screen_width)//1.8)
-        bottom_menu_height = self.Button_Statistics.winfo_height()*5
+        sash_position = self.paned_window.sash_coord(0)[0]
+        img_width = int(screen_width) - sash_position
+        # listbox_width = sash_position
+        # img
+        # img_width = int(int(screen_width)//1.8)
+        bottom_menu_height = self.Button_Filename.winfo_height()*5
         img_height = int(screen_height) - bottom_menu_height
 
         img = Image.open(img_path)
-        img = img.resize((img_width, img_height))
+        original_width, original_height = img.size
+
+        # Resize the image to fit the window while maintaining the aspect ratio
+        scalar1 = img_width / original_width
+        scalar2 = img_height / original_height
+        scalar = min(scalar1, scalar2)
+
+        img = img.resize((int(original_width*scalar), int(original_height*scalar)))
         self.panel_img = ImageTk.PhotoImage(img)
         self.img_panel.configure(image=self.panel_img)
         return
