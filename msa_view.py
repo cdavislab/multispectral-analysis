@@ -38,12 +38,11 @@ class MultispectralView:
         self.paned_window = self.build_paned_window()
         self.build_file_viewer(self.paned_window)
         self.build_image_viewer(self.paned_window)
+
         self.build_user_buttons()
         self.build_wavenumber_inputs()
         self.set_defaults()
         self.build_menubar()
-        
-        # self.root.bind("<Configure>", self.on_resize)
 
     def decorate(self,widget):
         font = tkFont.nametofont(widget.cget('font')).actual()
@@ -213,17 +212,21 @@ class MultispectralView:
         self.show_single = tk.BooleanVar()
         self.show_ratio = tk.BooleanVar()
 
-    def display(self, img_path):
-        geometry = self.root.winfo_geometry()  # Get the geometry string
+    def get_shape(self, widget):
+        geometry = widget.winfo_geometry()  # Get the geometry string
         # Split the string to extract the width and height
-        screen_width, screen_height = geometry.split('x')[0], geometry.split('x')[1].split('+')[0]
+        width, height = geometry.split('x')[0], geometry.split('x')[1].split('+')[0]
+        return int(width), int(height)
+
+    def display(self, img_path):
+        screen_width, screen_height = self.get_shape(self.root)
+        print(screen_width, screen_height)
+        print(self.paned_window.sash_coord(0))
         sash_position = self.paned_window.sash_coord(0)[0]
-        img_width = int(screen_width) - sash_position
-        # listbox_width = sash_position
-        # img
-        # img_width = int(int(screen_width)//1.8)
+        img_width = screen_width - sash_position
+
         bottom_menu_height = self.Button_Filename.winfo_height()*5
-        img_height = int(screen_height) - bottom_menu_height
+        img_height = screen_height - bottom_menu_height
 
         img = Image.open(img_path)
         original_width, original_height = img.size
