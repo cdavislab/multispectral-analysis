@@ -220,8 +220,6 @@ class MultispectralView:
 
     def display(self, img_path):
         screen_width, screen_height = self.get_shape(self.root)
-        print(screen_width, screen_height)
-        print(self.paned_window.sash_coord(0))
         sash_position = self.paned_window.sash_coord(0)[0]
         img_width = screen_width - sash_position
 
@@ -294,4 +292,32 @@ class MultispectralView:
             self.save_button = tk.Button(self.pref_frame, text="Save")
             self.save_button.grid(row=4, column=0, columnspan=2)
 
-        
+    class ProgressBar(tk.Tk):
+        def __init__(self, title="Progress Bar"):
+            super().__init__()
+            self.title(title)
+            self.geometry("400x150")
+
+            # Create a canvas for the progress bar
+            self.canvas = tk.Canvas(self, width=300, height=30, bg='white', highlightthickness=1, highlightbackground='black')
+            self.canvas.pack(pady=40)
+            
+            self.progress = 0  # Initialize progress value
+            self.canvas.delete("progress")
+            self.update_progress(0)
+
+        # def start_progress(self):
+        #     """Simulate a progress bar using a canvas."""
+        #     self.progress = 0
+        #     self.canvas.delete("progress")  # Clear any previous progress
+
+        #     for i in range(101):  # Progress from 0 to 100
+        #         self.update_progress(i)  # Update the progress bar
+        #         time.sleep(0.05)  # Simulate time-consuming task
+
+        def update_progress(self, value):
+            """Update the progress bar on the canvas."""
+            self.canvas.delete("progress")  # Clear previous progress
+            fill_width = (value / 100) * 300  # Calculate the fill width
+            self.canvas.create_rectangle(0, 0, fill_width, 30, fill="green", tags="progress")
+            self.update_idletasks()  # Refresh the UI

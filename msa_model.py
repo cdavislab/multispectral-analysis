@@ -114,37 +114,31 @@ class MultispectralModel:
             natural_correction_file = label_correction_file
         return label_file, natural_file, label_correction_file, natural_correction_file
 
-    # Function to add files to the model and process them
-    def add_files(self, files):
+    def get_dir(self, file):
         outfolder = self.export_folder
         if self.subdivide_files:
-            parent = Path(files[0]).parent.name
+            parent = Path(file).parent.name
             outfolder = os.path.join(self.export_folder, parent)
         Path(outfolder).mkdir(parents=True, exist_ok=True)
+        return outfolder
 
+    # Function to add files to the model and process them
+    def add_files(self, file, outfolder):
         # Add each unique file to the DataFrame with a summary and create an image
-        error_files = dict()
-        for file in files:
-            if file not in self.df['fpath'].unique():
-                try:
-                    data = np.loadtxt(file, delimiter=',')
-                except ValueError as e:
-                    error_files[file] = e
-                    continue
-                outpath = os.path.join(outfolder, Path(file).stem)
-                image_path = outpath + self.get_ext()
-                hist_path = outpath + "_hist" + self.get_ext()
-                summary = msa.summarize(data)
-                summary = list(summary[0].astype('float'))
-                self.df.loc[self.df.shape[0]] = [file, Path(file).stem, image_path, hist_path, 0, None] + summary
-                self.save_image(data, outpath)
-                self.create_histogram(data, outpath)
+        if file in self.df['fpath'].unique():
+            return
+        
+        data = np.loadtxt(file, delimiter=',')
+        outpath = os.path.join(outfolder, Path(file).stem)
+        image_path = outpath + self.get_ext()
+        hist_path = outpath + "_hist" + self.get_ext()
+        summary = msa.summarize(data)
+        summary = list(summary[0].astype('float'))
+        self.df.loc[self.df.shape[0]] = [file, Path(file).stem, image_path, hist_path, 0, None] + summary
+        self.save_image(data, outpath)
+        self.create_histogram(data, outpath)
+        return
 
-        if len(error_files.keys()) > 0:
-            print("Error loading the following files:")
-            for key in error_files.keys():
-                print(f"{key} : {error_files[key]}")
-        return error_files
     
     def load_files(self, *filepaths):
         """
@@ -171,43 +165,45 @@ class MultispectralModel:
         
         return loaded_data
 
-    # Function to analyze files and compute ratio images
-    def analyze_files(self, label_wavenum, natural_wavenum, label_correction_wavenum, natural_correction_wavenum, threshold, lcf, natural_cf):        
-        """
-        Main function to analyze files. Groups files, asks if groups are correct, and computes ratio images. 
-        """
+    def pre_analyze_files(self, label_wavenum, natural_wavenum, label_correction_wavenum, natural_correction_wavenum, threshold, lcf, natural_cf):
         groups_df = self.group_files(self.df['fpath'], label_wavenum, natural_wavenum,
-                        label_correction_wavenum, natural_correction_wavenum)
+                label_correction_wavenum, natural_correction_wavenum)
         groups_df = self.request_group_check(groups_df)
         self.assign_groups(groups_df)
         
         groups = self.df['group'].unique()
         self.group_images = [None for _ in range(len(groups))]
         self.group_histograms = [None for _ in range(len(groups))]
-        for group_idx in groups:
-            group = self.df[self.df['group'] == group_idx]['fpath'].values
-            label_file, natural_file, label_correction_file, natural_correction_file = self.sort_wavenumbers(
-                group, label_wavenum, natural_wavenum, label_correction_wavenum, natural_correction_wavenum
-                )
-            label_data, natural_data, label_correction_data, natural_correction_data = self.load_files(
-                label_file, natural_file, label_correction_file, natural_correction_file
-                )
-            ratio = self.ratio_images(label_data, natural_data, label_correction_data, natural_correction_data,
-                                      lcf, natural_cf, threshold)
-            ratio_fname = Path(label_file).stem.replace(label_wavenum, "") + "_ratio"
-            ratio_im_path = os.path.join(self.export_folder, ratio_fname)
-            self.save_image(ratio, ratio_im_path)
-            self.create_histogram(ratio, ratio_im_path)
-            summary = msa.summarize(ratio)
-            summary = list(summary[0].astype('float'))
-            self.df.loc[self.df.shape[0]] = [ratio_fname, ratio_fname, ratio_im_path + self.get_ext(), ratio_im_path+"_hist"+self.get_ext(), group_idx, 'Ratio'] + summary
-            files = {'Label': label_data, 'Natural': natural_data,
-                     'Label_Corr': label_correction_data, 'Natural_Corr': natural_correction_data,
-                     'Ratio': ratio}
-            if label_correction_file == natural_correction_file:
-                files.pop('Natural_Corr') # HACK: Should be named correction if the same 
-            self.group_images[group_idx] = self.create_group_image(files, group_idx)
-            self.group_histograms[group_idx] = self.create_group_histogram(files, group_idx)
+        return groups
+
+    # Function to analyze files and compute ratio images
+    def analyze_files(self, label_wavenum, natural_wavenum, label_correction_wavenum, natural_correction_wavenum, threshold, lcf, natural_cf, group_idx):        
+        """
+        Main function to analyze files. Groups files, asks if groups are correct, and computes ratio images. 
+        """
+        group = self.df[self.df['group'] == group_idx]['fpath'].values
+        label_file, natural_file, label_correction_file, natural_correction_file = self.sort_wavenumbers(
+            group, label_wavenum, natural_wavenum, label_correction_wavenum, natural_correction_wavenum
+            )
+        label_data, natural_data, label_correction_data, natural_correction_data = self.load_files(
+            label_file, natural_file, label_correction_file, natural_correction_file
+            )
+        ratio = self.ratio_images(label_data, natural_data, label_correction_data, natural_correction_data,
+                                    lcf, natural_cf, threshold)
+        ratio_fname = Path(label_file).stem.replace(label_wavenum, "") + "_ratio"
+        ratio_im_path = os.path.join(self.export_folder, ratio_fname)
+        self.save_image(ratio, ratio_im_path)
+        self.create_histogram(ratio, ratio_im_path)
+        summary = msa.summarize(ratio)
+        summary = list(summary[0].astype('float'))
+        self.df.loc[self.df.shape[0]] = [ratio_fname, ratio_fname, ratio_im_path + self.get_ext(), ratio_im_path+"_hist"+self.get_ext(), group_idx, 'Ratio'] + summary
+        files = {'Label': label_data, 'Natural': natural_data,
+                    'Label_Corr': label_correction_data, 'Natural_Corr': natural_correction_data,
+                    'Ratio': ratio}
+        if label_correction_file == natural_correction_file:
+            files.pop('Natural_Corr') # HACK: Should be named correction if the same 
+        self.group_images[group_idx] = self.create_group_image(files, group_idx)
+        self.group_histograms[group_idx] = self.create_group_histogram(files, group_idx)
         return
     
     def generate_group_figure(self, num_images):

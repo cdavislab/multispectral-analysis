@@ -175,14 +175,29 @@ class MultispectralController:
         return
     
     def add_files(self):
+        progress = self.view.ProgressBar(title="Adding Files")
         files = askopenfilenames(filetypes=(("Comma Delimited", "*.csv"), ("All files", "*.*"),))
         if len(files) == 0:
             return
-        errors = self.model.add_files(files)
+        outpath = self.model.get_dir(files[0])
+        error_files = dict()
+        increment = 100 / len(files)
+        
+        for i, file in enumerate(files):
+            try:
+                self.model.add_files(file, outpath)
+            except ValueError as e:
+                error_files[file] = e
+                continue
+            progress.update_progress(increment*i)
         self.update_listbox()
-        # If there are errors, show them in a dialog box
-        if errors:
-            self.view.show_error(errors)
+
+        progress.destroy()
+        if len(error_files.keys()) > 0:
+            print("Error loading the following files:")
+            for key in error_files.keys():
+                print(f"{key} : {error_files[key]}")
+            self.view.show_error(error_files)
         return
         
 
@@ -195,14 +210,22 @@ class MultispectralController:
         self.update_listbox()
 
     def analyze_files(self):
-        self.model.analyze_files(self.view.lw_entry.get(),
-                                 self.view.nw_entry.get(),
-                                 self.view.lcw_entry.get(),
-                                 self.view.ncw_entry.get(),
-                                 float(self.view.threshold_entry.get()),
-                                 float(self.view.lcf_entry.get()),
-                                 float(self.view.ncf_entry.get()))
+        args = [self.view.lw_entry.get(),
+                self.view.nw_entry.get(),
+                self.view.lcw_entry.get(),
+                self.view.ncw_entry.get(),
+                float(self.view.threshold_entry.get()),
+                float(self.view.lcf_entry.get()),
+                float(self.view.ncf_entry.get())]
+        progress = self.view.ProgressBar(title="Analyzing Files")
+        groups = self.model.pre_analyze_files(*args)
+        increment = 100 / len(groups)
+        progress.update_progress(1)
+        for group_idx in groups:
+            self.model.analyze_files(*args, group_idx)
+            progress.update_progress(increment*group_idx)
         self.update_listbox()
+        progress.destroy()
 
     def set_export_folder(self):
         self.model.export_folder = askdirectory()
