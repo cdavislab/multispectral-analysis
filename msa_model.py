@@ -41,6 +41,11 @@ class MultispectralModel:
             DataFrame containing the grouped files.
         """
         df = pd.DataFrame(columns=["identifier", "label", "natural", "label_corr", "natural_corr"], dtype=str)
+        # Error case
+        if label_corr is None:
+            label_corr = ""
+        if natural_corr is None:
+            natural_corr = ""
         for file in file_list:
             identifier = (file
                           .replace(label, "")
@@ -75,21 +80,25 @@ class MultispectralModel:
 
     # Function to save a data array as an image
     def save_image(self, data, title):
-        plt.clf()
+        # plt.clf()
         plt.grid(False)
         plt.imshow(data, cmap='CMRmap', vmin=0)
         plt.colorbar()
+        plt.tight_layout(pad=2)
         self.saveimg(title)
         plt.close()
         return
 
     # Function to compute ratio images from label, natural, and correction files
     def ratio_images(self, label_data, natural_data, label_correction_data, natural_correction_data, lcf, ncf, threshold):
-        # Correct data and compute ratios
-        label_corrected = msa.correct_spectra(label_data, label_correction_data, lcf)
-        natural_corrected = msa.correct_spectra(natural_data, natural_correction_data, ncf)
-        natural_thresholded, _ = msa.threshold(natural_corrected, threshold)
-        ratio = msa.compute_ratio(label_corrected, natural_thresholded)
+        # If correction data is provided, correct the data
+        if label_correction_data is not None:
+            label_data = msa.correct_spectra(label_data, label_correction_data, lcf)
+        if natural_correction_data is not None:
+            natural_data = msa.correct_spectra(natural_data, natural_correction_data, ncf)
+        # Threshold the natural data and compute the ratio
+        natural_thresholded, _ = msa.threshold(natural_data, threshold)
+        ratio = msa.compute_ratio(label_data, natural_thresholded)
         return ratio
 
     # Function to sort files in a group into label, natural, and correction
@@ -110,6 +119,10 @@ class MultispectralModel:
                 self.df.loc[self.df['fpath'] == file, 'type'] = 'Natural_Corr'
             else:
                 warnings.warn("Warning: " + file + " could not be sorted into a wavenumber group")
+        if label_correction_wavenum is None:
+            label_correction_file = None
+        if natural_correction_wavenum is None:
+            natural_correction_file = None
         if label_correction_wavenum == natural_correction_wavenum:
             natural_correction_file = label_correction_file
         return label_file, natural_file, label_correction_file, natural_correction_file
@@ -157,6 +170,10 @@ class MultispectralModel:
         loaded_data = []
         
         for filepath in filepaths:
+            # If the file path is None (i.e. file is unused), append None to the list
+            if filepath is None:
+                loaded_data.append(None)
+                continue
             try:
                 data = np.loadtxt(filepath, delimiter=',')
                 loaded_data.append(data)
@@ -218,7 +235,7 @@ class MultispectralModel:
         # Create the figure and subplots
         plot_layout = layout_mapping[num_images]
         fig, axs = plt.subplots(plot_layout[0], plot_layout[1], figsize=(10, 5))
-        plt.tight_layout()
+        plt.tight_layout(pad=2)
         axs = axs.flatten()
         return fig, axs
     
@@ -227,6 +244,7 @@ class MultispectralModel:
         fig, ax = plt.subplots(1, 1, figsize=(10, 5))
         plt.grid(False)
         msa.histogram(data, ax=ax, lower_bound=0)
+        plt.tight_layout(pad=2)
         self.saveimg(title + "_hist")
         plt.close()
         return
@@ -244,10 +262,10 @@ class MultispectralModel:
             # ax.histogram(selected, cmap='CMRmap', vmin=0, vmax=max_value) #####################
             ax.set_title(description)
 
-        hist_path = os.path.join(self.export_folder, "group_histogram_" + str(group_id)+self.get_ext()) #TODO: Make exporting a different function
+        hist_path = os.path.join(self.export_folder, "group_histogram_" + str(group_id)) #TODO: Make exporting a different function
         self.saveimg(hist_path)
         plt.close()
-        return hist_path
+        return hist_path + self.get_ext()
 
     def create_image(self, data, title, ax, max_value):
         im = ax.imshow(data, cmap='CMRmap', vmin=0, vmax=max_value)
@@ -257,6 +275,7 @@ class MultispectralModel:
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.05)
         plt.colorbar(im, cax=cax)
+        plt.tight_layout(pad=2)
 
         return
 
@@ -268,6 +287,10 @@ class MultispectralModel:
         # If there is only 1 key in data.keys() with the substring "_Corr", then rename the key "Label_Corr" to "Correction"
         if len([key for key in data.keys() if "_Corr" in key]) == 1:
             data["Correction"] = data.pop("Label_Corr")
+        # If None is in the dictionary, remove the key
+        keys_to_remove = [k for k, v in data.items() if v is None]
+        for key in keys_to_remove:
+            del data[key]
         
         ratio = data.pop("Ratio")
 
@@ -281,7 +304,7 @@ class MultispectralModel:
         img_path = os.path.join(self.export_folder, "group_" + str(group_id)) #TODO: Make exporting a different function
         self.saveimg(img_path)
         plt.close()
-        return img_path
+        return img_path + self.get_ext()
 
     def find_max_value(self, df: pd.DataFrame, include_ratio=False) -> float:
         """ Helper function to find the maximum value among matrices in a DataFrame.
@@ -329,13 +352,7 @@ class MultispectralModel:
         return
     
     def export_filelist(self):
+        # Ask for file name and location
+        
         self.df['fpath'].to_csv(os.path.join(self.export_folder, f"fpaths_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv"), index=False, mode = 'w')
-        return
-    
-    def import_filelist(self, file_df):
-        # file_of_files = askopenfilenames(filetypes=(("Comma Delimited", "*.csv"), ("All files", "*.*"),))
-        # df = pd.read_csv(file_of_files[0])
-        file_df = file_df[~file_df.applymap(lambda x: isinstance(x, str) and "ratio" in x.lower()).any(axis=1)]
-        filelist = file_df['fpath'].tolist()
-        self.add_files(filelist)
         return

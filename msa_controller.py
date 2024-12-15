@@ -18,7 +18,7 @@ class MultispectralController:
 
     # Connect signals from the view to controller methods
     def connect_signals(self):
-        self.view.Button_Add.config(command=self.add_files)
+        self.view.Button_Add.config(command=self.add_single_files)
         self.view.Button_Delete.config(command=self.delete_files)
         self.view.Button_Analyze.config(command=self.analyze_files)
         self.view.Button_ExportFolder.config(command=self.set_export_folder)
@@ -82,13 +82,16 @@ class MultispectralController:
         return
 
     def import_default_settings(self):
-        # Get the absolute path of the currently running Python file
-        current_file_path = os.path.abspath(__file__)
+        if not os.path.exists('msa_options.txt'):
+            self.model.set_ext('.jpg')
+            return
+        # # Get the absolute path of the currently running Python file
+        # current_file_path = os.path.abspath(__file__)
 
-        # Remove the file name and append 'msa_options.txt'
-        directory_path = os.path.dirname(current_file_path)
-        default = os.path.join(directory_path, 'msa_options.txt')
-        self.import_settings(default)
+        # # Remove the file name and append 'msa_options.txt'
+        # directory_path = os.path.dirname(current_file_path)
+        # default = os.path.join(directory_path, 'msa_options.txt')
+        self.import_settings('msa_options.txt')
         return
 
     def import_settings(self, file_path = None):
@@ -174,10 +177,14 @@ class MultispectralController:
             checkbox.set(True)
         return
     
-    def add_files(self):
+    def add_single_files(self):
         progress = self.view.ProgressBar(title="Adding Files")
         files = askopenfilenames(filetypes=(("Comma Delimited", "*.csv"), ("All files", "*.*"),))
+        self.add_files(files, progress)
+        return
+    def add_files(self, files, progress):
         if len(files) == 0:
+            progress.destroy()
             return
         outpath = self.model.get_dir(files[0])
         error_files = dict()
@@ -209,14 +216,50 @@ class MultispectralController:
         self.model.df = self.model.df.drop(idx_to_del).reset_index(drop=True)
         self.update_listbox()
 
+    def validate_entries(self):
+        # Ignore analyze request if no files are loaded
+        if self.model.df.empty:
+            tk.messagebox("Add Files", "Add files using \"Add Files\" button before analyzing.")
+            return None
+        # Get the values from the entries
+        args = [self.view.lw_entry.get(), # 0
+                self.view.nw_entry.get(), # 1
+                self.view.lcw_entry.get(), # 2
+                self.view.ncw_entry.get(), # 3
+                self.view.threshold_entry.get(), # 4
+                self.view.lcf_entry.get(), # 5
+                self.view.ncf_entry.get()] # 6
+        # Check if required fields are empty
+        if any(args[i] == '' for i in [0, 1, 4]):
+            tk.messagebox.showerror("Missing Fields", "Please fill out all fields before analyzing.")
+            return None
+        # Convert the string inputs to floats
+        for i in range(4,7):
+            s = args[i]
+            try:
+                args[i] = float(s) if s.strip() else 0.0
+            except ValueError:
+                tk.messagebox.showerror("Invalid Input", "Please enter a integer or decimal for the number of wavenumbers.")
+                return None
+        # If the correction factor is non-zero, but no correction factor label is entered, show an error
+        if ('' == args[2]) and (args[5] != 0):
+            tk.messagebox.showerror("Missing Fields", "Please enter a label for Frequency 2 Correction.")
+            return None
+        if ('' == args[3]) and (args[6] != 0):
+            tk.messagebox.showerror("Missing Fields", "Please enter a label for Frequency 1 Correction.")
+            return None
+        # If the correction factor for frequency is 0, set correction factor label to None
+        if args[5] == 0:
+            args[2] = None
+        if args[6] == 0:
+            args[3] = None
+        return args
+
     def analyze_files(self):
-        args = [self.view.lw_entry.get(),
-                self.view.nw_entry.get(),
-                self.view.lcw_entry.get(),
-                self.view.ncw_entry.get(),
-                float(self.view.threshold_entry.get()),
-                float(self.view.lcf_entry.get()),
-                float(self.view.ncf_entry.get())]
+        # Validate user inputs and prepare them for model method
+        args = self.validate_entries()
+        if args is None:
+            return
         progress = self.view.ProgressBar(title="Analyzing Files")
         groups = self.model.pre_analyze_files(*args)
         increment = 100 / len(groups)
@@ -250,7 +293,7 @@ class MultispectralController:
                 hist_path_new = os.path.join(self.model.export_folder, os.path.basename(hist_path))
                 os.rename(img_path, img_path_new)
                 os.rename(hist_path, hist_path_new)
-                self.model.df.loc[i, 'img_path'] = img_path_new
+                self.model.df.loc[i, 'im_path'] = img_path_new
                 self.model.df.loc[i, 'hist_path'] = hist_path_new
             except Exception as e:
                 tk.messagebox.showerror("Error", f"Error moving file: {e}")
@@ -345,11 +388,15 @@ class MultispectralController:
         
 
     def display_statistics(self, index):
+        if self.view.show_groups.get():
+            stats = "Statistics"
+            self.view.Button_Statistics.configure(text=stats)
+            return
         stats = self.model.df[['Mean', 'Median', 'Max_Signal', 'Standard Deviation', 'Standard Error', 'Count']]
         stats = np.round(stats.iloc[index,:].astype(float), 3)
-        stats = ("Mean:" + str(stats[0]) + ", Median:" + str(stats[1]) +
-                 ", Max:" + str(stats[2]) + ", Stdev:" + str(stats[3]) +
-                 ", SE:" + str(stats[4]) + ",  Count: " + str(int(stats[5])))
+        stats = ("Mean:" + str(stats.iloc[0]) + ", Median:" + str(stats.iloc[1]) +
+                 ", Max:" + str(stats.iloc[2]) + ", Stdev:" + str(stats.iloc[3]) +
+                 ", SE:" + str(stats.iloc[4]) + ",  Count: " + str(int(stats.iloc[5])))
         self.view.Button_Statistics.configure(text=stats)
 
     def get_listbox_group_index(self, index):
@@ -401,7 +448,10 @@ class MultispectralController:
         self.model.export_filelist()
 
     def import_filelist(self):
+        progress = self.view.ProgressBar(title="Adding Files")
         file_of_files = askopenfilenames(filetypes=(("Comma Delimited", "*.csv"), ("All files", "*.*"),))
-        df = pd.read_csv(file_of_files[0])
-        self.model.import_filelist(df)
-        self.update_listbox()
+        file_df = pd.read_csv(file_of_files[0])
+        file_df = file_df[~file_df.applymap(lambda x: isinstance(x, str) and "ratio" in x.lower()).any(axis=1)]
+        filelist = file_df['fpath'].tolist()
+        self.add_files(filelist, progress)
+        return

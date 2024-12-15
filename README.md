@@ -8,7 +8,7 @@ Multispectral Analysis is a graphical user interface (GUI) application designed 
 - **Image Ratioing**: Ratio two images together to analyze differences.
 - **Result Display**: Display the results individually or as groups.
 - **Histogram Display**: Display data as either images or histograms 
-- **Spectral Correction**: Correct each image in the ratio by a specific correction factorto a variable factor by a different specified image.
+- **Spectral Correction**: Correct each image in the ratio by a specific correction factor to a variable factor by a different specified image.
 - **Automatic Grouping**: Automatically group images based on common names.
 
 ## Installation

@@ -95,15 +95,15 @@ class MultispectralView:
         # self.Button_Analyze.configure(bg=self.default_blue)
         self.Button_Analyze.grid(row=9, column=0, rowspan=1, columnspan=2, sticky="nsew", padx=2)
 
-        self.Button_Filename = self.decorate(tk.Button(self.root, text="Filename"))
+        self.Button_Filename = self.decorate(tk.Label(self.root, text="Filename", relief="groove"))
         self.Button_Filename.grid(row=7, column=2, rowspan=1, columnspan=4, sticky="nsew", padx=2)
 
-        self.Button_Statistics = self.decorate(tk.Button(self.root, text="Statistics"))
+        self.Button_Statistics = self.decorate(tk.Label(self.root, text="Statistics", relief="groove"))
         self.Button_Statistics.grid(row=8, column=2, rowspan=2, columnspan=4, sticky="nsew", padx=2)
 
     def build_wavenumber_inputs(self):
         # Natural Wavenumber
-        nw_text = self.decorate(tk.Label(self.root, justify="left", text="Natural (cm-1):"))
+        nw_text = self.decorate(tk.Label(self.root, justify="left", text="Frequency 1:"))
         nw_text.grid(row=11, column=0, rowspan=1, columnspan=1, sticky="nsew", padx=(2,0), pady=2)
         
         nw = tk.StringVar()
@@ -111,7 +111,7 @@ class MultispectralView:
         self.nw_entry.grid(row=11, column=1, rowspan=1, columnspan=1, sticky="nsew", padx=(0,2), pady=2)
 
         # Natural Correction Wavenumber
-        ncw_text = self.decorate(tk.Label(self.root, justify="left", text="Natural Correction (cm-1):"))
+        ncw_text = self.decorate(tk.Label(self.root, justify="left", text="Frequency 1 Correction:"))
         ncw_text.grid(row=11, column=2, rowspan=1, columnspan=1, sticky="nsew", pady=2)
 
         ncw = tk.StringVar()
@@ -119,7 +119,7 @@ class MultispectralView:
         self.ncw_entry.grid(row=11, column=3, rowspan=1, columnspan=1, sticky="nsew", padx=(0,2), pady=2)
 
         # Natural Correction Factor
-        ncf_text = self.decorate(tk.Label(self.root,justify="left", text="Natural Correction Factor:"))
+        ncf_text = self.decorate(tk.Label(self.root,justify="left", text="Frequency 1 Correction Factor:"))
         ncf_text.grid(row=11, column=4, rowspan=1, columnspan=1, sticky="nsew", pady=2)
 
         natural_cf = tk.StringVar()
@@ -127,7 +127,7 @@ class MultispectralView:
         self.ncf_entry.grid(row=11, column=5, rowspan=1, columnspan=1, sticky="nsew", padx=(0,2), pady=2)
 
         # Label Wavenumber
-        lw_text = self.decorate(tk.Label(self.root, justify="left", text="Label (cm-1):"))
+        lw_text = self.decorate(tk.Label(self.root, justify="left", text="Frequency 2:"))
         lw_text.grid(row=12, column=0, rowspan=1, columnspan=1, sticky="nsew", pady=2)
 
         label_wavenum = tk.StringVar()
@@ -135,7 +135,7 @@ class MultispectralView:
         self.lw_entry.grid(row=12, column=1, rowspan=1, columnspan=1, sticky="nsew", padx=(0,2), pady=2)
 
         # Label Correction Wavenumber
-        lcw_text = self.decorate(tk.Label(self.root, justify="left", text="Label Correction (cm-1):"))
+        lcw_text = self.decorate(tk.Label(self.root, justify="left", text="Frequency 2 Correction:"))
         lcw_text.grid(row=12, column=2, rowspan=1, columnspan=1, sticky="nsew", pady=2)
 
         lcw = tk.StringVar()
@@ -143,7 +143,7 @@ class MultispectralView:
         self.lcw_entry.grid(row=12, column=3, rowspan=1, columnspan=1, sticky="nsew", padx=(0,2), pady=2)
 
         # Label Correction Factor
-        lcf_text = self.decorate(tk.Label(self.root, justify="left", text="Label Correction Factor:"))
+        lcf_text = self.decorate(tk.Label(self.root, justify="left", text="Frequency 2 Correction Factor:"))
         lcf_text.configure(justify="left")
         lcf_text.grid(row=12, column=4, rowspan=1, columnspan=1, sticky="nsew", pady=2)
 
@@ -181,11 +181,6 @@ class MultispectralView:
         self.file_menu.add_command(label="Import File List")
         self.file_menu.add_command(label="Export Settings")
         self.file_menu.add_command(label="Import Settings")
-
-        self.settings_menu = tk.Menu(self.menubar, tearoff=0)
-        self.menubar.add_cascade(label="Settings", menu=self.settings_menu)
-        self.settings_menu.add_command(label="Open Config")
-        self.settings_menu.add_command(label="Save Config")
 
         self.show_single.set(True)
         self.show_ratio.set(True)
@@ -234,7 +229,7 @@ class MultispectralView:
         scalar2 = img_height / original_height
         scalar = min(scalar1, scalar2)
 
-        img = img.resize((int(original_width*scalar), int(original_height*scalar)))
+        img = img.resize((int(original_width*scalar)-20, int(original_height*scalar)-20))
         self.panel_img = ImageTk.PhotoImage(img)
         self.img_panel.configure(image=self.panel_img)
         return
