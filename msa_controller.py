@@ -5,6 +5,8 @@ from PIL import ImageTk, Image
 import numpy as np
 import pandas as pd
 import os
+import cProfile
+from multiprocessing import Pool
 
 # Controller class to manage the logic between the Model and the View
 class MultispectralController:
@@ -189,7 +191,18 @@ class MultispectralController:
         outpath = self.model.get_dir(files[0])
         error_files = dict()
         increment = 100 / len(files)
-        
+        import time
+        t0 = time.time()
+        # processes_pool = Pool(len(files))
+        # try:
+        #     processes_pool.starmap(self.model.add_files, [(file, outpath) for file in files])
+        # except Exception as e:
+        #     print(f"Exception caught in main process: {e}")
+        # finally:
+        #     processes_pool.close()
+        #     processes_pool.join()
+        ## Error handling for adding files
+
         for i, file in enumerate(files):
             try:
                 self.model.add_files(file, outpath)
@@ -197,6 +210,8 @@ class MultispectralController:
                 error_files[file] = e
                 continue
             progress.update_progress(increment*i)
+        t1 = time.time()
+        print(f"Time to add files: {t1-t0}")
         self.update_listbox()
 
         progress.destroy()
@@ -255,6 +270,9 @@ class MultispectralController:
             args[3] = None
         return args
 
+    def profile_analyze_files(self):
+        cProfile.runctx('self.analyze_files()',globals(), locals(), "profile_analyze_files.txt")
+        return
     def analyze_files(self):
         # Validate user inputs and prepare them for model method
         args = self.validate_entries()
@@ -264,9 +282,13 @@ class MultispectralController:
         groups = self.model.pre_analyze_files(*args)
         increment = 100 / len(groups)
         progress.update_progress(1)
+        import time
+        t0 = time.time()
         for group_idx in groups:
             self.model.analyze_files(*args, group_idx)
             progress.update_progress(increment*group_idx)
+        t1 = time.time()
+        print(f"Time to analyze files: {t1-t0}")
         self.update_listbox()
         progress.destroy()
 
@@ -447,6 +469,9 @@ class MultispectralController:
     def export_filelist(self):
         self.model.export_filelist()
 
+    def profile_import_filelist(self):
+        cProfile.runctx('self.import_filelist()',globals(), locals(), "profile_import_filelist.txt")
+        return
     def import_filelist(self):
         progress = self.view.ProgressBar(title="Adding Files")
         file_of_files = askopenfilenames(filetypes=(("Comma Delimited", "*.csv"), ("All files", "*.*"),))

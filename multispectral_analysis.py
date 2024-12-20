@@ -67,7 +67,7 @@ def histogram(data, fname: str = None, ax = None, lower_bound: float = None, upp
     sns.set_style('darkgrid')
     if ax == None:
         fig, ax = plt.subplots()
-    g = sns.histplot(data = flat, kde = True, ax=ax)
+    g = sns.histplot(data = flat, ax=ax)
     if lower_bound != None or upper_bound != None:
         ax.set_xlim([lower_bound,upper_bound])
     # ax.set_xlabel("Ratio")

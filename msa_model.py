@@ -89,15 +89,26 @@ class MultispectralModel:
         plt.close()
         return
 
+    def save_data(self, data, title):
+        np.savetxt(title + ".csv", data, delimiter=",")
+        return
+
     # Function to compute ratio images from label, natural, and correction files
-    def ratio_images(self, label_data, natural_data, label_correction_data, natural_correction_data, lcf, ncf, threshold):
+    def ratio_images(self, label_data, natural_data, label_correction_data, natural_correction_data, lcf, ncf, threshold, fname=''):
+        should_save_corrections = True
+        should_save_threshold = True
         # If correction data is provided, correct the data
         if label_correction_data is not None:
             label_data = msa.correct_spectra(label_data, label_correction_data, lcf)
         if natural_correction_data is not None:
             natural_data = msa.correct_spectra(natural_data, natural_correction_data, ncf)
+        if should_save_corrections:
+            self.save_data(label_data, fname+"_freq2_corr")
+            self.save_data(natural_data, fname+"_freq1_corr")
         # Threshold the natural data and compute the ratio
         natural_thresholded, _ = msa.threshold(natural_data, threshold)
+        if should_save_threshold:
+            self.save_data(natural_thresholded, fname+"_freq1_thresh")
         ratio = msa.compute_ratio(label_data, natural_thresholded)
         return ratio
 
@@ -141,7 +152,11 @@ class MultispectralModel:
         if file in self.df['fpath'].unique():
             return
         
-        data = np.loadtxt(file, delimiter=',')
+        # data = np.loadtxt(file, delimiter=',')
+        data = self.load_files(file)
+        if data == []:
+            return
+        data = data[0]
         outpath = os.path.join(outfolder, Path(file).stem)
         image_path = outpath + self.get_ext()
         hist_path = outpath + "_hist" + self.get_ext()
@@ -175,7 +190,10 @@ class MultispectralModel:
                 loaded_data.append(None)
                 continue
             try:
-                data = np.loadtxt(filepath, delimiter=',')
+                # data = np.loadtxt(filepath, delimiter=',')
+                data = pd.read_csv(filepath, header=None).values
+                if data.dtype == 'O':
+                    raise Exception(filepath + " contains non-numeric data")
                 loaded_data.append(data)
             except Exception as e:
                 print(f"Error loading file {filepath}: {e}")
@@ -205,9 +223,10 @@ class MultispectralModel:
         label_data, natural_data, label_correction_data, natural_correction_data = self.load_files(
             label_file, natural_file, label_correction_file, natural_correction_file
             )
+        fname = Path(label_file).stem.replace(label_wavenum, "") 
         ratio = self.ratio_images(label_data, natural_data, label_correction_data, natural_correction_data,
-                                    lcf, natural_cf, threshold)
-        ratio_fname = Path(label_file).stem.replace(label_wavenum, "") + "_ratio"
+                                    lcf, natural_cf, threshold, fname)
+        ratio_fname = fname + "_ratio"
         ratio_im_path = os.path.join(self.export_folder, ratio_fname)
         self.save_image(ratio, ratio_im_path)
         self.create_histogram(ratio, ratio_im_path)

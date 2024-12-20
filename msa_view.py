@@ -276,12 +276,20 @@ class MultispectralView:
             self.export_filetype_entry.grid(row=0, column=1)
             self.export_filetype_hint = tk.Label(self.pref_frame, text="Choose the main file extension for future exports", fg='gray')
             self.export_filetype_hint.grid(row=1, column=0, columnspan=2, sticky='w')
-            # self.export_fig_label = tk.Label(self.pref_frame, text="Export .fig")
-            # self.export_fig_label.grid(row=2, column=0, sticky='w')
-            # self.export_fig_checkbox = tk.Checkbutton(self.pref_frame, variable=export_fig)
-            # self.export_fig_checkbox.grid(row=2, column=1)
-            # self.export_fig_hint = tk.Label(self.pref_frame, text="Choose whether future files should be exported as .fig as well", fg='gray')
-            # self.export_fig_hint.grid(row=3, column=0, columnspan=2, sticky='w')
+
+            # self.export_correction_label = tk.Label(self.pref_frame, text="Export Corrections")
+            # self.export_correction_label.grid(row=2, column=0, sticky='w')
+            # self.export_correction_checkbox = tk.Checkbutton(self.pref_frame, variable=export_fig)
+            # self.export_correction_checkbox.grid(row=2, column=1)
+            # self.export_correction_hint = tk.Label(self.pref_frame, text="Choose whether future files should be exported as .fig as well", fg='gray')
+            # self.export_correction_hint.grid(row=3, column=0, columnspan=2, sticky='w')
+
+            # self.export_threshold_label = tk.Label(self.pref_frame, text="Export .fig")
+            # self.export_threshold_label.grid(row=2, column=0, sticky='w')
+            # self.export_threshold_checkbox = tk.Checkbutton(self.pref_frame, variable=export_fig)
+            # self.export_threshold_checkbox.grid(row=2, column=1)
+            # self.export_threshold_hint = tk.Label(self.pref_frame, text="Choose whether future files should be exported as .fig as well", fg='gray')
+            # self.export_threshold_hint.grid(row=3, column=0, columnspan=2, sticky='w')
 
             # Put button on the bottom to save and quit 
             self.save_button = tk.Button(self.pref_frame, text="Save")
