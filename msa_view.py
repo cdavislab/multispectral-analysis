@@ -264,7 +264,7 @@ class MultispectralView:
             # Create a new window
             self.pref_window = tk.Toplevel(root)
             self.pref_window.title("Preferences")
-            self.pref_window.geometry("400x400")
+            # self.pref_window.geometry("400x400")
             # Create a frame to hold the widgets
             self.pref_frame = tk.Frame(self.pref_window)
             self.pref_frame.pack(expand=True, fill='both')
