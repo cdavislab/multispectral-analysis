@@ -1,5 +1,6 @@
 import tkinter as tk
 import tkinter.font as tkFont
+from tkinter import ttk
 from pathlib import Path
 from PIL import Image, ImageTk
 
@@ -206,6 +207,9 @@ class MultispectralView:
         self.show_histograms = tk.BooleanVar()
         self.show_single = tk.BooleanVar()
         self.show_ratio = tk.BooleanVar()
+        self.export_correction = tk.BooleanVar()
+        self.export_threshold = tk.BooleanVar()
+        return
 
     def get_shape(self, widget):
         geometry = widget.winfo_geometry()  # Get the geometry string
@@ -260,41 +264,61 @@ class MultispectralView:
 
     class PropertiesView:
         
-        def __init__(self, root, export_filetype):
+        def __init__(self, root, export_filetype, export_correction, export_threshold):
             # Create a new window
             self.pref_window = tk.Toplevel(root)
             self.pref_window.title("Preferences")
-            # self.pref_window.geometry("400x400")
+
             # Create a frame to hold the widgets
             self.pref_frame = tk.Frame(self.pref_window)
-            self.pref_frame.pack(expand=True, fill='both')
-            # Create the widgets
-            self.export_filetype_label= tk.Label(self.pref_frame, text="Export File Type (e.g. .jpg, .png, .tiff, etc.)")
-            self.export_filetype_label.grid(row=0, column=0, sticky='w')
-            self.export_filetype_entry = tk.Entry(self.pref_frame)
-            self.export_filetype_entry.insert(0, export_filetype)
-            self.export_filetype_entry.grid(row=0, column=1)
-            self.export_filetype_hint = tk.Label(self.pref_frame, text="Choose the main file extension for future exports", fg='gray')
-            self.export_filetype_hint.grid(row=1, column=0, columnspan=2, sticky='w')
+            self.pref_frame.pack()
 
-            # self.export_correction_label = tk.Label(self.pref_frame, text="Export Corrections")
-            # self.export_correction_label.grid(row=2, column=0, sticky='w')
-            # self.export_correction_checkbox = tk.Checkbutton(self.pref_frame, variable=export_fig)
-            # self.export_correction_checkbox.grid(row=2, column=1)
-            # self.export_correction_hint = tk.Label(self.pref_frame, text="Choose whether future files should be exported as .fig as well", fg='gray')
-            # self.export_correction_hint.grid(row=3, column=0, columnspan=2, sticky='w')
+            self.padx_label = (20,0)
+            self.padx_entry = (0,20)
+            self.padx_hint = (20,20)
+            self.properties = dict()
+            row = 0
+            self.make_form("Export File Type", 
+                           "Choose file extension for future exports (e.g. .jpg, .png, .tiff, etc.)",
+                           "entry", export_filetype, export_filetype, row)
+            row += 2
 
-            # self.export_threshold_label = tk.Label(self.pref_frame, text="Export .fig")
-            # self.export_threshold_label.grid(row=2, column=0, sticky='w')
-            # self.export_threshold_checkbox = tk.Checkbutton(self.pref_frame, variable=export_fig)
-            # self.export_threshold_checkbox.grid(row=2, column=1)
-            # self.export_threshold_hint = tk.Label(self.pref_frame, text="Choose whether future files should be exported as .fig as well", fg='gray')
-            # self.export_threshold_hint.grid(row=3, column=0, columnspan=2, sticky='w')
+            separator = ttk.Separator(self.pref_frame, orient='horizontal')
+            separator.grid(row=row, column=0, columnspan=2, sticky='ew')
+            row += 1
+
+            self.make_form("Export Corrections", 
+                           "Export raw files after correction",
+                           "checkbutton", export_correction, export_correction, row)
+            row += 2
+
+            self.make_form("Export Threshold", 
+                           "Export raw files after thresholding",
+                           "checkbutton", export_threshold, export_threshold, row)
+            row += 2
 
             # Put button on the bottom to save and quit 
             self.save_button = tk.Button(self.pref_frame, text="Save")
-            self.save_button.grid(row=4, column=0, columnspan=2)
+            self.save_button.grid(row=row, column=0, columnspan=2, pady=(10,5))
 
+        def make_form(self, title, hint, type_of_entry, variable, default_value, row):
+            # Generalize making of the forms
+            label = tk.Label(self.pref_frame, text=title)
+            label.grid(row=row, column=0, sticky='w', padx=self.padx_label)
+            if type_of_entry == "entry":
+                entry = tk.Entry(self.pref_frame)
+                entry.insert(0, default_value)
+                entry.grid(row=row, column=1, sticky='we', padx=self.padx_entry)
+            elif type_of_entry == "checkbutton":
+                entry = tk.Checkbutton(self.pref_frame, variable=variable)
+                entry.grid(row=row, column=1, sticky='w', padx=self.padx_entry)
+            label_hint = tk.Label(self.pref_frame, text=hint, fg='gray')
+            label_hint.grid(row=row+1, column=0, columnspan=2, sticky='w', padx=self.padx_hint)
+            self.properties[title] = {"label": label, "entry": entry, "label_hint": label_hint}
+            return
+        
+        def get_setting(self, title):
+            return self.properties[title]["entry"].get()
     class ProgressBar(tk.Tk):
         def __init__(self, title="Progress Bar"):
             super().__init__()
@@ -308,15 +332,6 @@ class MultispectralView:
             self.progress = 0  # Initialize progress value
             self.canvas.delete("progress")
             self.update_progress(0)
-
-        # def start_progress(self):
-        #     """Simulate a progress bar using a canvas."""
-        #     self.progress = 0
-        #     self.canvas.delete("progress")  # Clear any previous progress
-
-        #     for i in range(101):  # Progress from 0 to 100
-        #         self.update_progress(i)  # Update the progress bar
-        #         time.sleep(0.05)  # Simulate time-consuming task
 
         def update_progress(self, value):
             """Update the progress bar on the canvas."""

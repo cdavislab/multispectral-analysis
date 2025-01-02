@@ -46,12 +46,15 @@ class MultispectralController:
 
     def preferences(self):
         self.properties = self.view.PropertiesView(
-            self.view.root,self.model.get_ext())
+            self.view.root,self.model.get_ext(), self.view.export_correction, self.view.export_threshold)
         self.properties.save_button.config(command=self.pref_save_and_quit)
         return
 
     def pref_save_and_quit(self):
-        self.model.set_ext(self.properties.export_filetype_entry.get())
+        filetype = self.properties.get_setting("Export File Type")
+        should_export_correction = self.properties.get_setting("Export Correction")
+        should_export_threshold = self.properties.get_setting("Export Threshold")
+        self.model.set_ext(filetype)
         self.properties.pref_window.destroy()
         return
 
