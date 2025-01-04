@@ -240,37 +240,39 @@ class MultispectralController:
             tk.messagebox("Add Files", "Add files using \"Add Files\" button before analyzing.")
             return None
         # Get the values from the entries
-        args = [self.view.lw_entry.get(), # 0
-                self.view.nw_entry.get(), # 1
-                self.view.lcw_entry.get(), # 2
-                self.view.ncw_entry.get(), # 3
-                self.view.threshold_entry.get(), # 4
-                self.view.lcf_entry.get(), # 5
-                self.view.ncf_entry.get()] # 6
+        args = {"freq1": self.view.lw_entry.get(), # 0
+                "freq2": self.view.nw_entry.get(), # 1
+                "freq1c": self.view.lcw_entry.get(), # 2
+                "freq2c": self.view.ncw_entry.get(), # 3
+                "threshold": self.view.threshold_entry.get(), # 4
+                "freq1cf": self.view.lcf_entry.get(), # 5
+                "freq2cf": self.view.ncf_entry.get()} # 6
         # Check if required fields are empty
-        if any(args[i] == '' for i in [0, 1, 4]):
+        if any(args[key] == '' for key in ['freq1', 'freq2']):
             tk.messagebox.showerror("Missing Fields", "Please fill out all fields before analyzing.")
             return None
         # Convert the string inputs to floats
-        for i in range(4,7):
-            s = args[i]
+        for key in ['threshold','freq1cf', 'freq2cf']:
+            s = args[key]
             try:
-                args[i] = float(s) if s.strip() else 0.0
+                args[key] = float(s) if s.strip() else 0.0
             except ValueError:
-                tk.messagebox.showerror("Invalid Input", "Please enter a integer or decimal for the number of wavenumbers.")
+                tk.messagebox.showerror("Invalid Input", "Please enter an integer or decimal for the number of wavenumbers.")
                 return None
+            
+        
         # If the correction factor is non-zero, but no correction factor label is entered, show an error
-        if ('' == args[2]) and (args[5] != 0):
-            tk.messagebox.showerror("Missing Fields", "Please enter a label for Frequency 2 Correction.")
-            return None
-        if ('' == args[3]) and (args[6] != 0):
+        if ('' == args['freq1c']) and (args['freq1cf'] != 0):
             tk.messagebox.showerror("Missing Fields", "Please enter a label for Frequency 1 Correction.")
             return None
+        if ('' == args['freq2c']) and (args['freq2cf'] != 0):
+            tk.messagebox.showerror("Missing Fields", "Please enter a label for Frequency 2 Correction.")
+            return None
         # If the correction factor for frequency is 0, set correction factor label to None
-        if args[5] == 0:
-            args[2] = None
-        if args[6] == 0:
-            args[3] = None
+        if args['freq1cf'] == 0:
+            args['freq1c'] = None
+        if args['freq2cf'] == 0:
+            args['freq2c'] = None
         return args
 
     def profile_analyze_files(self):
@@ -278,17 +280,15 @@ class MultispectralController:
         return
     def analyze_files(self):
         # Validate user inputs and prepare them for model method
-        args = self.validate_entries()
-        if args is None:
-            return
+        entries = self.validate_entries()
         progress = self.view.ProgressBar(title="Analyzing Files")
-        groups = self.model.pre_analyze_files(*args)
+        groups = self.model.pre_analyze_files(entries)
         increment = 100 / len(groups)
         progress.update_progress(1)
         import time
         t0 = time.time()
         for group_idx in groups:
-            self.model.analyze_files(*args, group_idx)
+            self.model.analyze_files(entries, group_idx)
             progress.update_progress(increment*group_idx)
         t1 = time.time()
         print(f"Time to analyze files: {t1-t0}")

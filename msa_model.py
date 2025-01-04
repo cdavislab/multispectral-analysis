@@ -66,10 +66,6 @@ class MultispectralModel:
 
         return df
 
-    def request_group_check(self, groups_df: pd.DataFrame):
-        #TODO: Implement a GUI to ask user if groups are correct 
-        return groups_df
-
     def assign_groups(self, groups_df: pd.DataFrame):
         for idx, row in groups_df.iterrows():
             # Slice columns from [1:] to remove identifier column
@@ -94,19 +90,19 @@ class MultispectralModel:
         return
 
     # Function to compute ratio images from label, natural, and correction files
-    def ratio_images(self, label_data, natural_data, label_correction_data, natural_correction_data, lcf, ncf, threshold, fname=''):
+    def ratio_images(self, data, entries, options, fname=''):
         should_save_corrections = True
         should_save_threshold = True
         # If correction data is provided, correct the data
-        if label_correction_data is not None:
-            label_data = msa.correct_spectra(label_data, label_correction_data, lcf)
-        if natural_correction_data is not None:
-            natural_data = msa.correct_spectra(natural_data, natural_correction_data, ncf)
+        if data['freq1c'] is not None:
+            label_data = msa.correct_spectra(data['freq1'], data['freq1c'], entries['freq1cf'])
+        if data['freq2c'] is not None:
+            natural_data = msa.correct_spectra(data['freq2'], data['freq2c'], entries['freq2cf'])
         if should_save_corrections:
             self.save_data(label_data, fname+"_freq2_corr")
             self.save_data(natural_data, fname+"_freq1_corr")
         # Threshold the natural data and compute the ratio
-        natural_thresholded, _ = msa.threshold(natural_data, threshold)
+        natural_thresholded, _ = msa.threshold(natural_data, entries['threshold'])
         if should_save_threshold:
             self.save_data(natural_thresholded, fname+"_freq1_thresh")
         ratio = msa.compute_ratio(label_data, natural_thresholded)
@@ -200,10 +196,9 @@ class MultispectralModel:
         
         return loaded_data
 
-    def pre_analyze_files(self, label_wavenum, natural_wavenum, label_correction_wavenum, natural_correction_wavenum, threshold, lcf, natural_cf):
-        groups_df = self.group_files(self.df['fpath'], label_wavenum, natural_wavenum,
-                label_correction_wavenum, natural_correction_wavenum)
-        groups_df = self.request_group_check(groups_df)
+    def pre_analyze_files(self, entries):
+        groups_df = self.group_files(self.df['fpath'], entries['freq1'], entries['freq2'],
+                entries['freq1c'], entries['freq2c'])
         self.assign_groups(groups_df)
         
         groups = self.df['group'].unique()
@@ -212,20 +207,17 @@ class MultispectralModel:
         return groups
 
     # Function to analyze files and compute ratio images
-    def analyze_files(self, label_wavenum, natural_wavenum, label_correction_wavenum, natural_correction_wavenum, threshold, lcf, natural_cf, group_idx):        
+    def analyze_files(self, entries, group_idx):        
         """
         Main function to analyze files. Groups files, asks if groups are correct, and computes ratio images. 
         """
+        options = {} # dummy variable for now
         group = self.df[self.df['group'] == group_idx]['fpath'].values
-        label_file, natural_file, label_correction_file, natural_correction_file = self.sort_wavenumbers(
-            group, label_wavenum, natural_wavenum, label_correction_wavenum, natural_correction_wavenum
-            )
-        label_data, natural_data, label_correction_data, natural_correction_data = self.load_files(
-            label_file, natural_file, label_correction_file, natural_correction_file
-            )
-        fname = Path(label_file).stem.replace(label_wavenum, "") 
-        ratio = self.ratio_images(label_data, natural_data, label_correction_data, natural_correction_data,
-                                    lcf, natural_cf, threshold, fname)
+        filenames = self.sort_wavenumbers(group, entries['freq1'], entries['freq2'], entries['freq1c'], entries['freq2c'])
+        label_data, natural_data, label_correction_data, natural_correction_data = self.load_files(*filenames)
+        data = {'freq1': label_data, 'freq2': natural_data, 'freq1c': label_correction_data, 'freq2c': natural_correction_data}
+        fname = Path(filenames[0]).stem.replace(entries['freq1'], "") 
+        ratio = self.ratio_images(data, entries, options, fname)
         ratio_fname = fname + "_ratio"
         ratio_im_path = os.path.join(self.export_folder, ratio_fname)
         self.save_image(ratio, ratio_im_path)
@@ -233,13 +225,11 @@ class MultispectralModel:
         summary = msa.summarize(ratio)
         summary = list(summary[0].astype('float'))
         self.df.loc[self.df.shape[0]] = [ratio_fname, ratio_fname, ratio_im_path + self.get_ext(), ratio_im_path+"_hist"+self.get_ext(), group_idx, 'Ratio'] + summary
-        files = {'Label': label_data, 'Natural': natural_data,
-                    'Label_Corr': label_correction_data, 'Natural_Corr': natural_correction_data,
-                    'Ratio': ratio}
-        if label_correction_file == natural_correction_file:
-            files.pop('Natural_Corr') # HACK: Should be named correction if the same 
-        self.group_images[group_idx] = self.create_group_image(files, group_idx)
-        self.group_histograms[group_idx] = self.create_group_histogram(files, group_idx)
+        data['ratio'] = ratio
+        if entries['freq1c'] == entries['freq2c']: # if correction file names are the same..
+            data.pop('freq2c') # HACK: Should be named correction if the same 
+        self.group_images[group_idx] = self.create_group_image(data, group_idx)
+        self.group_histograms[group_idx] = self.create_group_histogram(data, group_idx)
         return
     
     def generate_group_figure(self, num_images):
@@ -304,21 +294,21 @@ class MultispectralModel:
         max_value = self.find_max_value(df_slice) # First 4 elements are non-ratio matrices
 
         # If there is only 1 key in data.keys() with the substring "_Corr", then rename the key "Label_Corr" to "Correction"
-        if len([key for key in data.keys() if "_Corr" in key]) == 1:
-            data["Correction"] = data.pop("Label_Corr")
+        if len([key for key in data.keys() if "c" in key]) == 1:
+            data["Correction"] = data.pop("freq1c")
         # If None is in the dictionary, remove the key
         keys_to_remove = [k for k, v in data.items() if v is None]
         for key in keys_to_remove:
             del data[key]
         
-        ratio = data.pop("Ratio")
+        ratio = data.pop("ratio")
 
         for i, description in enumerate(data.keys()):
             selected = data[description]    
             self.create_image(selected, description, axs[i], max_value)
 
         # Create the ratio image
-        self.create_image(ratio, "Ratio", axs[-1], ratio.max())
+        self.create_image(ratio, "ratio", axs[-1], ratio.max())
 
         img_path = os.path.join(self.export_folder, "group_" + str(group_id)) #TODO: Make exporting a different function
         self.saveimg(img_path)
@@ -328,7 +318,7 @@ class MultispectralModel:
     def find_max_value(self, df: pd.DataFrame, include_ratio=False) -> float:
         """ Helper function to find the maximum value among matrices in a DataFrame.
         Optionally include ratio images. """
-        idx = df['type'] != 'Ratio'
+        idx = df['type'] != 'ratio'
         if include_ratio:
             idx = slice(None)
         return df.loc[idx, 'Max_Signal'].max()
