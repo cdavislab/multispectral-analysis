@@ -52,7 +52,7 @@ class MultispectralController:
 
     def pref_save_and_quit(self):
         filetype = self.properties.get_setting("Export File Type")
-        should_export_correction = self.properties.get_setting("Export Correction")
+        should_export_correction = self.properties.get_setting("Export Corrections")
         should_export_threshold = self.properties.get_setting("Export Threshold")
         self.model.set_ext(filetype)
         self.properties.pref_window.destroy()
@@ -279,6 +279,8 @@ class MultispectralController:
         cProfile.runctx('self.analyze_files()',globals(), locals(), "profile_analyze_files.txt")
         return
     def analyze_files(self):
+        # Potential BUG: Freq1 and Freq are swapped 
+
         # Validate user inputs and prepare them for model method
         entries = self.validate_entries()
         progress = self.view.ProgressBar(title="Analyzing Files")

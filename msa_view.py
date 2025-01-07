@@ -310,8 +310,9 @@ class MultispectralView:
                 entry.insert(0, default_value)
                 entry.grid(row=row, column=1, sticky='we', padx=self.padx_entry)
             elif type_of_entry == "checkbutton":
-                entry = tk.Checkbutton(self.pref_frame, variable=variable)
-                entry.grid(row=row, column=1, sticky='w', padx=self.padx_entry)
+                entry = variable
+                checkbox = tk.Checkbutton(self.pref_frame, variable=entry)
+                checkbox.grid(row=row, column=1, sticky='w', padx=self.padx_entry)
             label_hint = tk.Label(self.pref_frame, text=hint, fg='gray')
             label_hint.grid(row=row+1, column=0, columnspan=2, sticky='w', padx=self.padx_hint)
             self.properties[title] = {"label": label, "entry": entry, "label_hint": label_hint}

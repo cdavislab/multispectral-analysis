@@ -89,24 +89,18 @@ class MultispectralModel:
         np.savetxt(title + ".csv", data, delimiter=",")
         return
 
-    # Function to compute ratio images from label, natural, and correction files
-    def ratio_images(self, data, entries, options, fname=''):
-        should_save_corrections = True
-        should_save_threshold = True
+    # Function to compute ratio images from freq1, freq2, and correction files
+    def _correct_and_ratio(self, data, entries):
+        freq1_corrected = data['freq1']
+        freq2_corrected = data['freq2']
         # If correction data is provided, correct the data
         if data['freq1c'] is not None:
-            label_data = msa.correct_spectra(data['freq1'], data['freq1c'], entries['freq1cf'])
+            freq1_corrected = msa.correct_spectra(data['freq1'], data['freq1c'], entries['freq1cf'])
         if data['freq2c'] is not None:
-            natural_data = msa.correct_spectra(data['freq2'], data['freq2c'], entries['freq2cf'])
-        if should_save_corrections:
-            self.save_data(label_data, fname+"_freq2_corr")
-            self.save_data(natural_data, fname+"_freq1_corr")
-        # Threshold the natural data and compute the ratio
-        natural_thresholded, _ = msa.threshold(natural_data, entries['threshold'])
-        if should_save_threshold:
-            self.save_data(natural_thresholded, fname+"_freq1_thresh")
-        ratio = msa.compute_ratio(label_data, natural_thresholded)
-        return ratio
+            freq2_corrected = msa.correct_spectra(data['freq2'], data['freq2c'], entries['freq2cf'])
+        freq2_thresholded, _ = msa.threshold(freq2_corrected, entries['threshold'])
+        ratio = msa.compute_ratio(freq1_corrected, freq2_thresholded)
+        return freq1_corrected, freq2_corrected, freq2_thresholded, ratio
 
     # Function to sort files in a group into label, natural, and correction
     def sort_wavenumbers(self, group, label_wavenum, natural_wavenum, 
@@ -206,32 +200,68 @@ class MultispectralModel:
         self.group_histograms = [None for _ in range(len(groups))]
         return groups
 
-    # Function to analyze files and compute ratio images
-    def analyze_files(self, entries, group_idx):        
-        """
-        Main function to analyze files. Groups files, asks if groups are correct, and computes ratio images. 
-        """
-        options = {} # dummy variable for now
-        group = self.df[self.df['group'] == group_idx]['fpath'].values
-        filenames = self.sort_wavenumbers(group, entries['freq1'], entries['freq2'], entries['freq1c'], entries['freq2c'])
-        label_data, natural_data, label_correction_data, natural_correction_data = self.load_files(*filenames)
-        data = {'freq1': label_data, 'freq2': natural_data, 'freq1c': label_correction_data, 'freq2c': natural_correction_data}
-        fname = Path(filenames[0]).stem.replace(entries['freq1'], "") 
-        ratio = self.ratio_images(data, entries, options, fname)
+    def _save_output_data(self, freq1_corrected, freq2_corrected, freq2_thresholded,
+                          ratio, entries, fname, options):
+        if options['should_save_corrections']:
+            self.save_data(freq1_corrected, fname+"_"+entries['freq1']+"_corr")
+            self.save_data(freq2_corrected, fname+"_"+entries['freq2']+"_corr")
+        if options['should_save_threshold']:
+            self.save_data(freq2_thresholded, fname+"_"+entries['freq2']+"_thresh")
         ratio_fname = fname + "_ratio"
         ratio_im_path = os.path.join(self.export_folder, ratio_fname)
         self.save_image(ratio, ratio_im_path)
         self.create_histogram(ratio, ratio_im_path)
-        summary = msa.summarize(ratio)
+
+    def create_paths(self, fname, extra):
+        fname = fname + extra
+        image_path = os.path.join(self.export_folder, fname + self.get_ext())
+        histogram_path = os.path.join(self.export_folder, fname + "_hist" +self.get_ext())
+        return fname, image_path, histogram_path
+    
+
+    def _summarize_and_save_to_df(self, data, fname, group_idx=None, type=None):
+        type_to_fname = {"Ratio": "_ratio"}
+        summary = msa.summarize(data)
         summary = list(summary[0].astype('float'))
-        self.df.loc[self.df.shape[0]] = [ratio_fname, ratio_fname, ratio_im_path + self.get_ext(), ratio_im_path+"_hist"+self.get_ext(), group_idx, 'Ratio'] + summary
+        fname, image_path, histogram_path = self.create_paths(fname, type_to_fname[type])
+        self.df.loc[self.df.shape[0]] = [fname, fname, image_path, histogram_path, group_idx, type] + summary
+        return
+    # Function to analyze files and compute ratio images
+    # Labels wavenumbers as freq1, freq2, freq1c, and freq2c,
+    # loads data, computes ratio, saves ratio, 
+    def analyze_files(self, entries, group_idx):
+        #TODO: Make sure refactor works. Implement options
+        """
+        Main function to analyze files. Groups files, asks if groups are correct, and computes ratio images. 
+        """
+        options = {"should_save_corrections": True, "should_save_threshold": True} # dummy variable for now
+        data, fname = self._load_group(entries, group_idx)
+        output_data = self._correct_and_ratio(data, entries)
+        self._save_output_data(*output_data, entries, fname, options)
+        ratio = output_data[3]
+        self._summarize_and_save_to_df(ratio, fname, group_idx, 'Ratio')
         data['ratio'] = ratio
         if entries['freq1c'] == entries['freq2c']: # if correction file names are the same..
             data.pop('freq2c') # HACK: Should be named correction if the same 
+            
         self.group_images[group_idx] = self.create_group_image(data, group_idx)
         self.group_histograms[group_idx] = self.create_group_histogram(data, group_idx)
         return
     
+    def _load_group(self, entries, group_idx):
+        fpaths = self._get_group(group_idx)
+        fpaths = self.sort_wavenumbers(fpaths, entries['freq1'], entries['freq2'], entries['freq1c'], entries['freq2c'])
+        fname = self._find_base_name(fpaths[0], entries['freq1'])
+        data = self.load_files(*fpaths)
+        data = {'freq1': data[0], 'freq2': data[1], 'freq1c': data[2], 'freq2c': data[3]}
+        return data, fname
+
+    def _get_group(self, idx):
+        return self.df[self.df['group'] == idx]['fpath'].values
+
+    def _find_base_name(self, file, extra):
+        return Path(file).stem.replace(extra, "")
+        
     def generate_group_figure(self, num_images):
         layout_mapping = {
             1: (1, 1),
