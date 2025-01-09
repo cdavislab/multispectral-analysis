@@ -63,7 +63,6 @@ class MultispectralController:
                              "Export Threshold": "save_threshold_freq2"}
         keys = self.properties.get_setting_keys()
         for key in keys: # TODO: check valid preferences first
-            print(label_to_variable[key], self.properties.get_setting(key))
             self.model.set_pref(label_to_variable[key], self.properties.get_setting(key))
 
         self.properties.pref_window.destroy()
@@ -191,8 +190,6 @@ class MultispectralController:
             progress.destroy()
             return
         outpath = self.model.get_dir(files[0])
-        print("This is the outpath")
-        print(outpath)
         error_files = dict()
         increment = 100 / len(files)
         import time

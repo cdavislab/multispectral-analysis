@@ -208,19 +208,13 @@ class MultispectralModel:
                           ratio, entries, fname):
         path = self.get_pref('export_folder')
         if self.get_pref('save_correction_freq1'):
-            print("Saving correction freq1")
             fpath = os.path.join(path, fname+"_"+entries['freq1']+"_corr")
-            print(fpath)
             self.save_data(freq1_corrected, fpath)
         if self.get_pref('save_correction_freq2'):
-            print("Saving correction freq2")
             fpath = os.path.join(path, fname+"_"+entries['freq2']+"_corr")
             self.save_data(freq2_corrected, fpath)
-            print(fpath)
         if self.get_pref('save_threshold_freq2'):
-            print("Saving threshold freq2")
             fpath = os.path.join(path, fname+"_"+entries['freq2']+"_thresh")
-            print(fpath)
             self.save_data(freq2_thresholded, fpath)
         _, ratio_fpath, _, _ = self.create_paths(fname, "_ratio")
         self.save_image(ratio, ratio_fpath)
@@ -247,11 +241,9 @@ class MultispectralModel:
     # Labels wavenumbers as freq1, freq2, freq1c, and freq2c,
     # loads data, computes ratio, saves ratio, 
     def analyze_files(self, entries, group_idx):
-        #TODO: Make sure refactor works. Implement options
         """
         Main function to analyze files. Groups files, asks if groups are correct, and computes ratio images. 
         """
-        # TODO: remove; options = {"should_save_corrections": True, "should_save_threshold": True} # dummy variable for now
         data, fname = self._load_group(entries, group_idx)
         output_data = self._correct_and_ratio(data, entries)
         self._save_output_data(*output_data, entries, fname)

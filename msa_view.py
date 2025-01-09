@@ -339,8 +339,6 @@ class MultispectralView:
                 column_num = 1
                 for form in (form1, form2):
                     subtitle, entry = form
-                    print(entry)
-                    print(type(entry))
                     sublabel = tk.Label(self.pref_frame, text=subtitle)
                     sublabel.grid(row=row, column=column_num, sticky='w')
                     column_num += 1
@@ -351,8 +349,6 @@ class MultispectralView:
             return
 
         def get_setting(self, title):
-            # print(self.properties[title]["entry"])
-            # print(type(self.properties[title]["entry"]))
             return self.properties[title]["entry"].get()
         
         def get_setting_keys(self):
