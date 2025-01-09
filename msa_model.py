@@ -15,9 +15,13 @@ class MultispectralModel:
                                         'Standard Error', 'Count'])
         self.files = []  # List to hold file paths
         self.isAnalyzed = False  # Flag to check if files are analyzed
-        self.dpi = 300  # DPI setting for image saving
-        self.export_folder = "msa_analysis"  # Default export folder
-        self.subdivide_files = True  # Flag to subdivide files into folders
+        self.preferences = {'dpi': 300,
+                            'export_folder': 'msa_analysis',
+                            'subdivide_files': True,
+                            'filetype': '.jpg',
+                            'save_correction_freq1': False,
+                            'save_correction_freq2': False,
+                            'save_threshold_freq2': False}
 
     def group_files(self, file_list: list, label: str, natural: str, label_corr:str, natural_corr: str) -> pd.DataFrame:
         """
@@ -129,10 +133,10 @@ class MultispectralModel:
         return label_file, natural_file, label_correction_file, natural_correction_file
 
     def get_dir(self, file):
-        outfolder = self.export_folder
-        if self.subdivide_files:
+        outfolder = self.get_pref('export_folder')
+        if self.get_pref('subdivide_files'):
             parent = Path(file).parent.name
-            outfolder = os.path.join(self.export_folder, parent)
+            outfolder = os.path.join(self.get_pref('export_folder'), parent)
         Path(outfolder).mkdir(parents=True, exist_ok=True)
         return outfolder
 
@@ -201,31 +205,44 @@ class MultispectralModel:
         return groups
 
     def _save_output_data(self, freq1_corrected, freq2_corrected, freq2_thresholded,
-                          ratio, entries, fname, options):
-        if options['should_save_corrections']:
-            self.save_data(freq1_corrected, fname+"_"+entries['freq1']+"_corr")
-            self.save_data(freq2_corrected, fname+"_"+entries['freq2']+"_corr")
-        if options['should_save_threshold']:
-            self.save_data(freq2_thresholded, fname+"_"+entries['freq2']+"_thresh")
-        ratio_fname = fname + "_ratio"
-        ratio_im_path = os.path.join(self.export_folder, ratio_fname)
-        self.save_image(ratio, ratio_im_path)
-        self.create_histogram(ratio, ratio_im_path)
+                          ratio, entries, fname):
+        path = self.get_pref('export_folder')
+        if self.get_pref('save_correction_freq1'):
+            print("Saving correction freq1")
+            fpath = os.path.join(path, fname+"_"+entries['freq1']+"_corr")
+            print(fpath)
+            self.save_data(freq1_corrected, fpath)
+        if self.get_pref('save_correction_freq2'):
+            print("Saving correction freq2")
+            fpath = os.path.join(path, fname+"_"+entries['freq2']+"_corr")
+            self.save_data(freq2_corrected, fpath)
+            print(fpath)
+        if self.get_pref('save_threshold_freq2'):
+            print("Saving threshold freq2")
+            fpath = os.path.join(path, fname+"_"+entries['freq2']+"_thresh")
+            print(fpath)
+            self.save_data(freq2_thresholded, fpath)
+        _, ratio_fpath, _, _ = self.create_paths(fname, "_ratio")
+        self.save_image(ratio, ratio_fpath)
+        self.create_histogram(ratio, ratio_fpath)
 
     def create_paths(self, fname, extra):
+        path = self.get_pref('export_folder')
         fname = fname + extra
-        image_path = os.path.join(self.export_folder, fname + self.get_ext())
-        histogram_path = os.path.join(self.export_folder, fname + "_hist" +self.get_ext())
-        return fname, image_path, histogram_path
+        fpath = os.path.join(path, fname)
+        image_path = os.path.join(path, fname + self.get_ext())
+        histogram_path = os.path.join(path, fname + "_hist" +self.get_ext())
+        return fname, fpath, image_path, histogram_path
     
 
     def _summarize_and_save_to_df(self, data, fname, group_idx=None, type=None):
         type_to_fname = {"Ratio": "_ratio"}
         summary = msa.summarize(data)
         summary = list(summary[0].astype('float'))
-        fname, image_path, histogram_path = self.create_paths(fname, type_to_fname[type])
-        self.df.loc[self.df.shape[0]] = [fname, fname, image_path, histogram_path, group_idx, type] + summary
+        fname, fpath, image_path, histogram_path = self.create_paths(fname, type_to_fname[type])
+        self.df.loc[self.df.shape[0]] = [fpath, fname, image_path, histogram_path, group_idx, type] + summary
         return
+    
     # Function to analyze files and compute ratio images
     # Labels wavenumbers as freq1, freq2, freq1c, and freq2c,
     # loads data, computes ratio, saves ratio, 
@@ -234,10 +251,10 @@ class MultispectralModel:
         """
         Main function to analyze files. Groups files, asks if groups are correct, and computes ratio images. 
         """
-        options = {"should_save_corrections": True, "should_save_threshold": True} # dummy variable for now
+        # TODO: remove; options = {"should_save_corrections": True, "should_save_threshold": True} # dummy variable for now
         data, fname = self._load_group(entries, group_idx)
         output_data = self._correct_and_ratio(data, entries)
-        self._save_output_data(*output_data, entries, fname, options)
+        self._save_output_data(*output_data, entries, fname)
         ratio = output_data[3]
         self._summarize_and_save_to_df(ratio, fname, group_idx, 'Ratio')
         data['ratio'] = ratio
@@ -301,7 +318,7 @@ class MultispectralModel:
             # ax.histogram(selected, cmap='CMRmap', vmin=0, vmax=max_value) #####################
             ax.set_title(description)
 
-        hist_path = os.path.join(self.export_folder, "group_histogram_" + str(group_id)) #TODO: Make exporting a different function
+        hist_path = os.path.join(self.get_pref('export_folder'), "group_histogram_" + str(group_id)) #TODO: Make exporting a different function
         self.saveimg(hist_path)
         plt.close()
         return hist_path + self.get_ext()
@@ -340,7 +357,7 @@ class MultispectralModel:
         # Create the ratio image
         self.create_image(ratio, "ratio", axs[-1], ratio.max())
 
-        img_path = os.path.join(self.export_folder, "group_" + str(group_id)) #TODO: Make exporting a different function
+        img_path = os.path.join(self.get_pref('export_folder'), "group_" + str(group_id)) #TODO: Make exporting a different function
         self.saveimg(img_path)
         plt.close()
         return img_path + self.get_ext()
@@ -370,28 +387,29 @@ class MultispectralModel:
     def get_group_image(self, group_id):
         return self.group_images[group_id]
 
-    def get_ext(self):
-        return self.export_filetype
+    def get_pref(self, preference):
+        if preference not in self.preferences.keys():
+            return None
+        return self.preferences[preference]
     
-    def set_ext(self, filetype):
-        self.export_filetype = filetype
+    def set_pref(self, preference, value):
+        self.preferences[preference] = value
         return
 
+    def get_ext(self):
+        return self.preferences['filetype']
+
     def saveimg(self, title):
-        plt.savefig(title + self.get_ext(), dpi=self.dpi)
+        plt.savefig(title + self.get_ext(), dpi=self.get_pref('dpi'))
         return
-        # if not self.export_fig:
-        #     return
-        # # plt.savefig(title + ".fig", dpi='figure')
-        # savemat(title + ".mat", {'data': plt.gcf()})
         
     # Function to export the statistics to a CSV file
     def export_stats(self):
-        self.df.to_csv(os.path.join(self.export_folder, "Summary.csv"), mode='a')
+        self.df.to_csv(os.path.join(self.get_pref('export_folder'), "Summary.csv"), mode='a')
         return
     
     def export_filelist(self):
         # Ask for file name and location
         
-        self.df['fpath'].to_csv(os.path.join(self.export_folder, f"fpaths_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv"), index=False, mode = 'w')
+        self.df['fpath'].to_csv(os.path.join(self.get_pref('export_folder'), f"fpaths_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv"), index=False, mode = 'w')
         return

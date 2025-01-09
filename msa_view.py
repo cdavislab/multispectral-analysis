@@ -28,12 +28,9 @@ class MultispectralView:
         self.root.resizable(True, True)
         self.root.configure(bg=self.default_bg)
 
-        self.root.rowconfigure(1, weight=16)
-        self.root.columnconfigure(1, weight=16)
-        self.root.rowconfigure(3, weight=16)
-        self.root.columnconfigure(3, weight=16)
-        self.root.rowconfigure(5, weight=16)
-        self.root.columnconfigure(5, weight=16)
+        for i in (1,3,5):
+            self.root.rowconfigure(i, weight=16)
+            self.root.columnconfigure(i, weight=16)
         self.root.rowconfigure(14, weight=1)
 
         self.paned_window = self.build_paned_window()
@@ -42,7 +39,6 @@ class MultispectralView:
 
         self.build_user_buttons()
         self.build_wavenumber_inputs()
-        self.set_defaults()
         self.build_menubar()
 
     def decorate(self,widget):
@@ -173,42 +169,41 @@ class MultispectralView:
     def build_menubar(self):
         self.menubar = tk.Menu(self.root)
         self.root.config(menu=self.menubar)
+        self.initialize_menu_vars()
 
         self.file_menu = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="File", menu=self.file_menu)
-        self.file_menu.add_command(label="Preferences")
-        self.file_menu.add_command(label="Export Statistics")
-        self.file_menu.add_command(label="Export File List")
-        self.file_menu.add_command(label="Import File List")
-        self.file_menu.add_command(label="Export Settings")
-        self.file_menu.add_command(label="Import Settings")
+        labels = ["Preferences", "Export Statistics", "Export File List",
+                  "Import File List", "Export Settings", "Import Settings"]
+        for label in labels:
+            self.file_menu.add_command(label=label)
 
-        self.show_single.set(True)
+        self.show_single.set(True) #TODO: Get from settings import
         self.show_ratio.set(True)
+        
         self.view_menu = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="View", menu=self.view_menu)
-        self.view_menu.add_checkbutton(label="Group View", onvalue=1, offvalue=0, variable=self.show_groups)
-        self.view_menu.add_checkbutton(label="Histograms", onvalue=1, offvalue=0, variable=self.show_histograms)
-        self.view_menu.add_checkbutton(label="Show Single-Wavenumber", onvalue=1, offvalue=0, variable=self.show_single)
-        self.view_menu.add_checkbutton(label="Show Ratios", onvalue=1, offvalue=0, variable=self.show_ratio)
-        self.view_menu.add_command(label="Full File Path")
+        labels = ("Group View", "Histograms", "Show Single-Wavenumber", "Show Ratios")
+        variables = (self.show_groups, self.show_histograms, self.show_single, self.show_ratio)
+        for label, variable in zip(labels, variables):
+            self.view_menu.add_checkbutton(label=label, onvalue=1, offvalue=0,
+                                           variable=variable)
+        
+        self.fpath_menu = tk.Menu(self.view_menu, tearoff=0)
+        self.view_menu.add_cascade(label="File Path", menu=self.fpath_menu)
+        self.fpath_menu.add_radiobutton(label="View Full Path", variable=self.view_mode, value="full")
+        self.fpath_menu.add_radiobutton(label="View Parent", variable=self.view_mode, value="parent")
+        self.fpath_menu.add_radiobutton(label="View File Only", variable=self.view_mode, value="file")
+
 
         return
 
-    def set_defaults(self):
-        self.nw_entry.insert(0, "1744")
-        self.lw_entry.insert(0, "1703")
-        self.ncw_entry.insert(0, "1655")
-        self.lcw_entry.insert(0, "1655")
-        self.ncf_entry.insert(0, ".31")
-        self.lcf_entry.insert(0, ".61")
-        self.threshold_entry.insert(0, "0.15")
+    def initialize_menu_vars(self):
         self.show_groups = tk.BooleanVar()
         self.show_histograms = tk.BooleanVar()
         self.show_single = tk.BooleanVar()
         self.show_ratio = tk.BooleanVar()
-        self.export_correction = tk.BooleanVar()
-        self.export_threshold = tk.BooleanVar()
+        self.view_mode = tk.StringVar(value="full")
         return
 
     def get_shape(self, widget):
@@ -259,12 +254,14 @@ class MultispectralView:
             "show_histograms": self.show_histograms.get(),
             "show_single": self.show_single.get(),
             "show_ratio": self.show_ratio.get(),
+            "view_mode": self.view_mode.get()
         }
         return settings
 
     class PropertiesView:
         
-        def __init__(self, root, export_filetype, export_correction, export_threshold):
+        def __init__(self, root, export_filetype, save_correction_freq1_val,
+                     save_correction_freq2_val, export_threshold_val):
             # Create a new window
             self.pref_window = tk.Toplevel(root)
             self.pref_window.title("Preferences")
@@ -276,50 +273,90 @@ class MultispectralView:
             self.padx_label = (20,0)
             self.padx_entry = (0,20)
             self.padx_hint = (20,20)
+            save_correction_freq1 = tk.BooleanVar()
+            save_correction_freq1.set(save_correction_freq1_val)
+            save_correction_freq2 = tk.BooleanVar()
+            save_correction_freq2.set(save_correction_freq2_val)
+            export_threshold = tk.BooleanVar()
+            export_threshold.set(export_threshold_val)
+            
             self.properties = dict()
             row = 0
             self.make_form("Export File Type", 
                            "Choose file extension for future exports (e.g. .jpg, .png, .tiff, etc.)",
-                           "entry", export_filetype, export_filetype, row)
+                           "entry", export_filetype, row)
             row += 2
 
             separator = ttk.Separator(self.pref_frame, orient='horizontal')
-            separator.grid(row=row, column=0, columnspan=2, sticky='ew')
+            separator.grid(row=row, column=0, columnspan=5, sticky='ew')
             row += 1
 
-            self.make_form("Export Corrections", 
+            self.make_double_form("Export Corrections", 
                            "Export raw files after correction",
-                           "checkbutton", export_correction, export_correction, row)
+                           "checkbutton", row, ("Freq 1:", save_correction_freq1),
+                           ("Freq 2:", save_correction_freq2))
             row += 2
 
             self.make_form("Export Threshold", 
                            "Export raw files after thresholding",
-                           "checkbutton", export_threshold, export_threshold, row)
+                           "checkbutton", export_threshold, row)
             row += 2
-
+            
             # Put button on the bottom to save and quit 
             self.save_button = tk.Button(self.pref_frame, text="Save")
             self.save_button.grid(row=row, column=0, columnspan=2, pady=(10,5))
 
-        def make_form(self, title, hint, type_of_entry, variable, default_value, row):
+            self.pref_frame.grid_columnconfigure(0, weight=3)
+            for i in range(1,5):
+                self.pref_frame.grid_columnconfigure(i, weight=1)
+
+        def make_form(self, title, hint, type_of_entry, variable, row):
             # Generalize making of the forms
             label = tk.Label(self.pref_frame, text=title)
             label.grid(row=row, column=0, sticky='w', padx=self.padx_label)
             if type_of_entry == "entry":
                 entry = tk.Entry(self.pref_frame)
-                entry.insert(0, default_value)
-                entry.grid(row=row, column=1, sticky='we', padx=self.padx_entry)
+                entry.insert(0, variable)
+                entry.grid(row=row, column=1, columnspan=4,sticky='we', padx=self.padx_entry)
             elif type_of_entry == "checkbutton":
                 entry = variable
                 checkbox = tk.Checkbutton(self.pref_frame, variable=entry)
-                checkbox.grid(row=row, column=1, sticky='w', padx=self.padx_entry)
+                checkbox.grid(row=row, column=1, columnspan=4, sticky='w', padx=self.padx_entry)
             label_hint = tk.Label(self.pref_frame, text=hint, fg='gray')
-            label_hint.grid(row=row+1, column=0, columnspan=2, sticky='w', padx=self.padx_hint)
+            label_hint.grid(row=row+1, column=0, columnspan=5, sticky='w', padx=self.padx_hint)
             self.properties[title] = {"label": label, "entry": entry, "label_hint": label_hint}
             return
         
+        def make_double_form(self, title, hint, type_of_entry, row, form1, form2):
+            # Generalize making of the forms
+            label = tk.Label(self.pref_frame, text=title)
+            label.grid(row=row, column=0, sticky='w', padx=self.padx_label)
+            label_hint = tk.Label(self.pref_frame, text=hint, fg='gray')
+            label_hint.grid(row=row+1, column=0, columnspan=5, sticky='w', padx=self.padx_hint)
+            if type_of_entry == "entry":
+                raise NotImplementedError("Double entry not implemented")
+            elif type_of_entry == "checkbutton":
+                column_num = 1
+                for form in (form1, form2):
+                    subtitle, entry = form
+                    print(entry)
+                    print(type(entry))
+                    sublabel = tk.Label(self.pref_frame, text=subtitle)
+                    sublabel.grid(row=row, column=column_num, sticky='w')
+                    column_num += 1
+                    checkbox = tk.Checkbutton(self.pref_frame, variable=entry)
+                    checkbox.grid(row=row, column=column_num, columnspan=1, sticky='w', padx=0)
+                    column_num += 1
+                    self.properties[subtitle] = {"label": sublabel, "entry": entry, "label_hint": label_hint}
+            return
+
         def get_setting(self, title):
+            # print(self.properties[title]["entry"])
+            # print(type(self.properties[title]["entry"]))
             return self.properties[title]["entry"].get()
+        
+        def get_setting_keys(self):
+            return self.properties.keys()
     class ProgressBar(tk.Tk):
         def __init__(self, title="Progress Bar"):
             super().__init__()

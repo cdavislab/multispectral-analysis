@@ -39,22 +39,33 @@ class MultispectralController:
         self.view.view_menu.entryconfig('Histograms', command=self.reselect_index, accelerator='Ctrl+H')
         self.view.view_menu.entryconfig('Show Single-Wavenumber', command=self.update_listbox)
         self.view.view_menu.entryconfig('Show Ratios', command=self.update_listbox)
-        self.view.view_menu.entryconfig('Full File Path', command=self.change_label_and_update)
 
+        self.view.fpath_menu.entryconfig('View Full Path', command=self.update_listbox)
+        self.view.fpath_menu.entryconfig('View Parent', command=self.update_listbox)
+        self.view.fpath_menu.entryconfig('View File Only', command=self.update_listbox)
         # Bind the accelerator key combination to the open_file function
         self.view.root.bind('<Control-h>', lambda event: (self.toggle_checkbox(self.view.show_histograms),self.reselect_index()))
 
     def preferences(self):
         self.properties = self.view.PropertiesView(
-            self.view.root,self.model.get_ext(), self.view.export_correction, self.view.export_threshold)
+            self.view.root,self.model.get_ext(),
+            self.model.get_pref('save_correction_freq1'),
+            self.model.get_pref('save_correction_freq2'),
+            self.model.get_pref('save_threshold_freq2'))
         self.properties.save_button.config(command=self.pref_save_and_quit)
         return
 
     def pref_save_and_quit(self):
-        filetype = self.properties.get_setting("Export File Type")
-        should_export_correction = self.properties.get_setting("Export Corrections")
-        should_export_threshold = self.properties.get_setting("Export Threshold")
-        self.model.set_ext(filetype)
+        # TODO: Make separate correction frequencies
+        label_to_variable = {"Export File Type": "filetype",
+                             "Freq 1:": "save_correction_freq1",
+                             "Freq 2:": "save_correction_freq2",
+                             "Export Threshold": "save_threshold_freq2"}
+        keys = self.properties.get_setting_keys()
+        for key in keys: # TODO: check valid preferences first
+            print(label_to_variable[key], self.properties.get_setting(key))
+            self.model.set_pref(label_to_variable[key], self.properties.get_setting(key))
+
         self.properties.pref_window.destroy()
         return
 
@@ -64,6 +75,8 @@ class MultispectralController:
         filetypes=[("Text files", "*.txt"), ("All files", "*.*")],  # Supported file types
         title="Save Settings As"
     )
+        if file_path == '':  # If the user cancels the save dialog, return
+            return
 
         settings = {'lw': self.view.lw_entry.get(),
                     'nw': self.view.nw_entry.get(),
@@ -72,7 +85,7 @@ class MultispectralController:
                     'threshold': self.view.threshold_entry.get(),
                     'lcf': self.view.lcf_entry.get(),
                     'ncf': self.view.ncf_entry.get(),
-                    'export_folder': self.model.export_folder,
+                    'export_folder': self.model.get_pref('export_folder'),
                     'show_groups': self.view.show_groups.get(),
                     'show_single': self.view.show_single.get(),
                     'show_ratio': self.view.show_ratio.get(),
@@ -88,7 +101,7 @@ class MultispectralController:
 
     def import_default_settings(self):
         if not os.path.exists('msa_options.txt'):
-            self.model.set_ext('.jpg')
+            self.model.set_pref('filetype','.jpg')
             return
         # # Get the absolute path of the currently running Python file
         # current_file_path = os.path.abspath(__file__)
@@ -106,6 +119,8 @@ class MultispectralController:
             filetypes=[("Text files", "*.txt"), ("All files", "*.*")],  # Supported file types
             title="Save Settings As"
         )
+        if file_path == '':  # If the user cancels the save dialog, return
+            return
         
         # Read dictionary from the text file
         with open(file_path, 'r') as file:
@@ -144,7 +159,7 @@ class MultispectralController:
         # Update the text and model export folder if the key exists
         if 'export_folder' in settings:
             self.view.Button_ExportFolder['text'] = settings.get('export_folder', '')
-            self.model.export_folder = settings.get('export_folder', '')
+            self.model.set_pref('export_folder', settings.get('export_folder', ''))
 
         # Set boolean variables based on the settings dictionary
         self.view.show_groups.set(settings.get('show_groups', False))
@@ -153,27 +168,11 @@ class MultispectralController:
         self.view.show_histograms.set(settings.get('show_histograms', False))
         self.view.show_histograms.set(settings.get('show_histograms', False))
 
-        self.model.set_ext(settings.get('export_filetype', '.jpg'))
+        self.model.set_pref('filetype', settings.get('export_filetype', '.jpg'))
         # Set view_length if the key exists
-        self.view_length = settings.get('view_length', 'Full')
+        self.view_length = settings.get('view_mode', 'full')
 
         self.update_listbox()
-
-    def change_label_and_update(self):
-        current_label = self.view.view_menu.entrycget(4, 'label')
-        if current_label == "Full File Path":
-            self.view.view_menu.entryconfig(4, label="Parent Folder")
-            self.view_length = "Parent"
-        elif current_label == "Parent Folder":
-            self.view.view_menu.entryconfig(4, label="Filename")
-            self.view_length = "File"
-        elif current_label == "Filename":
-            self.view.view_menu.entryconfig(4, label="Full File Path")
-            self.view_length = "Full"
-        else:
-            raise ValueError("Invalid label")
-        self.update_listbox()
-        return
 
     def toggle_checkbox(self, checkbox):
         if checkbox.get():
@@ -192,6 +191,8 @@ class MultispectralController:
             progress.destroy()
             return
         outpath = self.model.get_dir(files[0])
+        print("This is the outpath")
+        print(outpath)
         error_files = dict()
         increment = 100 / len(files)
         import time
@@ -298,8 +299,9 @@ class MultispectralController:
         progress.destroy()
 
     def set_export_folder(self):
-        self.model.export_folder = askdirectory()
-        self.view.Button_ExportFolder['text'] = self.model.export_folder
+        directory = askdirectory()
+        self.model.set_pref('export_folder', directory)
+        self.view.Button_ExportFolder['text'] = directory
         
         if not self.model.df.empty:
             self.move_files_to_export()
@@ -316,8 +318,8 @@ class MultispectralController:
             try:
                 img_path = self.model.df.loc[i, 'im_path']
                 hist_path = self.model.df.loc[i, 'hist_path']
-                img_path_new = os.path.join(self.model.export_folder, os.path.basename(img_path))
-                hist_path_new = os.path.join(self.model.export_folder, os.path.basename(hist_path))
+                img_path_new = os.path.join(self.model.get_pref('export_folder'), os.path.basename(img_path))
+                hist_path_new = os.path.join(self.model.get_pref('export_folder'), os.path.basename(hist_path))
                 os.rename(img_path, img_path_new)
                 os.rename(hist_path, hist_path_new)
                 self.model.df.loc[i, 'im_path'] = img_path_new
@@ -333,7 +335,7 @@ class MultispectralController:
         for i in range(len(self.model.group_images)):
             try:
                 group_path = self.model.group_images[i]
-                group_path_new = os.path.join(self.model.export_folder, os.path.basename(group_path))
+                group_path_new = os.path.join(self.model.get_pref('export_folder'), os.path.basename(group_path))
                 os.rename(group_path, group_path_new)
                 self.model.group_images[i] = group_path_new
             except Exception as e:
@@ -342,7 +344,7 @@ class MultispectralController:
         for i in range(len(self.model.group_histograms)):
             try:
                 group_path = self.model.group_histograms[i]
-                group_path_new = os.path.join(self.model.export_folder, os.path.basename(group_path))
+                group_path_new = os.path.join(self.model.get_pref('export_folder'), os.path.basename(group_path))
                 os.rename(group_path, group_path_new)
                 self.model.group_histograms[i] = group_path_new
             except Exception as e:
@@ -364,7 +366,7 @@ class MultispectralController:
         self.model.df = self.model.df.sort_values(by=["group", "fpath"], ascending=[True, True], ignore_index=True)
 
         self.view.ListBox_1.delete(0, tk.END)
-
+        vsettings = self.view.get_settings()
         if self.view.show_groups.get(): # List only groups in the listbox
             max_group_number = self.model.df['group'].max()
             for i in range(max_group_number + 1):
@@ -372,19 +374,23 @@ class MultispectralController:
             return
         
         desired_groups = []
-        if self.view.show_single.get(): # Show
+        if vsettings['show_single']: # Show
             desired_groups += ['Natural', 'Label', 'Natural_Corr', 'Label_Corr', None]
-        if self.view.show_ratio.get():
+        if vsettings['show_ratio']:
             desired_groups.append('Ratio')
         listbox_df = self.model.df.loc[self.model.df['type'].isin(desired_groups)]
 
         # Determine if column should read full path or just filename
-        if self.view_length == "Full":
+        if (vsettings['view_mode'] == "full"):
             listbox_series = listbox_df['fpath']
-        elif self.view_length == "Parent":
+        elif vsettings['view_mode'] == "parent":
             listbox_series = listbox_df['fpath'].apply(lambda x: os.path.basename(os.path.dirname(x)) + "/" + os.path.basename(x))
-        else:
+        elif vsettings['view_mode'] == "file":
             listbox_series = listbox_df['fname']
+        else:
+            print("Warning:", vsettings['view_mode'],
+                  "is not a valid view mode. Defaulting to full path.")
+            listbox_series = listbox_df['fpath']
         
         self.view.ListBox_1.insert(tk.END, *listbox_series.values)
 
@@ -478,6 +484,7 @@ class MultispectralController:
         cProfile.runctx('self.import_filelist()',globals(), locals(), "profile_import_filelist.txt")
         return
     def import_filelist(self):
+        # Add no files if the user cancels the dialog #TODO
         progress = self.view.ProgressBar(title="Adding Files")
         file_of_files = askopenfilenames(filetypes=(("Comma Delimited", "*.csv"), ("All files", "*.*"),))
         file_df = pd.read_csv(file_of_files[0])
