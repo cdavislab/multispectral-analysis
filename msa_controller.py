@@ -484,9 +484,11 @@ class MultispectralController:
         cProfile.runctx('self.import_filelist()',globals(), locals(), "profile_import_filelist.txt")
         return
     def import_filelist(self):
-        # Add no files if the user cancels the dialog #TODO
         progress = self.view.ProgressBar(title="Adding Files")
         file_of_files = askopenfilenames(filetypes=(("Comma Delimited", "*.csv"), ("All files", "*.*"),))
+        if len(file_of_files) == 0:
+            progress.destroy()
+            return
         file_df = pd.read_csv(file_of_files[0])
         file_df = file_df[~file_df.applymap(lambda x: isinstance(x, str) and "ratio" in x.lower()).any(axis=1)]
         filelist = file_df['fpath'].tolist()
