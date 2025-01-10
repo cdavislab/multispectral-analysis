@@ -65,7 +65,6 @@ class MultispectralView:
         return paned_window
     def build_file_viewer(self, root):
         frm = tk.Frame(root)
-        # frm.grid(row=0, column=0, rowspan=7, columnspan=2, sticky="nsew", padx=2, pady=2)
         scrollbar = tk.Scrollbar(frm, orient="horizontal")
         scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
         self.ListBox_1 = self.decorate(tk.Listbox(frm, xscrollcommand=scrollbar.set))
@@ -77,9 +76,7 @@ class MultispectralView:
     def build_image_viewer(self, root):
         self.img_panel = tk.Label(root, bg='gray')
         self.panel_img = ""
-        # self.img_panel.grid(row=0, column=2, rowspan=9, columnspan=4, sticky="nsew", padx=2, pady=2)
         root.add(self.img_panel)
-        # self.img_panel.grid_propagate(False)
         return
     def build_user_buttons(self):
         self.Button_Add = self.decorate(tk.Button(self.root, text="Add Files"))
@@ -89,7 +86,6 @@ class MultispectralView:
         self.Button_Delete.grid(row=8, column=0, rowspan=1, columnspan=2, sticky="nsew", padx=2)
 
         self.Button_Analyze = self.decorate(tk.Button(self.root, text="Analyze"))
-        # self.Button_Analyze.configure(bg=self.default_blue)
         self.Button_Analyze.grid(row=9, column=0, rowspan=1, columnspan=2, sticky="nsew", padx=2)
 
         self.Button_Filename = self.decorate(tk.Label(self.root, text="Filename", relief="groove"))
@@ -99,62 +95,90 @@ class MultispectralView:
         self.Button_Statistics.grid(row=8, column=2, rowspan=2, columnspan=4, sticky="nsew", padx=2)
 
     def build_wavenumber_inputs(self):
-        # Natural Wavenumber
-        nw_text = self.decorate(tk.Label(self.root, justify="left", text="Frequency 1:"))
-        nw_text.grid(row=11, column=0, rowspan=1, columnspan=1, sticky="nsew", padx=(2,0), pady=2)
+        # # Natural Wavenumber
+        # freq1_text = self.decorate(tk.Label(self.root, justify="left", text="Frequency 1:"))
+        # freq1_text.grid(row=11, column=0, rowspan=1, columnspan=1, sticky="nsew", padx=(2,0), pady=2)
         
-        nw = tk.StringVar()
-        self.nw_entry = self.decorate(tk.Entry(self.root, textvariable=nw))
-        self.nw_entry.grid(row=11, column=1, rowspan=1, columnspan=1, sticky="nsew", padx=(0,2), pady=2)
+        # freq1 = tk.StringVar()
+        # self.freq1_entry = self.decorate(tk.Entry(self.root, textvariable=freq1))
+        # self.freq1_entry.grid(row=11, column=1, rowspan=1, columnspan=1, sticky="nsew", padx=(0,2), pady=2)
 
-        # Natural Correction Wavenumber
-        ncw_text = self.decorate(tk.Label(self.root, justify="left", text="Frequency 1 Correction:"))
-        ncw_text.grid(row=11, column=2, rowspan=1, columnspan=1, sticky="nsew", pady=2)
+        # # Natural Correction Wavenumber
+        # freq1c_text = self.decorate(tk.Label(self.root, justify="left", text="Frequency 1 Correction:"))
+        # freq1c_text.grid(row=11, column=2, rowspan=1, columnspan=1, sticky="nsew", pady=2)
 
-        ncw = tk.StringVar()
-        self.ncw_entry = self.decorate(tk.Entry(self.root, textvariable=ncw))
-        self.ncw_entry.grid(row=11, column=3, rowspan=1, columnspan=1, sticky="nsew", padx=(0,2), pady=2)
+        # freq1c = tk.StringVar()
+        # self.freq1c_entry = self.decorate(tk.Entry(self.root, textvariable=freq1c))
+        # self.freq1c_entry.grid(row=11, column=3, rowspan=1, columnspan=1, sticky="nsew", padx=(0,2), pady=2)
 
-        # Natural Correction Factor
-        ncf_text = self.decorate(tk.Label(self.root,justify="left", text="Frequency 1 Correction Factor:"))
-        ncf_text.grid(row=11, column=4, rowspan=1, columnspan=1, sticky="nsew", pady=2)
+        # # Natural Correction Factor
+        # freq1cf_text = self.decorate(tk.Label(self.root,justify="left", text="Frequency 1 Correction Factor:"))
+        # freq1cf.grid(row=11, column=4, rowspan=1, columnspan=1, sticky="nsew", pady=2)
 
-        natural_cf = tk.StringVar()
-        self.ncf_entry = self.decorate(tk.Entry(self.root, textvariable=natural_cf))
-        self.ncf_entry.grid(row=11, column=5, rowspan=1, columnspan=1, sticky="nsew", padx=(0,2), pady=2)
+        # freq1cf = tk.StringVar()
+        # self.freq1cf_entry = self.decorate(tk.Entry(self.root, textvariable=freq1cf))
+        # self.freq1cf_entry.grid(row=11, column=5, rowspan=1, columnspan=1, sticky="nsew", padx=(0,2), pady=2)
 
-        # Label Wavenumber
-        lw_text = self.decorate(tk.Label(self.root, justify="left", text="Frequency 2:"))
-        lw_text.grid(row=12, column=0, rowspan=1, columnspan=1, sticky="nsew", pady=2)
+        # # Label Wavenumber
+        # freq2_text = self.decorate(tk.Label(self.root, justify="left", text="Frequency 2:"))
+        # freq2_text.grid(row=12, column=0, rowspan=1, columnspan=1, sticky="nsew", pady=2)
 
-        label_wavenum = tk.StringVar()
-        self.lw_entry = self.decorate(tk.Entry(self.root, textvariable=label_wavenum))
-        self.lw_entry.grid(row=12, column=1, rowspan=1, columnspan=1, sticky="nsew", padx=(0,2), pady=2)
+        # freq2_wavenum = tk.StringVar()
+        # self.freq2_entry = self.decorate(tk.Entry(self.root, textvariable=freq2_wavenum))
+        # self.freq2_entry.grid(row=12, column=1, rowspan=1, columnspan=1, sticky="nsew", padx=(0,2), pady=2)
 
-        # Label Correction Wavenumber
-        lcw_text = self.decorate(tk.Label(self.root, justify="left", text="Frequency 2 Correction:"))
-        lcw_text.grid(row=12, column=2, rowspan=1, columnspan=1, sticky="nsew", pady=2)
+        # # Label Correction Wavenumber
+        # freq2c_text = self.decorate(tk.Label(self.root, justify="left", text="Frequency 2 Correction:"))
+        # freq2c_text.grid(row=12, column=2, rowspan=1, columnspan=1, sticky="nsew", pady=2)
 
-        lcw = tk.StringVar()
-        self.lcw_entry = self.decorate(tk.Entry(self.root, textvariable=lcw))
-        self.lcw_entry.grid(row=12, column=3, rowspan=1, columnspan=1, sticky="nsew", padx=(0,2), pady=2)
+        # freq2c = tk.StringVar()
+        # self.freq2c_entry = self.decorate(tk.Entry(self.root, textvariable=freq2c))
+        # self.freq2c_entry.grid(row=12, column=3, rowspan=1, columnspan=1, sticky="nsew", padx=(0,2), pady=2)
 
-        # Label Correction Factor
-        lcf_text = self.decorate(tk.Label(self.root, justify="left", text="Frequency 2 Correction Factor:"))
-        lcf_text.configure(justify="left")
-        lcf_text.grid(row=12, column=4, rowspan=1, columnspan=1, sticky="nsew", pady=2)
+        # # Label Correction Factor
+        # freq2cf_text = self.decorate(tk.Label(self.root, justify="left", text="Frequency 2 Correction Factor:"))
+        # freq2cf_text.configure(justify="left")
+        # freq2cf_text.grid(row=12, column=4, rowspan=1, columnspan=1, sticky="nsew", pady=2)
 
-        lcf = tk.StringVar()
-        self.lcf_entry = self.decorate(tk.Entry(self.root, textvariable=lcf))
-        self.lcf_entry.grid(row=12, column=5, rowspan=1, columnspan=1, sticky="nsew", padx=(0,2), pady=2)
+        # freq2cf = tk.StringVar()
+        # self.freq2cf_entry = self.decorate(tk.Entry(self.root, textvariable=freq2cf))
+        # self.freq2cf_entry.grid(row=12, column=5, rowspan=1, columnspan=1, sticky="nsew", padx=(0,2), pady=2)
 
-        # Threshold
-        threshold_text = self.decorate(tk.Label(self.root, justify="left", text="Threshold:"))
-        threshold_text.grid(row=13, column=4, rowspan=1, columnspan=1, sticky="nsew", pady=(2,0))
+        # # Threshold
+        # threshold_text = self.decorate(tk.Label(self.root, justify="left", text="Threshold:"))
+        # threshold_text.grid(row=13, column=4, rowspan=1, columnspan=1, sticky="nsew", pady=(2,0))
 
-        threshold = tk.StringVar()
-        self.threshold_entry = self.decorate(tk.Entry(self.root, textvariable=threshold))
-        self.threshold_entry.grid(row=13, column=5, rowspan=1, columnspan=1, sticky="nsew", pady=(2,0))
+        # threshold = tk.StringVar()
+        # self.threshold_entry = self.decorate(tk.Entry(self.root, textvariable=threshold))
+        # self.threshold_entry.grid(row=13, column=5, rowspan=1, columnspan=1, sticky="nsew", pady=(2,0))
+
+                # Define configuration details for labels and entries
+        widgets_config = [
+            {"text": "Frequency 1:", "row": 11, "col": 0, "entry_var": "freq1"},
+            {"text": "Frequency 1 Correction:", "row": 11, "col": 2, "entry_var": "freq1c"},
+            {"text": "Frequency 1 Correction Factor:", "row": 11, "col": 4, "entry_var": "freq1cf"},
+            {"text": "Frequency 2:", "row": 12, "col": 0, "entry_var": "freq2"},
+            {"text": "Frequency 2 Correction:", "row": 12, "col": 2, "entry_var": "freq2c"},
+            {"text": "Frequency 2 Correction Factor:", "row": 12, "col": 4, "entry_var": "freq2cf"},
+            {"text": "Threshold:", "row": 13, "col": 4, "entry_var": "threshold"},
+        ]
+
+        # Store references to StringVars and Entries
+        self.string_vars = {}
+        self.entries = {}
+
+        for config in widgets_config:
+            # Create and place labels
+            label = self.decorate(tk.Label(self.root, justify="left", text=config["text"]))
+            label.grid(row=config["row"], column=config["col"], rowspan=1, columnspan=1, sticky="nsew", padx=(2 if config["col"] % 2 == 0 else 0, 2), pady=2)
+
+            # Create, store, and place entries
+            entry_var = tk.StringVar()
+            entry = self.decorate(tk.Entry(self.root, textvariable=entry_var))
+            entry.grid(row=config["row"], column=config["col"] + 1, rowspan=1, columnspan=1, sticky="nsew", padx=(0, 2), pady=2)
+
+            self.string_vars[config["entry_var"]] = entry_var
+            self.entries[config["entry_var"]] = entry
 
         # Export Folder
         export_folder_text = self.decorate(tk.Label(self.root, justify="center", text="Export Folder:"))
@@ -177,9 +201,6 @@ class MultispectralView:
                   "Import File List", "Export Settings", "Import Settings"]
         for label in labels:
             self.file_menu.add_command(label=label)
-
-        self.show_single.set(True) #TODO: Get from settings import
-        self.show_ratio.set(True)
         
         self.view_menu = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="View", menu=self.view_menu)
@@ -242,14 +263,13 @@ class MultispectralView:
     
     def get_settings(self):
         settings = {
-            "nw": self.nw_entry.get(),
-            "lw": self.lw_entry.get(),
-            "ncw": self.ncw_entry.get(),
-            "lcw": self.lcw_entry.get(),
-            "ncf": self.ncf_entry.get(),
-            "lcf": self.lcf_entry.get(),
-            "threshold": self.threshold_entry.get(),
-            "export_folder": self.Button_ExportFolder.cget('text'),
+            'freq1': self.entries['freq1'].get(),
+            'freq2': self.entries['freq2'].get(),
+            'freq1c': self.entries['freq1c'].get(),
+            'freq2c': self.entries['freq2c'].get(),
+            'freq1cf': self.entries['freq1cf'].get(),
+            'freq2cf': self.entries['freq2cf'].get(),
+            'threshold': self.entries['threshold'].get(),
             "show_groups": self.show_groups.get(),
             "show_histograms": self.show_histograms.get(),
             "show_single": self.show_single.get(),

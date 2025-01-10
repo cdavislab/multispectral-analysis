@@ -77,21 +77,8 @@ class MultispectralController:
         if file_path == '':  # If the user cancels the save dialog, return
             return
 
-        settings = {'lw': self.view.lw_entry.get(),
-                    'nw': self.view.nw_entry.get(),
-                    'lcw': self.view.lcw_entry.get(),
-                    'ncw': self.view.ncw_entry.get(),
-                    'threshold': self.view.threshold_entry.get(),
-                    'lcf': self.view.lcf_entry.get(),
-                    'ncf': self.view.ncf_entry.get(),
-                    'export_folder': self.model.get_pref('export_folder'),
-                    'show_groups': self.view.show_groups.get(),
-                    'show_single': self.view.show_single.get(),
-                    'show_ratio': self.view.show_ratio.get(),
-                    'show_histograms': self.view.show_histograms.get(),
-                    'view_length': self.view_length,
-                    'export_filetype': self.model.get_ext()
-                    }
+        settings = self.view.get_settings()
+        settings.update(self.model.get_preferences())
         # Save dictionary to a text file
         with open(file_path, 'w') as file:
             file.write(repr(settings))
@@ -125,37 +112,21 @@ class MultispectralController:
         with open(file_path, 'r') as file:
             settings = eval(file.read())
 
-        # Set the settings in the view 
-        # Insert values into entries if the keys exist in the dictionary
-        # Clear and insert values into entries if the keys exist in the dictionary
-        if 'lw' in settings:
-            self.view.lw_entry.delete(0, tk.END)  # Clear the entry
-            self.view.lw_entry.insert(0, settings.get('lw', ''))  # Insert new value
+        entries = {
+            'freq1': self.view.entries['freq1'],
+            'freq2': self.view.entries['freq2'],
+            'freq1c': self.view.entries['freq1c'],
+            'freq2c': self.view.entries['freq2c'],
+            'freq1cf': self.view.entries['freq1cf'],
+            'freq2cf': self.view.entries['freq2cf'],
+            'threshold': self.view.entries['threshold']
+        }
 
-        if 'nw' in settings:
-            self.view.nw_entry.delete(0, tk.END)  # Clear the entry
-            self.view.nw_entry.insert(0, settings.get('nw', ''))  # Insert new value
+        for key, entry in entries.items():
+            if key in settings:
+                entry.delete(0, tk.END)  # Clear the entry
+                entry.insert(0, settings.get(key, ''))  # Insert new value
 
-        if 'lcw' in settings:
-            self.view.lcw_entry.delete(0, tk.END)  # Clear the entry
-            self.view.lcw_entry.insert(0, settings.get('lcw', ''))  # Insert new value
-
-        if 'ncw' in settings:
-            self.view.ncw_entry.delete(0, tk.END)  # Clear the entry
-            self.view.ncw_entry.insert(0, settings.get('ncw', ''))  # Insert new value
-
-        if 'threshold' in settings:
-            self.view.threshold_entry.delete(0, tk.END)  # Clear the entry
-            self.view.threshold_entry.insert(0, settings.get('threshold', ''))  # Insert new value
-
-        if 'lcf' in settings:
-            self.view.lcf_entry.delete(0, tk.END)  # Clear the entry
-            self.view.lcf_entry.insert(0, settings.get('lcf', ''))  # Insert new value
-
-        if 'ncf' in settings:
-            self.view.ncf_entry.delete(0, tk.END)  # Clear the entry
-            self.view.ncf_entry.insert(0, settings.get('ncf', ''))  # Insert new value
-        # Update the text and model export folder if the key exists
         if 'export_folder' in settings:
             self.view.Button_ExportFolder['text'] = settings.get('export_folder', '')
             self.model.set_pref('export_folder', settings.get('export_folder', ''))
@@ -164,7 +135,6 @@ class MultispectralController:
         self.view.show_groups.set(settings.get('show_groups', False))
         self.view.show_single.set(settings.get('show_single', True))
         self.view.show_ratio.set(settings.get('show_ratio', True))
-        self.view.show_histograms.set(settings.get('show_histograms', False))
         self.view.show_histograms.set(settings.get('show_histograms', False))
 
         self.model.set_pref('filetype', settings.get('export_filetype', '.jpg'))
@@ -232,19 +202,17 @@ class MultispectralController:
         self.model.df = self.model.df.drop(idx_to_del).reset_index(drop=True)
         self.update_listbox()
 
+
+    #TODO: Troubleshoot addition of dictionaries and swap to freq1 vs lw
     def validate_entries(self):
         # Ignore analyze request if no files are loaded
         if self.model.df.empty:
             tk.messagebox("Add Files", "Add files using \"Add Files\" button before analyzing.")
             return None
         # Get the values from the entries
-        args = {"freq1": self.view.lw_entry.get(), # 0
-                "freq2": self.view.nw_entry.get(), # 1
-                "freq1c": self.view.lcw_entry.get(), # 2
-                "freq2c": self.view.ncw_entry.get(), # 3
-                "threshold": self.view.threshold_entry.get(), # 4
-                "freq1cf": self.view.lcf_entry.get(), # 5
-                "freq2cf": self.view.ncf_entry.get()} # 6
+        entry_keys = ('freq1', 'freq2', 'freq1c', 'freq2c', 'threshold', 'freq1cf', 'freq2cf')
+        args = self.view.get_settings()
+        args = {key: args[key] for key in entry_keys}
         # Check if required fields are empty
         if any(args[key] == '' for key in ['freq1', 'freq2']):
             tk.messagebox.showerror("Missing Fields", "Please fill out all fields before analyzing.")
@@ -281,6 +249,8 @@ class MultispectralController:
 
         # Validate user inputs and prepare them for model method
         entries = self.validate_entries()
+        if entries is None:
+            return
         progress = self.view.ProgressBar(title="Analyzing Files")
         groups = self.model.pre_analyze_files(entries)
         increment = 100 / len(groups)

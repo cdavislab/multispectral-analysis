@@ -379,6 +379,9 @@ class MultispectralModel:
     def get_group_image(self, group_id):
         return self.group_images[group_id]
 
+    def get_preferences(self):
+        return self.preferences
+
     def get_pref(self, preference):
         if preference not in self.preferences.keys():
             return None
