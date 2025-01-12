@@ -22,7 +22,7 @@ class MultispectralModel:
                             'save_correction_freq1': False,
                             'save_correction_freq2': False,
                             'save_threshold_freq2': False}
-
+        self.group_names = []
     def group_files(self, file_list: list, label: str, natural: str, label_corr:str, natural_corr: str) -> pd.DataFrame:
         """
         Groups files based on shared common name
@@ -263,6 +263,7 @@ class MultispectralModel:
         fname = self._find_base_name(fpaths[0], entries['freq1'])
         data = self.load_files(*fpaths)
         data = {'freq1': data[0], 'freq2': data[1], 'freq1c': data[2], 'freq2c': data[3]}
+        self.set_group_name(fname, group_idx)
         return data, fname
 
     def _get_group(self, idx):
@@ -393,6 +394,20 @@ class MultispectralModel:
 
     def get_ext(self):
         return self.preferences['filetype']
+
+    def get_group_names(self):
+        return self.group_names
+    
+    def set_group_name(self, name, group_id):
+        if len(self.group_names) == group_id:
+            self.group_names.append(name)
+        elif len(self.group_names) > group_id:
+            self.group_names[group_id] = name
+        elif len(self.group_names) < group_id:
+            raise ValueError("Group ID is out of range")
+        else:
+            raise ValueError("Invalid group ID:", str(group_id))
+        return
 
     def saveimg(self, title):
         plt.savefig(title + self.get_ext(), dpi=self.get_pref('dpi'))

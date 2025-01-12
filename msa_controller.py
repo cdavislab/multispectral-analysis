@@ -336,8 +336,9 @@ class MultispectralController:
         vsettings = self.view.get_settings()
         if self.view.show_groups.get(): # List only groups in the listbox
             max_group_number = self.model.df['group'].max()
+            group_names = self.model.get_group_names()
             for i in range(max_group_number + 1):
-                self.view.ListBox_1.insert(tk.END, f"Image {i}")
+                self.view.ListBox_1.insert(tk.END, group_names[i])
             return
         
         desired_groups = []
@@ -399,14 +400,14 @@ class MultispectralController:
                  ", SE:" + str(stats.iloc[4]) + ",  Count: " + str(int(stats.iloc[5])))
         self.view.Button_Statistics.configure(text=stats)
 
-    def get_listbox_group_index(self, index):
-        return self.view.ListBox_1.get(index)[6:]
+    def get_listbox_index(self):
+        return self.view.ListBox_1.curselection()[0]
 
     def convert_index(self, index: int) -> pd.Index:
         """Convert listbox index to dataframe index by sorting out single wavenumber,
         ratio, or histograms if needbe. Return array of indices if group is selected"""
         if self.view.show_groups.get(): #TODO Check: May need to convert to listbox type to integer
-            idx = self.model.df['group'] == int(self.get_listbox_group_index(index))
+            idx = self.model.df['group'] == self.get_listbox_index()
             single_group_df = self.model.df.loc[idx,:]
             df_idx = single_group_df.index
             return df_idx.tolist()
