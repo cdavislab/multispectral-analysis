@@ -21,7 +21,17 @@ class MultispectralModel:
                             'filetype': '.jpg',
                             'save_correction_freq1': False,
                             'save_correction_freq2': False,
-                            'save_threshold_freq2': False}
+                            'save_threshold_freq2': False,
+                            'font':"arial", 
+                            'font_size':10, 
+                            'cmap': 'CMRmap',
+                            'vmin': 0,
+                            'vmax':None,
+                            'units': '',
+                            'pixel_scale':1,
+                            'scale_bar':0,
+                            'scale_bar_units':'',
+                            'num_ticks':'auto'}
         self.group_names = []
     def group_files(self, file_list: list, label: str, natural: str, label_corr:str, natural_corr: str) -> pd.DataFrame:
         """

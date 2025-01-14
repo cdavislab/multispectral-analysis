@@ -20,35 +20,69 @@ class MultispectralController:
 
     # Connect signals from the view to controller methods
     def connect_signals(self):
-        self.view.Button_Add.config(command=self.add_single_files)
-        self.view.Button_Delete.config(command=self.delete_files)
-        self.view.Button_Analyze.config(command=self.analyze_files)
-        self.view.Button_ExportFolder.config(command=self.set_export_folder)
-        
-        # self.view.menubar.entryconfig("Export Statistics", command=self.export_stats)
-        # self.view.root.config(menu=self.view.menubar)
-        self.view.file_menu.entryconfig('Preferences', command=self.preferences)
-        self.view.file_menu.entryconfig('Export Statistics', command=self.export_stats)
-        self.view.file_menu.entryconfig('Export File List', command=self.export_filelist)
-        self.view.file_menu.entryconfig('Import File List', command=self.import_filelist)
-        self.view.file_menu.entryconfig('Export Settings', command=self.export_settings)
-        self.view.file_menu.entryconfig('Import Settings', command=self.import_settings)
-        self.view.ListBox_1.bind('<<ListboxSelect>>', self.on_file_selection)
+        # Define command mappings for buttons
+        button_commands = {
+            self.view.Button_Add: self.add_single_files,
+            self.view.Button_Delete: self.delete_files,
+            self.view.Button_Analyze: self.analyze_files,
+            self.view.Button_ExportFolder: self.set_export_folder,
+        }
 
-        self.view.view_menu.entryconfig('Group View', command=self.update_listbox)
-        self.view.view_menu.entryconfig('Histograms', command=self.reselect_index, accelerator='Ctrl+H')
-        self.view.view_menu.entryconfig('Show Single-Wavenumber', command=self.update_listbox)
-        self.view.view_menu.entryconfig('Show Ratios', command=self.update_listbox)
+        # Define command mappings for file menu
+        file_menu_commands = {
+            'Preferences': self.preferences,
+            'Image Config': self.image_preferences,
+            'Export Statistics': self.export_stats,
+            'Export File List': self.export_filelist,
+            'Import File List': self.import_filelist,
+            'Export Settings': self.export_settings,
+            'Import Settings': self.import_settings,
+        }
 
-        self.view.fpath_menu.entryconfig('View Full Path', command=self.update_listbox)
-        self.view.fpath_menu.entryconfig('View Parent', command=self.update_listbox)
-        self.view.fpath_menu.entryconfig('View File Only', command=self.update_listbox)
+        # Define command mappings for view menu
+        view_menu_commands = {
+            'Group View': self.update_listbox,
+            'Histograms': self.reselect_index,
+            'Show Single-Wavenumber': self.update_listbox,
+            'Show Ratios': self.update_listbox,
+        }
+
+        # Define command mappings for fpath menu
+        fpath_menu_commands = {
+            'View Full Path': self.update_listbox,
+            'View Parent': self.update_listbox,
+            'View File Only': self.update_listbox,
+        }
+
+        # Apply commands to buttons
+        for button, command in button_commands.items():
+            button.config(command=command)
+
+        # Apply commands to file menu
+        for label, command in file_menu_commands.items():
+            self.view.file_menu.entryconfig(label, command=command)
+
+        # Apply commands to view menu
+        for label, command in view_menu_commands.items():
+            self.view.view_menu.entryconfig(label, command=command)
+
+        # Apply commands to fpath menu
+        for label, command in fpath_menu_commands.items():
+            self.view.fpath_menu.entryconfig(label, command=command)
+
+        # Accelerator for "Histograms"
+        self.view.view_menu.entryconfig('Histograms', accelerator='Ctrl+H')
+
         # Bind the accelerator key combination to the open_file function
-        self.view.root.bind('<Control-h>', lambda event: (self.toggle_checkbox(self.view.show_histograms),self.reselect_index()))
+        self.view.root.bind('<Control-h>', lambda event: (self.toggle_checkbox(self.view.show_histograms), self.reselect_index()))
+
+        # Bind Listbox selection event
+        self.view.ListBox_1.bind('<<ListboxSelect>>', self.on_file_selection)
 
     def preferences(self):
         self.properties = self.view.PropertiesView(
-            self.view.root,self.model.get_ext(),
+            self.view.root,
+            self.model.get_ext(),
             self.model.get_pref('save_correction_freq1'),
             self.model.get_pref('save_correction_freq2'),
             self.model.get_pref('save_threshold_freq2'))
@@ -67,6 +101,36 @@ class MultispectralController:
 
         self.properties.pref_window.destroy()
         return
+
+    def image_preferences(self):
+        preferences = self.model.get_preferences()
+        img_keys = ['font', 'font_size', 'cmap', 'vmin', 'vmax', 'units',
+                    'pixel_scale', 'scale_bar', 'scale_bar_units', 'num_ticks']
+        image_preferences = [preferences[key] for key in img_keys]
+
+        self.image_properties = self.view.ImagePropertiesView(
+            self.view.root, *image_preferences)
+
+        self.image_properties.save_button.config(command=self.image_pref_save_and_quit)
+        return
+    
+    def image_pref_save_and_quit(self):
+        label_to_variable = {"Font": "font",
+                             "Font Size": "font_size",
+                             "Color Map": "cmap",
+                             "Min": "vmin",
+                             "Max": "vmax",
+                             "Units": "units",
+                             "Pixel Scale": "pixel_scale",
+                             "Scale Bar": "scale_bar",
+                             "Scale Bar Units": "scale_bar_units",
+                             "Number of Tick Marks": "num_ticks",}
+        keys = self.image_properties.get_setting_keys()
+        for key in keys: # TODO: check valid preferences first
+            self.model.set_pref(label_to_variable[key], self.image_properties.get_setting(key))
+
+        self.image_properties.pref_window.destroy()
+        pass
 
     def export_settings(self):
         file_path = tk.filedialog.asksaveasfilename(
@@ -132,14 +196,24 @@ class MultispectralController:
             self.model.set_pref('export_folder', settings.get('export_folder', ''))
 
         # Set boolean variables based on the settings dictionary
+        # TODO: Put this in model
         self.view.show_groups.set(settings.get('show_groups', False))
         self.view.show_single.set(settings.get('show_single', True))
         self.view.show_ratio.set(settings.get('show_ratio', True))
         self.view.show_histograms.set(settings.get('show_histograms', False))
 
         self.model.set_pref('filetype', settings.get('export_filetype', '.jpg'))
+
         # Set view_length if the key exists
         self.view_length = settings.get('view_mode', 'full')
+
+        img_config = {}
+        for key in img_config:
+            if key in settings:
+                self.model.set_pref(key,settings[key])
+        
+
+
 
         self.update_listbox()
 
