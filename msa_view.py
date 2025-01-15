@@ -95,64 +95,7 @@ class MultispectralView:
         self.Button_Statistics.grid(row=8, column=2, rowspan=2, columnspan=4, sticky="nsew", padx=2)
 
     def build_wavenumber_inputs(self):
-        # # Natural Wavenumber
-        # freq1_text = self.decorate(tk.Label(self.root, justify="left", text="Frequency 1:"))
-        # freq1_text.grid(row=11, column=0, rowspan=1, columnspan=1, sticky="nsew", padx=(2,0), pady=2)
-        
-        # freq1 = tk.StringVar()
-        # self.freq1_entry = self.decorate(tk.Entry(self.root, textvariable=freq1))
-        # self.freq1_entry.grid(row=11, column=1, rowspan=1, columnspan=1, sticky="nsew", padx=(0,2), pady=2)
-
-        # # Natural Correction Wavenumber
-        # freq1c_text = self.decorate(tk.Label(self.root, justify="left", text="Frequency 1 Correction:"))
-        # freq1c_text.grid(row=11, column=2, rowspan=1, columnspan=1, sticky="nsew", pady=2)
-
-        # freq1c = tk.StringVar()
-        # self.freq1c_entry = self.decorate(tk.Entry(self.root, textvariable=freq1c))
-        # self.freq1c_entry.grid(row=11, column=3, rowspan=1, columnspan=1, sticky="nsew", padx=(0,2), pady=2)
-
-        # # Natural Correction Factor
-        # freq1cf_text = self.decorate(tk.Label(self.root,justify="left", text="Frequency 1 Correction Factor:"))
-        # freq1cf.grid(row=11, column=4, rowspan=1, columnspan=1, sticky="nsew", pady=2)
-
-        # freq1cf = tk.StringVar()
-        # self.freq1cf_entry = self.decorate(tk.Entry(self.root, textvariable=freq1cf))
-        # self.freq1cf_entry.grid(row=11, column=5, rowspan=1, columnspan=1, sticky="nsew", padx=(0,2), pady=2)
-
-        # # Label Wavenumber
-        # freq2_text = self.decorate(tk.Label(self.root, justify="left", text="Frequency 2:"))
-        # freq2_text.grid(row=12, column=0, rowspan=1, columnspan=1, sticky="nsew", pady=2)
-
-        # freq2_wavenum = tk.StringVar()
-        # self.freq2_entry = self.decorate(tk.Entry(self.root, textvariable=freq2_wavenum))
-        # self.freq2_entry.grid(row=12, column=1, rowspan=1, columnspan=1, sticky="nsew", padx=(0,2), pady=2)
-
-        # # Label Correction Wavenumber
-        # freq2c_text = self.decorate(tk.Label(self.root, justify="left", text="Frequency 2 Correction:"))
-        # freq2c_text.grid(row=12, column=2, rowspan=1, columnspan=1, sticky="nsew", pady=2)
-
-        # freq2c = tk.StringVar()
-        # self.freq2c_entry = self.decorate(tk.Entry(self.root, textvariable=freq2c))
-        # self.freq2c_entry.grid(row=12, column=3, rowspan=1, columnspan=1, sticky="nsew", padx=(0,2), pady=2)
-
-        # # Label Correction Factor
-        # freq2cf_text = self.decorate(tk.Label(self.root, justify="left", text="Frequency 2 Correction Factor:"))
-        # freq2cf_text.configure(justify="left")
-        # freq2cf_text.grid(row=12, column=4, rowspan=1, columnspan=1, sticky="nsew", pady=2)
-
-        # freq2cf = tk.StringVar()
-        # self.freq2cf_entry = self.decorate(tk.Entry(self.root, textvariable=freq2cf))
-        # self.freq2cf_entry.grid(row=12, column=5, rowspan=1, columnspan=1, sticky="nsew", padx=(0,2), pady=2)
-
-        # # Threshold
-        # threshold_text = self.decorate(tk.Label(self.root, justify="left", text="Threshold:"))
-        # threshold_text.grid(row=13, column=4, rowspan=1, columnspan=1, sticky="nsew", pady=(2,0))
-
-        # threshold = tk.StringVar()
-        # self.threshold_entry = self.decorate(tk.Entry(self.root, textvariable=threshold))
-        # self.threshold_entry.grid(row=13, column=5, rowspan=1, columnspan=1, sticky="nsew", pady=(2,0))
-
-                # Define configuration details for labels and entries
+        # Define configuration details for labels and entries
         widgets_config = [
             {"text": "Frequency 1:", "row": 11, "col": 0, "entry_var": "freq1"},
             {"text": "Frequency 1 Correction:", "row": 11, "col": 2, "entry_var": "freq1c"},
@@ -174,7 +117,7 @@ class MultispectralView:
 
             # Create, store, and place entries
             entry_var = tk.StringVar()
-            entry = self.decorate(tk.Entry(self.root, textvariable=entry_var))
+            entry = self.decorate(tk.Entry(self.root, textvariable=entry_var, insertbackground="gray", cursor='xterm gray'))
             entry.grid(row=config["row"], column=config["col"] + 1, rowspan=1, columnspan=1, sticky="nsew", padx=(0, 2), pady=2)
 
             self.string_vars[config["entry_var"]] = entry_var
@@ -238,7 +181,7 @@ class MultispectralView:
         sash_position = self.paned_window.sash_coord(0)[0]
         img_width = screen_width - sash_position
 
-        bottom_menu_height = self.Button_Filename.winfo_height()*5
+        bottom_menu_height = self.Button_Filename.winfo_height()*7
         img_height = screen_height - bottom_menu_height
 
         img = Image.open(img_path)
@@ -374,12 +317,13 @@ class MultispectralView:
             column_num = 1
             if type_of_entry == "entry":
                 for form in (form1, form2):
-                    subtitle, entry = form
+                    subtitle, variable = form
                     sublabel = tk.Label(self.pref_frame, text=subtitle)
                     sublabel.grid(row=self.row, column=column_num, sticky='w')
                     column_num += 1
                     entry = tk.Entry(self.pref_frame, width=5)
                     entry.grid(row=self.row, column=column_num, columnspan=1, sticky='w', padx=self.padx_entry)
+                    entry.insert(0, variable)
                     column_num += 1
                     self.properties[subtitle] = {"label": sublabel, "entry": entry, "label_hint": label_hint}
             elif type_of_entry == "checkbutton":
@@ -408,21 +352,25 @@ class MultispectralView:
             return
 
         def _create_widgets(self, *args):
-            (font, font_size, color_map, scale_min, scale_max,
-             units, pixel_scale, scale_bar, scale_bar_units, num_ticks) = args
+            [font, font_size, font_weight, cmap, vmin, vmax, cunits, pixel_scale,
+             scale_bar_units, scale_bar_color,scale_bar_location,
+             scale_bar_fixed_value,num_ticks] = args
+            
             self.make_label("Font")
             self.make_form("Font", "Font of axes text", "entry", font) # TODO: Make pop up for wrong font and check for it!
             self.make_form("Font Size", "Font size of axes text", "entry", font_size)
-
+            self.make_form("Font Weight", "(e.g. light, normal, heavy, bold)", "entry", font_weight)
             self.make_label("Color Bar")
-            self.make_form("Color Map", "Choose Matplotlib colormap", "entry", color_map)
-            self.make_double_form("Scale", "Minimum and max of the color bar", "entry", ("Min", scale_min), ("Max", scale_max))
-            self.make_form("Units", "Units of the color bar", "entry", units)
+            self.make_form("Color Map", "Choose Matplotlib colormap", "entry", cmap)
+            self.make_double_form("Scale", "Minimum and max of the color bar", "entry", ("Min", vmin), ("Max", vmax))
+            self.make_form("Units", "Units of the color bar", "entry", cunits)
 
             self.make_label("Scale")
             self.make_form("Pixel Scale", "Change the scale of the pixels", "entry", pixel_scale)
-            self.make_form("Scale Bar", "Pixel Scale", "entry", scale_bar)
             self.make_form("Scale Bar Units", "Units of the scale bar", "entry", scale_bar_units)
+            self.make_form("Scale Bar Color", "(e.g. white or black)", "entry", scale_bar_color)
+            self.make_form("Scale Bar Location", "(e.g. upper/lower left)", "entry", scale_bar_location)
+            self.make_form("Scale Bar Fixed Value", "(e.g. '10' for 10 units)", "entry", scale_bar_fixed_value)
 
             self.make_label("Extra")
             self.make_form("Number of Tick Marks", "Number of axis tick markers", "entry", num_ticks)

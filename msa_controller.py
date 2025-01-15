@@ -13,6 +13,9 @@ class MultispectralController:
     def __init__(self, model, view):
         self.model = model
         self.view = view
+        self.img_config = ['font', 'font_size', 'font_weight', 'cmap', 'vmin', 'vmax', 'cunits', 'pixel_scale',
+                        'scale_bar_units', 'scale_bar_color','scale_bar_location',
+                        'scale_bar_fixed_value','num_ticks']
         self.connect_signals()
         self.import_default_settings()
         self.view_length = "Full" #Full, Parent, File
@@ -78,6 +81,26 @@ class MultispectralController:
 
         # Bind Listbox selection event
         self.view.ListBox_1.bind('<<ListboxSelect>>', self.on_file_selection)
+        self.view.ListBox_1.bind('<Double-Button-1>', self.rename_item)
+
+    def rename_item(self, event):
+        if not self.view.show_groups.get():  # Check if groups are shown
+            return
+
+        selected_index = self.view.ListBox_1.curselection()
+        if not selected_index:  # Check if any item is selected
+            return
+        
+        index = selected_index[0]  # Get the first selected index
+        current_value = self.view.ListBox_1.get(index)  # Get the current value
+        
+        # Prompt user for new name using simpledialog
+        new_value = tk.simpledialog.askstring("Rename Item", "Enter new name:", initialvalue=current_value)
+        if new_value is not None:  # Check if user didn't cancel
+            self.model.set_group_name(new_value, index)  # Set the new name
+        self.update_listbox()
+
+        return
 
     def preferences(self):
         self.properties = self.view.PropertiesView(
@@ -104,10 +127,14 @@ class MultispectralController:
 
     def image_preferences(self):
         preferences = self.model.get_preferences()
-        img_keys = ['font', 'font_size', 'cmap', 'vmin', 'vmax', 'units',
-                    'pixel_scale', 'scale_bar', 'scale_bar_units', 'num_ticks']
-        image_preferences = [preferences[key] for key in img_keys]
-
+        image_preferences = [preferences[key] for key in self.img_config]
+        
+        if preferences['vmin'] == None:
+            idx = self.img_config.index('vmin')
+            image_preferences[idx] = ''
+        if preferences['vmax'] == None:
+            idx = self.img_config.index('vmax')
+            image_preferences[idx] = ''
         self.image_properties = self.view.ImagePropertiesView(
             self.view.root, *image_preferences)
 
@@ -115,22 +142,53 @@ class MultispectralController:
         return
     
     def image_pref_save_and_quit(self):
-        label_to_variable = {"Font": "font",
-                             "Font Size": "font_size",
-                             "Color Map": "cmap",
+        label_to_variable = {"Font": "font", #string
+                             "Font Size": "font_size", #float
+                             "Font Weight": "font_weight", #string
+                             "Color Map": "cmap", #string
+                             "Units": "cunits", #string 
                              "Min": "vmin",
                              "Max": "vmax",
-                             "Units": "units",
-                             "Pixel Scale": "pixel_scale",
-                             "Scale Bar": "scale_bar",
-                             "Scale Bar Units": "scale_bar_units",
-                             "Number of Tick Marks": "num_ticks",}
+                             "Pixel Scale": "pixel_scale", #float
+                             "Scale Bar Units": "scale_bar_units", #string
+                             "Scale Bar Color": "scale_bar_color", #string
+                             "Scale Bar Location": "scale_bar_location", #string
+                             "Scale Bar Fixed Value": "scale_bar_fixed_value", #float
+                             "Number of Tick Marks": "num_ticks"} # float
+        
         keys = self.image_properties.get_setting_keys()
         for key in keys: # TODO: check valid preferences first
             self.model.set_pref(label_to_variable[key], self.image_properties.get_setting(key))
 
+        for key in {"Min": "vmin", "Max": "vmax", "Scale Bar Fixed Value": "scale_bar_fixed_value"}:
+            value = self.image_properties.get_setting(key)
+            if value == '':
+                value = None
+            else:
+                value = float(value)
+            self.model.set_pref(label_to_variable[key], value)
+
+
+
         self.image_properties.pref_window.destroy()
         pass
+
+    def save_string_pref(self, key, value):
+        self.model.set_pref(key, value)
+        return
+    
+    def save_float_pref(self, key, value):
+        if self.is_number(value):
+            self.model.set_pref(key, float(value))
+        else:
+            print(f"Invalid value for {key}: {value}")
+
+    def is_number(s):
+        try:
+            float(s)
+            return True
+        except ValueError:
+            return False
 
     def export_settings(self):
         file_path = tk.filedialog.asksaveasfilename(
@@ -144,7 +202,7 @@ class MultispectralController:
         settings = self.view.get_settings()
         settings.update(self.model.get_preferences())
         # Save dictionary to a text file
-        with open(file_path, 'w') as file:
+        with open(file_path, 'w', encoding='utf-8') as file:
             file.write(repr(settings))
 
         return
@@ -173,7 +231,7 @@ class MultispectralController:
             return
         
         # Read dictionary from the text file
-        with open(file_path, 'r') as file:
+        with open(file_path, 'r', encoding='utf-8') as file:
             settings = eval(file.read())
 
         entries = {
@@ -207,8 +265,7 @@ class MultispectralController:
         # Set view_length if the key exists
         self.view_length = settings.get('view_mode', 'full')
 
-        img_config = {}
-        for key in img_config:
+        for key in self.img_config:
             if key in settings:
                 self.model.set_pref(key,settings[key])
         

@@ -6,9 +6,12 @@ import warnings
 from pathlib import Path
 import multispectral_analysis as msa
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from matplotlib_scalebar.scalebar import ScaleBar
+from matplotlib import ticker, font_manager
 
 class MultispectralModel:
     def __init__(self):
+        warnings.filterwarnings("ignore")
         # Initialize master DataFrame and other variables/booleans 
         self.df = pd.DataFrame(columns=['fpath', 'fname', 'im_path', 'hist_path', 'group', 'type',
                                         'Mean', 'Median', 'Max_Signal', 'Standard Deviation',
@@ -23,14 +26,18 @@ class MultispectralModel:
                             'save_correction_freq2': False,
                             'save_threshold_freq2': False,
                             'font':"arial", 
-                            'font_size':10, 
+                            'font_size':10,
+                            'font_weight':'normal', 
                             'cmap': 'CMRmap',
                             'vmin': 0,
                             'vmax':None,
-                            'units': '',
+                            'cunits': '',
                             'pixel_scale':1,
-                            'scale_bar':0,
+                            'scale_bar':0.25,
                             'scale_bar_units':'',
+                            'scale_bar_color':'white',
+                            'scale_bar_location':'lower left',
+                            'scale_bar_fixed_value':10,
                             'num_ticks':'auto'}
         self.group_names = []
     def group_files(self, file_list: list, label: str, natural: str, label_corr:str, natural_corr: str) -> pd.DataFrame:
@@ -89,15 +96,77 @@ class MultispectralModel:
         return
 
     # Function to save a data array as an image
-    def save_image(self, data, title):
-        # plt.clf()
-        plt.grid(False)
-        plt.imshow(data, cmap='CMRmap', vmin=0)
-        plt.colorbar()
-        plt.tight_layout(pad=2)
+    def save_image(self, data, title, isRatio=False):
+        if isRatio:
+            vmin = 0
+            vmax = None
+        else:
+            vmin = self.get_pref('vmin')
+            vmax = self.get_pref('vmax')
+        plt.rcdefaults() #HACK to reset settings as seaborn changes them
+        # Enable constrained layout for better spacing and alignment
+        plt.rcParams.update({'figure.constrained_layout.use': True})
+
+        fig, ax = plt.subplots()
+
+        font = {'family': self.get_pref('font'),
+                'size': self.get_pref('font_size'),
+                'weight': self.get_pref('font_weight')} # bold or normal
+        plt.rc('font', **font)
+
+        ax.grid(False)
+        cax = ax.imshow(data, cmap=self.get_pref('cmap'),
+                   vmin=vmin,
+                   vmax=vmax)
+        cbar = fig.colorbar(cax)
+        # Set custom colormap and vmin, vmax
+        cax.set_cmap(self.get_pref('cmap'))  # changing to a different colormap for demonstration
+        cax.set_clim(self.get_pref('vmin'),
+                     self.get_pref('vmax'))  # setting vmin and vmax
+
+            # Add a black border to the figure and colorbar
+        for spine in ax.spines.values():
+            spine.set_edgecolor('black')
+            spine.set_linewidth(1)
+
+        cbar.outline.set_edgecolor('black')
+        cbar.outline.set_linewidth(1)
+
+        self.fix_number_of_ticks(ax, font)
+
+        # Add a scale bar
+        label = str(self.get_pref('scale_bar_fixed_value')) + ' ' + self.get_pref('scale_bar_units')
+        scalebar = ScaleBar(self.get_pref('pixel_scale'),
+                            label=label,
+                            scale_loc='none',
+                            width_fraction=0.015,
+                            location=self.get_pref('scale_bar_location'),
+                            frameon=None,
+                            color=self.get_pref('scale_bar_color'),
+                            box_alpha=0,
+                            fixed_value=self.get_pref('scale_bar_fixed_value'))
+        ax.add_artist(scalebar)
+
         self.saveimg(title)
         plt.close()
         return
+
+    def fix_number_of_ticks(self, ax, font):
+        label_format = '{:,.0f}'
+
+        xticks = ax.get_xticks()
+        ax.xaxis.set_major_locator(ticker.MaxNLocator(self.get_pref('num_ticks')))
+        # ticks_loc = ax.get_xticks().tolist()
+        # ax.xaxis.set_major_locator(ticker.FixedLocator(ticks_loc))
+        # ax.set_xticklabels([label_format.format(x) for x in ticks_loc])
+        ax.set_xticklabels(xticks, fontdict=font)
+
+        yticks = ax.get_yticks()
+        ax.yaxis.set_major_locator(ticker.MaxNLocator(self.get_pref('num_ticks')))
+        # ticks_loc = ax.get_yticks().tolist()
+        # ax.yaxis.set_major_locator(ticker.FixedLocator(ticks_loc))
+        # ax.set_yticklabels([label_format.format(x) for x in ticks_loc])
+        ax.set_yticklabels(yticks, fontdict=font)
 
     def save_data(self, data, title):
         np.savetxt(title + ".csv", data, delimiter=",")
@@ -227,7 +296,7 @@ class MultispectralModel:
             fpath = os.path.join(path, fname+"_"+entries['freq2']+"_thresh")
             self.save_data(freq2_thresholded, fpath)
         _, ratio_fpath, _, _ = self.create_paths(fname, "_ratio")
-        self.save_image(ratio, ratio_fpath)
+        self.save_image(ratio, ratio_fpath, isRatio=True)
         self.create_histogram(ratio, ratio_fpath)
 
     def create_paths(self, fname, extra):
@@ -292,9 +361,13 @@ class MultispectralModel:
         }
 
         # Create the figure and subplots
+        plt.rcdefaults() #HACK to reset settings as seaborn changes them
+        # Enable constrained layout for better spacing and alignment
+        # plt.rcParams.update({'figure.constrained_layout.use': True})
+        plt.tight_layout()
         plot_layout = layout_mapping[num_images]
         fig, axs = plt.subplots(plot_layout[0], plot_layout[1], figsize=(10, 5))
-        plt.tight_layout(pad=2)
+        # fig.subplots_adjust(bottom=0.9)
         axs = axs.flatten()
         return fig, axs
     
@@ -303,8 +376,8 @@ class MultispectralModel:
         fig, ax = plt.subplots(1, 1, figsize=(10, 5))
         plt.grid(False)
         msa.histogram(data, ax=ax, lower_bound=0)
-        plt.tight_layout(pad=2)
         self.saveimg(title + "_hist")
+        plt.close()
         plt.close()
         return
         
@@ -326,19 +399,61 @@ class MultispectralModel:
         plt.close()
         return hist_path + self.get_ext()
 
-    def create_image(self, data, title, ax, max_value):
-        im = ax.imshow(data, cmap='CMRmap', vmin=0, vmax=max_value)
+    def create_image(self, data, title, ax, vmin=None, vmax=None):
+        if vmin==None:
+            vmin = self.get_pref('vmin')
+
         ax.set_title(title)
         ax.axis('off')
-
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.05)
-        plt.colorbar(im, cax=cax)
-        plt.tight_layout(pad=2)
+
+        # vmin = self.get_pref('vmin')
+
+
+        font = {'family': self.get_pref('font'),
+                'size': self.get_pref('font_size'),
+                'weight': self.get_pref('font_weight')} # bold or normal
+        plt.rc('font', **font)
+
+        ax.grid(False)
+        im = ax.imshow(data, cmap=self.get_pref('cmap'),
+                   vmin=vmin,
+                   vmax=vmax)
+        
+        # Set custom colormap and vmin, vmax
+        im.set_cmap(self.get_pref('cmap'))  # changing to a different colormap for demonstration
+        im.set_clim(self.get_pref('vmin'),
+                     self.get_pref('vmax'))  # setting vmin and vmax
+
+            # Add a black border to the figure and colorbar``
+        for spine in ax.spines.values():
+            spine.set_edgecolor('black')
+            spine.set_linewidth(1)
+
+        cbar = plt.colorbar(im, cax=cax)
+        cbar.outline.set_edgecolor('black')
+        cbar.outline.set_linewidth(1)
+
+        self.fix_number_of_ticks(ax, font)
+
+        # Add a scale bar
+        label = str(self.get_pref('scale_bar_fixed_value')) + ' ' + self.get_pref('scale_bar_units')
+        scalebar = ScaleBar(self.get_pref('pixel_scale'),
+                            label=label,
+                            scale_loc='none',
+                            width_fraction=0.015,
+                            location=self.get_pref('scale_bar_location'),
+                            frameon=None,
+                            color=self.get_pref('scale_bar_color'),
+                            box_alpha=0,
+                            fixed_value=self.get_pref('scale_bar_fixed_value'))
+        ax.add_artist(scalebar)
 
         return
 
     def create_group_image(self, data, group_id):
+        print("Amount of data in group images", len(data))
         df_slice = self.df[self.df['group'] == group_id]
         fig, axs = self.generate_group_figure(len(df_slice))
         max_value = self.find_max_value(df_slice) # First 4 elements are non-ratio matrices
@@ -355,14 +470,17 @@ class MultispectralModel:
 
         for i, description in enumerate(data.keys()):
             selected = data[description]    
-            self.create_image(selected, description, axs[i], max_value)
+            self.create_image(selected, description, axs[i], vmax=max_value)
 
         # Create the ratio image
-        self.create_image(ratio, "ratio", axs[-1], ratio.max())
+        self.create_image(ratio, "ratio", axs[-1], vmin=0, vmax=ratio.max())
 
         img_path = os.path.join(self.get_pref('export_folder'), "group_" + str(group_id)) #TODO: Make exporting a different function
+        # fig.subplots_adjust(bottom=300)
         self.saveimg(img_path)
+        
         plt.close()
+        data['ratio'] = ratio
         return img_path + self.get_ext()
 
     def find_max_value(self, df: pd.DataFrame, include_ratio=False) -> float:
