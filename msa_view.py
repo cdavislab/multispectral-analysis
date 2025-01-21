@@ -249,13 +249,16 @@ class MultispectralView:
                 self.pref_frame.grid_columnconfigure(i, weight=1)
 
         def _create_widgets(self, *args):
-            if len(args) != 4:
-                raise ValueError("Expected exactly 4 arguments. Got {}".format(len(args)))
+            if len(args) != 9:
+                raise ValueError("Expected exactly 9 arguments. Got {}".format(len(args)))
 
             (export_filetype,
             save_correction_freq1_val,
             save_correction_freq2_val,
-            export_threshold_val) = args
+            export_threshold_val,
+            freq1_label, freq2_label,
+            freq1c_label, freq2c_label,
+            ratio_label) = args
 
             save_correction_freq1 = tk.BooleanVar()
             save_correction_freq1.set(save_correction_freq1_val)
@@ -276,6 +279,22 @@ class MultispectralView:
             self.make_form("Export Threshold", 
                            "Export raw files after thresholding",
                            "checkbutton", export_threshold)
+            self.make_label("Labels")
+            self.make_form("Frequency 1 Label", 
+                           "Label for frequency 1 in group images",
+                           "entry", freq1_label)
+            self.make_form("Frequency 2 Label", 
+                           "Label for frequency 2 in group images",
+                           "entry", freq2_label)
+            self.make_form("Frequency 1 Correction Label", 
+                           "Label for frequency 1 correction in group images",
+                           "entry", freq1c_label)
+            self.make_form("Frequency 2 Correction Label", 
+                           "Label for frequency 2 correction in group images",
+                           "entry", freq2c_label)
+            self.make_form("Ratio Label", 
+                           "Label for ratio in group images",
+                           "entry", ratio_label)
             return
 
         def make_label(self, label):

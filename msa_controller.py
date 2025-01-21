@@ -13,6 +13,8 @@ class MultispectralController:
     def __init__(self, model, view):
         self.model = model
         self.view = view
+        self.config =['save_correction_freq1', 'save_correction_freq2', 'save_threshold_freq2','freq1_label',
+                      'freq2_label', 'freq1c_label', 'freq2c_label', 'ratio_label']
         self.img_config = ['font', 'font_size', 'font_weight', 'cmap', 'vmin', 'vmax', 'cunits', 'pixel_scale',
                         'scale_bar_units', 'scale_bar_color','scale_bar_location',
                         'scale_bar_fixed_value','num_ticks']
@@ -103,12 +105,12 @@ class MultispectralController:
         return
 
     def preferences(self):
+        prefs = [self.model.get_pref(key) for key in self.config]
+        
         self.properties = self.view.PropertiesView(
             self.view.root,
             self.model.get_ext(),
-            self.model.get_pref('save_correction_freq1'),
-            self.model.get_pref('save_correction_freq2'),
-            self.model.get_pref('save_threshold_freq2'))
+            *prefs)
         self.properties.save_button.config(command=self.pref_save_and_quit)
         return
 
@@ -117,7 +119,12 @@ class MultispectralController:
         label_to_variable = {"Export File Type": "filetype",
                              "Freq 1:": "save_correction_freq1",
                              "Freq 2:": "save_correction_freq2",
-                             "Export Threshold": "save_threshold_freq2"}
+                             "Export Threshold": "save_threshold_freq2",
+                             "Frequency 1 Label": "freq1_label",
+                             "Frequency 2 Label": "freq2_label",
+                             "Frequency 1 Correction Label": "freq1c_label",
+                             "Frequency 2 Correction Label": "freq2c_label",
+                             "Ratio Label": "ratio_label",}
         keys = self.properties.get_setting_keys()
         for key in keys: # TODO: check valid preferences first
             self.model.set_pref(label_to_variable[key], self.properties.get_setting(key))

@@ -25,6 +25,11 @@ class MultispectralModel:
                             'save_correction_freq1': False,
                             'save_correction_freq2': False,
                             'save_threshold_freq2': False,
+                            'freq1_label': 'freq1',
+                            'freq2_label': 'freq2',
+                            'freq1c_label': 'freq1c',
+                            'freq2c_label': 'freq2c',
+                            'ratio_label': 'ratio',
                             'font':"arial", 
                             'font_size':10,
                             'font_weight':'normal', 
@@ -395,6 +400,7 @@ class MultispectralModel:
             ax.set_title(description)
 
         hist_path = os.path.join(self.get_pref('export_folder'), "group_histogram_" + str(group_id)) #TODO: Make exporting a different function
+        fig.subplots_adjust(hspace=0.5)
         self.saveimg(hist_path)
         plt.close()
         return hist_path + self.get_ext()
@@ -469,11 +475,11 @@ class MultispectralModel:
         ratio = data.pop("ratio")
 
         for i, description in enumerate(data.keys()):
-            selected = data[description]    
-            self.create_image(selected, description, axs[i], vmax=max_value)
+            selected = data[description]
+            self.create_image(selected, self.get_item_description(description), axs[i], vmax=max_value)
 
         # Create the ratio image
-        self.create_image(ratio, "ratio", axs[-1], vmin=0, vmax=ratio.max())
+        self.create_image(ratio, self.get_item_description('ratio'), axs[-1], vmin=0, vmax=ratio.max())
 
         img_path = os.path.join(self.get_pref('export_folder'), "group_" + str(group_id)) #TODO: Make exporting a different function
         # fig.subplots_adjust(bottom=300)
@@ -490,6 +496,11 @@ class MultispectralModel:
         if include_ratio:
             idx = slice(None)
         return df.loc[idx, 'Max_Signal'].max()
+
+    def get_item_description(self, item):
+        if item == 'Correction':
+            return self.get_pref('freq1c_label')
+        return self.get_pref(item + '_label')
 
     def get_df_slice(self, index):
         """ Helper function to get a slice of the DataFrame
