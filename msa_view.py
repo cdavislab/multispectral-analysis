@@ -67,7 +67,7 @@ class MultispectralView:
         frm = tk.Frame(root)
         scrollbar = tk.Scrollbar(frm, orient="horizontal")
         scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
-        self.ListBox_1 = self.decorate(tk.Listbox(frm, xscrollcommand=scrollbar.set))
+        self.ListBox_1 = self.decorate(tk.Listbox(frm, xscrollcommand=scrollbar.set, selectmode=tk.MULTIPLE))
         self.ListBox_1.configure(fg="#333333", borderwidth="1px")
         self.ListBox_1.pack(expand=True, fill=tk.BOTH)
         scrollbar.config(command=self.ListBox_1.xview)

@@ -83,7 +83,55 @@ class MultispectralController:
 
         # Bind Listbox selection event
         self.view.ListBox_1.bind('<<ListboxSelect>>', self.on_file_selection)
+        self.view.ListBox_1.bind('<Button-1>', self.on_click)
         self.view.ListBox_1.bind('<Double-Button-1>', self.rename_item)
+
+        self.text_bg = self.view.ListBox_1.cget('bg')  # Get the default background color of the listbox
+
+    def on_click(self, event):
+        # Get the current selection index
+        index = self.view.ListBox_1.nearest(event.y)
+        
+        # Check whether Ctrl or Shift is pressed
+        ctrl_pressed = (event.state & 0x0004) != 0  # Check for Control key
+        shift_pressed = (event.state & 0x0001) != 0  # Check for Shift key
+
+        # Handle selection logic
+        if not ctrl_pressed and not shift_pressed:
+            # Deselect all other items if no modifier key is pressed
+            self.view.ListBox_1.selection_clear(0, tk.END)
+
+        # If Shift is pressed, select a range of items
+        if shift_pressed:
+            # Get the indices of current selection
+            selected_indices = self.view.ListBox_1.curselection()
+            if selected_indices:
+                # Select the first selected index
+                start_index = selected_indices[0]
+                # Select items between the last selected index and the current index
+                if start_index < index:
+                    self.view.ListBox_1.selection_set(start_index, index)
+                else:
+                    self.view.ListBox_1.selection_set(index, start_index)
+
+        # If Ctrl is pressed, toggle the current item without affecting others
+        if ctrl_pressed:
+            if self.view.ListBox_1.selection_includes(index):
+                self.view.ListBox_1.selection_clear(index)
+            else:
+                self.view.ListBox_1.selection_set(index)
+
+        # Highlight the selected items
+        self.update_selection()
+
+    def update_selection(self):
+        # Get the indices of selected items
+        selected_indices = self.view.ListBox_1.curselection()
+        for i in range(self.view.ListBox_1.size()):
+            if i in selected_indices:
+                self.view.ListBox_1.itemconfig(i, {'bg': 'light blue'})  # Change background color for selected
+            else:
+                self.view.ListBox_1.itemconfig(i, {'bg': self.text_bg})      # Reset background color for unselected
 
     def rename_item(self, event):
         if not self.view.show_groups.get():  # Check if groups are shown
@@ -320,7 +368,6 @@ class MultispectralController:
                 continue
             progress.update_progress(increment*i)
         t1 = time.time()
-        print(f"Time to add files: {t1-t0}")
         self.update_listbox()
 
         progress.destroy()
@@ -345,7 +392,13 @@ class MultispectralController:
     def validate_entries(self):
         # Ignore analyze request if no files are loaded
         if self.model.df.empty:
-            tk.messagebox("Add Files", "Add files using \"Add Files\" button before analyzing.")
+            tk.messagebox.showerror("Add Files", "Add files using \"Add Files\" button before analyzing.")
+            return None
+        if self.view.show_groups.get():
+            tk.messagebox.showerror("Group View", "Cannot analyze in group view.")
+            return None
+        if not self.view.show_single.get():
+            tk.messagebox.showerror("Single Wavenumber", "Please select at least two non-ratio images to analyze.")
             return None
         # Get the values from the entries
         entry_keys = ('freq1', 'freq2', 'freq1c', 'freq2c', 'threshold', 'freq1cf', 'freq2cf')
@@ -379,18 +432,48 @@ class MultispectralController:
             args['freq2c'] = None
         return args
 
+    def count_unique_types(self, entries):
+        types = set([entries['freq1'],
+                 entries['freq2'],
+                 entries['freq1c'],
+                 entries['freq2c']])
+        if None in types:
+            types.remove(None)
+        return len(types)
+
     def profile_analyze_files(self):
         cProfile.runctx('self.analyze_files()',globals(), locals(), "profile_analyze_files.txt")
         return
-    def analyze_files(self):
-        # Potential BUG: Freq1 and Freq are swapped 
 
+    def get_df_indices(self):
+        # Get the selected indices, and convert them to dataframe indices
+        # Mimic the listbox view with a dataframe slice
+        selected_indices = list(self.view.ListBox_1.curselection())
+        vsettings = self.view.get_settings()
+        desired_groups = []
+        if vsettings['show_single']: # Show
+            desired_groups += ['Freq1', 'Freq2', 'Freq1c', 'Freq2c', None]
+        if vsettings['show_ratio']:
+            desired_groups.append('Ratio')
+        listbox_df = self.model.df.loc[self.model.df['type'].isin(desired_groups)]
+        # Select positional indices in dataframe from the listbox
+        selection = listbox_df.iloc[selected_indices,:]
+        # Return real dataframe indices
+        return selection.index
+
+    def analyze_files(self):
         # Validate user inputs and prepare them for model method
         entries = self.validate_entries()
         if entries is None:
             return
         progress = self.view.ProgressBar(title="Analyzing Files")
-        groups = self.model.pre_analyze_files(entries)
+        selected_idx = self.get_df_indices()
+        unique_types = self.count_unique_types(entries)
+        groups = self.model.pre_analyze_files(entries, selected_idx, unique_types)
+        if groups is None:
+            progress.destroy()
+            tk.messagebox.showinfo("More Files Needed", "Select more files of the same group to analyze")
+            return
         increment = 100 / len(groups)
         progress.update_progress(1)
         import time
@@ -399,7 +482,6 @@ class MultispectralController:
             self.model.analyze_files(entries, group_idx)
             progress.update_progress(increment*group_idx)
         t1 = time.time()
-        print(f"Time to analyze files: {t1-t0}")
         self.update_listbox()
         progress.destroy()
 
@@ -475,13 +557,13 @@ class MultispectralController:
         if self.view.show_groups.get(): # List only groups in the listbox
             max_group_number = self.model.df['group'].max()
             group_names = self.model.get_group_names()
-            for i in range(max_group_number + 1):
+            for i in range(max_group_number):
                 self.view.ListBox_1.insert(tk.END, group_names[i])
             return
         
         desired_groups = []
         if vsettings['show_single']: # Show
-            desired_groups += ['Natural', 'Label', 'Natural_Corr', 'Label_Corr', None]
+            desired_groups += ['Freq1', 'Freq2', 'Freq1c', 'Freq2c', None]
         if vsettings['show_ratio']:
             desired_groups.append('Ratio')
         listbox_df = self.model.df.loc[self.model.df['type'].isin(desired_groups)]
@@ -545,7 +627,8 @@ class MultispectralController:
         """Convert listbox index to dataframe index by sorting out single wavenumber,
         ratio, or histograms if needbe. Return array of indices if group is selected"""
         if self.view.show_groups.get(): #TODO Check: May need to convert to listbox type to integer
-            idx = self.model.df['group'] == self.get_listbox_index()
+            group = self.get_listbox_index()
+            idx = self.model.df['group'] == group + 1
             single_group_df = self.model.df.loc[idx,:]
             df_idx = single_group_df.index
             return df_idx.tolist()
@@ -553,7 +636,7 @@ class MultispectralController:
         # Create dataframe that mimics what is shown in the listbox
         viewed_types = []
         if self.view.show_single.get():
-            viewed_types += ['Natural', 'Label', 'Natural_Corr', 'Label_Corr', None]
+            viewed_types += ['Freq1', 'Freq2', 'Freq1c', 'Freq2c', None]
         if self.view.show_ratio.get():
             viewed_types.append('Ratio')
         listbox_df = self.model.df.loc[self.model.df['type'].isin(viewed_types)]

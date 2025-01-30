@@ -45,6 +45,11 @@ class MultispectralModel:
                             'scale_bar_fixed_value':10,
                             'num_ticks':'auto'}
         self.group_names = []
+        self.group_images = []
+        self.group_histograms = []
+        self.n_groups = 0
+        self.old_groups = [0]
+        self.group_history = dict()
     def group_files(self, file_list: list, label: str, natural: str, label_corr:str, natural_corr: str) -> pd.DataFrame:
         """
         Groups files based on shared common name
@@ -66,7 +71,7 @@ class MultispectralModel:
         df : pandas.DataFrame
             DataFrame containing the grouped files.
         """
-        df = pd.DataFrame(columns=["identifier", "label", "natural", "label_corr", "natural_corr"], dtype=str)
+        df = pd.DataFrame(columns=["identifier", "freq1", "freq2", "freq1c", "freq2c"], dtype=str)
         # Error case
         if label_corr is None:
             label_corr = ""
@@ -82,26 +87,18 @@ class MultispectralModel:
                 df.loc[df.shape[0]] = [identifier, "", "", "", "",]
             idx = df[df["identifier"] == identifier].index[0]
             if label in file:
-                df.loc[idx, "label"] = file
+                df.loc[idx, "freq1"] = file
             elif natural in file:
-                df.loc[idx, "natural"] = file
+                df.loc[idx, "freq2"] = file
             elif label_corr in file:
-                df.loc[idx, "label_corr"] = file
+                df.loc[idx, "freq1c"] = file
             elif natural_corr in file:
-                df.loc[idx, "natural_corr"] = file
+                df.loc[idx, "freq2c"] = file
 
         return df
 
-    def assign_groups(self, groups_df: pd.DataFrame):
-        for idx, row in groups_df.iterrows():
-            # Slice columns from [1:] to remove identifier column
-            for column in groups_df.columns[1:]:
-                ## Place group number in row for each group in the class-wide dataframe
-                self.df.loc[self.df['fpath'] == row[column], 'group'] = idx
-        return
-
     # Function to save a data array as an image
-    def save_image(self, data, title, isRatio=False):
+    def save_image(self, data, title, suffix='', isRatio=False):
         if isRatio:
             vmin = 0
             vmax = None
@@ -152,7 +149,7 @@ class MultispectralModel:
                             fixed_value=self.get_pref('scale_bar_fixed_value'))
         ax.add_artist(scalebar)
 
-        self.saveimg(title)
+        self.saveimg(title + suffix)
         plt.close()
         return
 
@@ -191,30 +188,30 @@ class MultispectralModel:
         return freq1_corrected, freq2_corrected, freq2_thresholded, ratio
 
     # Function to sort files in a group into label, natural, and correction
-    def sort_wavenumbers(self, group, label_wavenum, natural_wavenum, 
-                         label_correction_wavenum, natural_correction_wavenum):
+    def sort_wavenumbers(self, group, freq1, freq2, 
+                         freq1c, freq2c):
         for file in group:
-            if label_wavenum in file:
-                label_file = file
-                self.df.loc[self.df['fpath'] == file, 'type'] = 'Label'
-            elif natural_wavenum in file:
-                natural_file = file
-                self.df.loc[self.df['fpath'] == file, 'type'] = 'Natural'
-            elif label_correction_wavenum in file:
-                label_correction_file = file
-                self.df.loc[self.df['fpath'] == file, 'type'] = 'Label_Corr'
-            elif natural_correction_wavenum in file:
-                natural_correction_file = file
-                self.df.loc[self.df['fpath'] == file, 'type'] = 'Natural_Corr'
+            if freq1 in file:
+                freq1_file = file
+                self.df.loc[self.df['fpath'] == file, 'type'] = 'Freq1'
+            elif freq2 in file:
+                freq2_file = file
+                self.df.loc[self.df['fpath'] == file, 'type'] = 'Freq2'
+            elif freq1c in file:
+                freq1c_file = file
+                self.df.loc[self.df['fpath'] == file, 'type'] = 'Freq1c'
+            elif freq2c in file:
+                freq2c_file = file
+                self.df.loc[self.df['fpath'] == file, 'type'] = 'Freq2c'
             else:
                 warnings.warn("Warning: " + file + " could not be sorted into a wavenumber group")
-        if label_correction_wavenum is None:
-            label_correction_file = None
-        if natural_correction_wavenum is None:
-            natural_correction_file = None
-        if label_correction_wavenum == natural_correction_wavenum:
-            natural_correction_file = label_correction_file
-        return label_file, natural_file, label_correction_file, natural_correction_file
+        if freq1c is None:
+            freq1c_file = None
+        if freq2c is None:
+            freq2c_file = None
+        if freq1c == freq2c:
+            freq2c_file = freq1c_file
+        return freq1_file, freq2_file, freq1c_file, freq2c_file
 
     def get_dir(self, file):
         outfolder = self.get_pref('export_folder')
@@ -278,31 +275,85 @@ class MultispectralModel:
         
         return loaded_data
 
-    def pre_analyze_files(self, entries):
-        groups_df = self.group_files(self.df['fpath'], entries['freq1'], entries['freq2'],
-                entries['freq1c'], entries['freq2c'])
-        self.assign_groups(groups_df)
+    def is_grouped(self, fpaths):
+        # Return True if all fpaths have a non-zero group number in pandas dataframe
+        for fpath in fpaths:
+            row = self.df[self.df['fpath'] == fpath]
+            group = row['group']
+        return all(self.df[self.df['fpath'].isin(fpaths)]['group'] != 0)
+
+    def get_new_group(self):
+        return self.df['group'].max() + 1
+
+    def change_group_number(self, fpaths):
+        old_group = self.df.loc[self.df['fpath'].isin(fpaths), 'group']
+        old_group = old_group.values[0]
+        new_group = self.get_new_group()
+        # Append
+        if old_group in self.group_history.keys():
+            self.group_history[old_group].append(new_group)
+        else:
+            self.group_history[old_group] = [new_group]
+
+        self.df.loc[self.df['fpath'].isin(fpaths), 'group'] = new_group
+        return
+
+    def assign_groups(self, groups_series: pd.Series):
+        new_group_num = self.get_new_group()
         
+        for item in groups_series:
+            ## Place group number in row for each group in the class-wide dataframe
+            self.df.loc[self.df['fpath'] == item, 'group'] = new_group_num
+        return
+
+    def pre_analyze_files(self, entries, idx, unique_types):
+        fpaths = self.df.loc[idx, :]
+        # Remove fpaths that are ratios
+        fpaths = fpaths[fpaths['type'] != 'Ratio']
+        fpaths = fpaths['fpath']
+
+        groups_df = self.group_files(fpaths, entries['freq1'], entries['freq2'],
+            entries['freq1c'], entries['freq2c'])
+        # Find row in groups_df with least number of empty strings
+        def count_non_empty_strings(row):
+            return sum(bool(str(cell).strip()) for cell in row)
+
+        groups_df = groups_df[groups_df.apply(count_non_empty_strings, axis=1) > unique_types]
+        if groups_df.shape[0] == 0:
+            return None
+        
+        for idx, row in groups_df.iterrows():
+            if self.is_grouped(row[1:]):
+                self.change_group_number(row[1:])
+            else:
+                self.assign_groups(row[1:])
+
         groups = self.df['group'].unique()
-        self.group_images = [None for _ in range(len(groups))]
-        self.group_histograms = [None for _ in range(len(groups))]
+
+        groups = np.delete(groups, np.isin(groups, self.old_groups)) # Previously analyzed and ungrouped items
+        n_new_groups = len(groups)
+        self.old_groups += list(groups)
+
+        self.group_images += ([None for _ in range(n_new_groups)])
+        self.group_histograms += ([None for _ in range(n_new_groups)])
+
         return groups
 
     def _save_output_data(self, freq1_corrected, freq2_corrected, freq2_thresholded,
-                          ratio, entries, fname):
+                          ratio, entries, fname, group_id):
         path = self.get_pref('export_folder')
         if self.get_pref('save_correction_freq1'):
-            fpath = os.path.join(path, fname+"_"+entries['freq1']+"_corr")
+            fpath = os.path.join(path, fname+"_"+entries['freq1']+"_corr_"+str(group_id))
             self.save_data(freq1_corrected, fpath)
         if self.get_pref('save_correction_freq2'):
-            fpath = os.path.join(path, fname+"_"+entries['freq2']+"_corr")
+            fpath = os.path.join(path, fname+"_"+entries['freq2']+"_corr_"+str(group_id))
             self.save_data(freq2_corrected, fpath)
         if self.get_pref('save_threshold_freq2'):
-            fpath = os.path.join(path, fname+"_"+entries['freq2']+"_thresh")
+            fpath = os.path.join(path, fname+"_"+entries['freq2']+"_thresh_"+str(group_id))
             self.save_data(freq2_thresholded, fpath)
         _, ratio_fpath, _, _ = self.create_paths(fname, "_ratio")
-        self.save_image(ratio, ratio_fpath, isRatio=True)
-        self.create_histogram(ratio, ratio_fpath)
+        self.save_image(ratio, ratio_fpath+"_"+str(group_id), isRatio=True)
+        self.create_histogram(ratio, ratio_fpath+"_"+str(group_id))
 
     def create_paths(self, fname, extra):
         path = self.get_pref('export_folder')
@@ -314,7 +365,8 @@ class MultispectralModel:
     
 
     def _summarize_and_save_to_df(self, data, fname, group_idx=None, type=None):
-        type_to_fname = {"Ratio": "_ratio"}
+
+        type_to_fname = {"Ratio": "_ratio_"+str(group_idx)}
         summary = msa.summarize(data)
         summary = list(summary[0].astype('float'))
         fname, fpath, image_path, histogram_path = self.create_paths(fname, type_to_fname[type])
@@ -330,15 +382,15 @@ class MultispectralModel:
         """
         data, fname = self._load_group(entries, group_idx)
         output_data = self._correct_and_ratio(data, entries)
-        self._save_output_data(*output_data, entries, fname)
+        self._save_output_data(*output_data, entries, fname, group_idx)
         ratio = output_data[3]
         self._summarize_and_save_to_df(ratio, fname, group_idx, 'Ratio')
         data['ratio'] = ratio
         if entries['freq1c'] == entries['freq2c']: # if correction file names are the same..
             data.pop('freq2c') # HACK: Should be named correction if the same 
             
-        self.group_images[group_idx] = self.create_group_image(data, group_idx)
-        self.group_histograms[group_idx] = self.create_group_histogram(data, group_idx)
+        self.group_images[group_idx-1] = self.create_group_image(data, group_idx)
+        self.group_histograms[group_idx-1] = self.create_group_histogram(data, group_idx)
         return
     
     def _load_group(self, entries, group_idx):
@@ -376,12 +428,12 @@ class MultispectralModel:
         axs = axs.flatten()
         return fig, axs
     
-    def create_histogram(self, data, title):
+    def create_histogram(self, data, title, suffix=''):
         # fig, ax = self.generate_group_figure(1)
         fig, ax = plt.subplots(1, 1, figsize=(10, 5))
         plt.grid(False)
         msa.histogram(data, ax=ax, lower_bound=0)
-        self.saveimg(title + "_hist")
+        self.saveimg(title + "_hist" + suffix)
         plt.close()
         plt.close()
         return
@@ -459,7 +511,6 @@ class MultispectralModel:
         return
 
     def create_group_image(self, data, group_id):
-        print("Amount of data in group images", len(data))
         df_slice = self.df[self.df['group'] == group_id]
         fig, axs = self.generate_group_figure(len(df_slice))
         max_value = self.find_max_value(df_slice) # First 4 elements are non-ratio matrices
@@ -492,7 +543,7 @@ class MultispectralModel:
     def find_max_value(self, df: pd.DataFrame, include_ratio=False) -> float:
         """ Helper function to find the maximum value among matrices in a DataFrame.
         Optionally include ratio images. """
-        idx = df['type'] != 'ratio'
+        idx = df['type'] != 'Ratio'
         if include_ratio:
             idx = slice(None)
         return df.loc[idx, 'Max_Signal'].max()
@@ -511,13 +562,13 @@ class MultispectralModel:
         return df_slice.loc['hist_path']
 
     def get_group_histogram(self, group_id):
-        return self.group_histograms[group_id]
+        return self.group_histograms[group_id-1]
 
     def get_single_image(self, df_slice):
         return df_slice.loc['im_path']
 
     def get_group_image(self, group_id):
-        return self.group_images[group_id]
+        return self.group_images[group_id-1]
 
     def get_preferences(self):
         return self.preferences
@@ -538,11 +589,11 @@ class MultispectralModel:
         return self.group_names
     
     def set_group_name(self, name, group_id):
-        if len(self.group_names) == group_id:
+        if len(self.group_names) == group_id-1:
             self.group_names.append(name)
-        elif len(self.group_names) > group_id:
-            self.group_names[group_id] = name
-        elif len(self.group_names) < group_id:
+        elif len(self.group_names) > group_id-1:
+            self.group_names[group_id-1] = name
+        elif len(self.group_names) < group_id-1:
             raise ValueError("Group ID is out of range")
         else:
             raise ValueError("Invalid group ID:", str(group_id))
