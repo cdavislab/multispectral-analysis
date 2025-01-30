@@ -414,4 +414,4 @@ class MultispectralView:
             self.canvas.delete("progress")  # Clear previous progress
             fill_width = (value / 100) * 300  # Calculate the fill width
             self.canvas.create_rectangle(0, 0, fill_width, 30, fill="green", tags="progress")
-            self.update_idletasks()  # Refresh the UI
+            self.update()
