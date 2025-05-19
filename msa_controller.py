@@ -1,12 +1,11 @@
 import tkinter as tk
 from tkinter.filedialog import askopenfilenames, askdirectory
 from pathlib import Path
-from PIL import ImageTk, Image
 import numpy as np
 import pandas as pd
 import os
-import cProfile
-from multiprocessing import Pool
+# import cProfile
+# from multiprocessing import Pool
 
 # Controller class to manage the logic between the Model and the View
 class MultispectralController:
@@ -15,8 +14,8 @@ class MultispectralController:
         self.view = view
         self.config =['save_correction_freq1', 'save_correction_freq2', 'save_threshold_freq2','freq1_label',
                       'freq2_label', 'freq1c_label', 'freq2c_label', 'ratio_label']
-        self.img_config = ['font', 'font_size', 'font_weight', 'cmap', 'vmin', 'vmax', 'cunits', 'pixel_scale',
-                        'scale_bar_units', 'scale_bar_color','scale_bar_location',
+        self.img_config = ['font', 'font_size', 'font_weight', 'cmap', 'vmin', 'vmax', 'cunits', 'ratio_vmin',
+                           'ratio_vmax', 'ratio_cunits', 'pixel_scale', 'scale_bar_units', 'scale_bar_color','scale_bar_location',
                         'scale_bar_fixed_value','num_ticks']
         self.connect_signals()
         self.import_default_settings()
@@ -147,7 +146,7 @@ class MultispectralController:
         # Prompt user for new name using simpledialog
         new_value = tk.simpledialog.askstring("Rename Item", "Enter new name:", initialvalue=current_value)
         if new_value is not None:  # Check if user didn't cancel
-            self.model.set_group_name(new_value, index)  # Set the new name
+            self.model.set_group_name(new_value, index+1)  # Set the new name
         self.update_listbox()
 
         return
@@ -190,6 +189,12 @@ class MultispectralController:
         if preferences['vmax'] == None:
             idx = self.img_config.index('vmax')
             image_preferences[idx] = ''
+        if preferences['ratio_vmin'] == None:
+            idx = self.img_config.index('ratio_vmin')
+            image_preferences[idx] = ''
+        if preferences['ratio_vmax'] == None:
+            idx = self.img_config.index('ratio_vmax')
+            image_preferences[idx] = ''
         self.image_properties = self.view.ImagePropertiesView(
             self.view.root, *image_preferences)
 
@@ -204,6 +209,9 @@ class MultispectralController:
                              "Units": "cunits", #string 
                              "Min": "vmin",
                              "Max": "vmax",
+                             "rMin": "ratio_vmin",
+                             "rMax": "ratio_vmax",
+                             "Ratio Units": "ratio_cunits", #string
                              "Pixel Scale": "pixel_scale", #float
                              "Scale Bar Units": "scale_bar_units", #string
                              "Scale Bar Color": "scale_bar_color", #string
@@ -215,7 +223,8 @@ class MultispectralController:
         for key in keys: # TODO: check valid preferences first
             self.model.set_pref(label_to_variable[key], self.image_properties.get_setting(key))
 
-        for key in {"Min": "vmin", "Max": "vmax", "Scale Bar Fixed Value": "scale_bar_fixed_value"}:
+        for key in {"Min": "vmin", "Max": "vmax", "Scale Bar Fixed Value": "scale_bar_fixed_value",
+                    "rMin": "ratio_vmin", "rMax": "ratio_vmax"}:
             value = self.image_properties.get_setting(key)
             if value == '':
                 value = None
@@ -324,9 +333,6 @@ class MultispectralController:
             if key in settings:
                 self.model.set_pref(key,settings[key])
         
-
-
-
         self.update_listbox()
 
     def toggle_checkbox(self, checkbox):
@@ -348,8 +354,6 @@ class MultispectralController:
         outpath = self.model.get_dir(files[0])
         error_files = dict()
         increment = 100 / len(files)
-        import time
-        t0 = time.time()
         # processes_pool = Pool(len(files))
         # try:
         #     processes_pool.starmap(self.model.add_files, [(file, outpath) for file in files])
@@ -367,7 +371,6 @@ class MultispectralController:
                 error_files[file] = e
                 continue
             progress.update_progress(increment*i)
-        t1 = time.time()
         self.update_listbox()
 
         progress.destroy()
@@ -476,12 +479,9 @@ class MultispectralController:
             return
         increment = 100 / len(groups)
         progress.update_progress(1)
-        import time
-        t0 = time.time()
         for group_idx in groups:
             self.model.analyze_files(entries, group_idx)
             progress.update_progress(increment*group_idx)
-        t1 = time.time()
         self.update_listbox()
         progress.destroy()
 
@@ -667,14 +667,22 @@ class MultispectralController:
         self.model.export_stats()
 
     def export_filelist(self):
-        self.model.export_filelist()
+        file_path = tk.filedialog.asksaveasfilename(
+            defaultextension=".txt",  # Default file extension
+            filetypes=[("Text files", "*.txt"), ("All files", "*.*")],  # Supported file types
+            title="Save Settings As"
+        )
+        if file_path == '':  # If the user cancels the save dialog, return
+            return
+        
+        self.model.export_filelist(file_path)
 
-    def profile_import_filelist(self):
-        cProfile.runctx('self.import_filelist()',globals(), locals(), "profile_import_filelist.txt")
-        return
+    # def profile_import_filelist(self):
+    #     cProfile.runctx('self.import_filelist()',globals(), locals(), "profile_import_filelist.txt")
+    #     return
     def import_filelist(self):
         progress = self.view.ProgressBar(title="Adding Files")
-        file_of_files = askopenfilenames(filetypes=(("Comma Delimited", "*.csv"), ("All files", "*.*"),))
+        file_of_files = askopenfilenames(filetypes=(("Comma Delimited", "*.txt"), ("All files", "*.*"),))
         if len(file_of_files) == 0:
             progress.destroy()
             return

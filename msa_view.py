@@ -1,7 +1,7 @@
 import tkinter as tk
 import tkinter.font as tkFont
 from tkinter import ttk
-from pathlib import Path
+# from pathlib import Path
 from PIL import Image, ImageTk
 
 # View class to handle the GUI components
@@ -371,7 +371,8 @@ class MultispectralView:
             return
 
         def _create_widgets(self, *args):
-            [font, font_size, font_weight, cmap, vmin, vmax, cunits, pixel_scale,
+            [font, font_size, font_weight, cmap, vmin, vmax, cunits,
+             ratio_vmin, ratio_vmax, ratio_cunits, pixel_scale,
              scale_bar_units, scale_bar_color,scale_bar_location,
              scale_bar_fixed_value,num_ticks] = args
             
@@ -383,7 +384,8 @@ class MultispectralView:
             self.make_form("Color Map", "Choose Matplotlib colormap", "entry", cmap)
             self.make_double_form("Scale", "Minimum and max of the color bar", "entry", ("Min", vmin), ("Max", vmax))
             self.make_form("Units", "Units of the color bar", "entry", cunits)
-
+            self.make_double_form("Scale", "Minimum and max of ratio color bar", "entry", ("rMin", ratio_vmin), ("rMax", ratio_vmax))
+            self.make_form("Ratio Units", "Units of the ratio color bar", "entry", ratio_cunits)
             self.make_label("Scale")
             self.make_form("Pixel Scale", "Change the scale of the pixels", "entry", pixel_scale)
             self.make_form("Scale Bar Units", "Units of the scale bar", "entry", scale_bar_units)

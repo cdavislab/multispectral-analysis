@@ -1,16 +1,10 @@
 #multispectral_analysis
 
 #import necessary packages
-import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-from numpy import genfromtxt
-import matplotlib.image as im
-import matplotlib.cm as cm
 from matplotlib_scalebar.scalebar import ScaleBar
-import csv
-import os
 
 #This function bins the multispectral image in a 2x2 fashion, if using it should always be applied before thresholding and ratioing so that thresholded pixels dont get averaged into pixels with non-zero intensity#
 def bin_image(image_data, image_name=""): #variables are the image to bin (a singlewavenumber image save as a csv) and the name you would like to call it#
@@ -32,13 +26,19 @@ def bin_image(image_data, image_name=""): #variables are the image to bin (a sin
     return binned_image, binned_image_name 
 
 def correct_spectra(data, reference, correction_factor: float) :
-    return data - correction_factor * reference
+    corrected = data - correction_factor * reference
+    # if np.any(corrected < 0):
+    #     print("Warning: Negative values detected in corrected data. Setting them to zero.")
+    corrected[corrected < 0] = 0
+    # return data - correction_factor * reference
+    return corrected
 
 #Thresholds the image to select for only areas with high enough lipid signal and then ratios two single wavenumber images#
 
 def threshold(data,threshpercent=0.05): # the thresholdpercent is automatically set to 5% but can be changed by inputting that variable#
     maxsignal = np.max(data)
     threshval = maxsignal * threshpercent
+    # print(threshval, threshpercent)
     #threshold out low lipid areas
     data[data<threshval] = 0
     return data, maxsignal
