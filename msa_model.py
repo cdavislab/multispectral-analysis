@@ -9,8 +9,10 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib_scalebar.scalebar import ScaleBar
 from matplotlib import ticker
 
+# Model class for managing data, analysis, and file operations
 class MultispectralModel:
     def __init__(self):
+        # Initialize data structures, preferences, and group tracking
         warnings.filterwarnings("ignore")
         # Initialize master DataFrame and other variables/booleans 
         self.df = pd.DataFrame(columns=['fpath', 'fname', 'im_path', 'hist_path', 'group', 'type',
@@ -55,24 +57,8 @@ class MultispectralModel:
         self.group_history = dict()
     def group_files(self, file_list: list, label: str, natural: str, label_corr:str, natural_corr: str) -> pd.DataFrame:
         """
-        Groups files based on shared common name
-        Parameters
-        -----------
-        file_list : list
-            List of file names.
-        label: str
-            Wavenumber used as the label.
-        natural: str
-            Wavenumber used as the control/natural.
-        label_corr: str
-            Wavenumber used to correct label wavenumber intensity.
-        natural_corr: str
-            Wavenumber used to correct label wavenumber intensity.
-
-        Returns
-        -------
-        df : pandas.DataFrame
-            DataFrame containing the grouped files.
+        Groups files based on shared common name and wavenumber labels.
+        Returns a DataFrame with grouped file paths.
         """
         df = pd.DataFrame(columns=["identifier", "freq1", "freq2", "freq1c", "freq2c"], dtype=str)
         # Error case
@@ -102,6 +88,7 @@ class MultispectralModel:
 
     # Function to save a data array as an image
     def save_image(self, data, title, suffix='', isRatio=False):
+        # Save a numpy array as an image with colorbar and optional ratio settings
         if isRatio:
             vmin_var = 'ratio_vmin'
             vmax_var = 'ratio_vmax'
@@ -164,12 +151,14 @@ class MultispectralModel:
         return
 
     def is_nonzero_number(self, value):
+        # Utility: check if value is a nonzero number
         try:
             return float(value) > 0
         except ValueError:
             return False
 
     def fix_number_of_ticks(self, ax, font):
+        # Set the number of axis ticks or remove them if not specified
         if not(self.is_nonzero_number(self.get_pref('num_ticks'))):
             ax.set_xticks([])
             ax.set_yticks([])
@@ -187,18 +176,33 @@ class MultispectralModel:
         return
 
     def save_data(self, data, title):
+        # Save numpy array as CSV
         np.savetxt(title + ".csv", data, delimiter=",")
         return
 
     # Function to compute ratio images from freq1, freq2, and correction files
     def _correct_and_ratio(self, data, entries):
+        # Apply corrections and compute ratio image
         freq1_corrected = data['freq1']
         freq2_corrected = data['freq2']
-        # If correction data is provided, correct the data
-        if data['freq1c'] is not None:
-            freq1_corrected = msa.correct_spectra(data['freq1'], data['freq1c'], entries['freq1cf'])
-        if data['freq2c'] is not None:
-            freq2_corrected = msa.correct_spectra(data['freq2'], data['freq2c'], entries['freq2cf'])
+
+        # Support multiple corrections/factors if provided
+        if 'multiple_corrections' in entries and 'multiple_factors' in entries:
+            for corr, factor in zip(entries['multiple_corrections'], entries['multiple_factors']):
+                if corr and factor:
+                    # Apply correction to freq1 if present in filename
+                    if corr in getattr(data, 'freq1c', '') or corr in getattr(data, 'freq1', ''):
+                        freq1_corrected = msa.correct_spectra(freq1_corrected, data.get(corr, None), factor)
+                    # Apply correction to freq2 if present in filename
+                    if corr in getattr(data, 'freq2c', '') or corr in getattr(data, 'freq2', ''):
+                        freq2_corrected = msa.correct_spectra(freq2_corrected, data.get(corr, None), factor)
+        else:
+            # Fallback to single correction
+            if data['freq1c'] is not None:
+                freq1_corrected = msa.correct_spectra(data['freq1'], data['freq1c'], entries['freq1cf'])
+            if data['freq2c'] is not None:
+                freq2_corrected = msa.correct_spectra(data['freq2'], data['freq2c'], entries['freq2cf'])
+
         freq2_thresholded, _ = msa.threshold(freq2_corrected, entries['threshold'])
         ratio = msa.compute_ratio(freq1_corrected, freq2_thresholded)
         return freq1_corrected, freq2_corrected, freq2_thresholded, ratio
@@ -206,6 +210,7 @@ class MultispectralModel:
     # Function to sort files in a group into freq1, freq2, and corrections
     def sort_wavenumbers(self, group, freq1, freq2, 
                          freq1c, freq2c):
+        # Sort files in a group into freq1, freq2, and corrections
         for file in group:
             if freq1 in file:
                 freq1_file = file
@@ -230,6 +235,7 @@ class MultispectralModel:
         return freq1_file, freq2_file, freq1c_file, freq2c_file
 
     def get_dir(self, file):
+        # Determine output directory for a file, create if needed
         outfolder = self.get_pref('export_folder')
         if self.get_pref('subdivide_files'):
             parent = Path(file).parent.name
@@ -239,6 +245,7 @@ class MultispectralModel:
 
     # Function to add files to the model and process them
     def add_files(self, file, outfolder):
+        # Add a file to the model, process and summarize it
         # Add each unique file to the DataFrame with a summary and create an image
         if file in self.df['fpath'].unique():
             return
@@ -292,16 +299,18 @@ class MultispectralModel:
         return loaded_data
 
     def is_grouped(self, fpaths):
-        # Return True if all fpaths have a non-zero group number in pandas dataframe
+        # Return True if all fpaths have a non-zero group number in dataframe
         for fpath in fpaths:
             row = self.df[self.df['fpath'] == fpath]
             group = row['group']
         return all(self.df[self.df['fpath'].isin(fpaths)]['group'] != 0)
 
     def get_new_group(self):
+        # Get the next available group number
         return self.df['group'].max() + 1
 
     def change_group_number(self, fpaths):
+        # Change group number for a set of file paths
         old_group = self.df.loc[self.df['fpath'].isin(fpaths), 'group']
         old_group = old_group.values[0]
         new_group = self.get_new_group()
@@ -315,6 +324,7 @@ class MultispectralModel:
         return
 
     def assign_groups(self, groups_series: pd.Series):
+        # Assign a new group number to a series of file paths
         new_group_num = self.get_new_group()
         
         for item in groups_series:
@@ -323,6 +333,7 @@ class MultispectralModel:
         return
 
     def pre_analyze_files(self, entries, idx, unique_types):
+        # Prepare groups for analysis, assign group numbers, and track new groups
         fpaths = self.df.loc[idx, :]
         # Remove fpaths that are ratios
         fpaths = fpaths[fpaths['type'] != 'Ratio']
@@ -357,6 +368,7 @@ class MultispectralModel:
 
     def _save_output_data(self, freq1_corrected, freq2_corrected, freq2_thresholded,
                           ratio, entries, fname, group_id):
+        # Save output data arrays and images for a group
         path = self.get_pref('export_folder')
         if self.get_pref('save_correction_freq1'):
             fpath = os.path.join(path, fname+"_"+entries['freq1']+"_corr_"+str(group_id))
@@ -373,6 +385,7 @@ class MultispectralModel:
         self.create_histogram(ratio, ratio_fpath+"_"+str(group_id))
 
     def create_paths(self, fname, extra):
+        # Generate file paths for output images and data
         path = self.get_pref('export_folder')
         fname = fname + extra
         fpath = os.path.join(path, fname)
@@ -382,7 +395,7 @@ class MultispectralModel:
     
 
     def _summarize_and_save_to_df(self, data, fname, group_idx=None, type=None):
-
+        # Summarize data and add to the main DataFrame
         type_to_fname = {"Ratio": "_ratio_"+str(group_idx)}
         summary = msa.summarize(data)
         summary = list(summary[0].astype('float'))
@@ -395,7 +408,7 @@ class MultispectralModel:
     # loads data, computes ratio, saves ratio, 
     def analyze_files(self, entries, group_idx):
         """
-        Main function to analyze files. Groups files, asks if groups are correct, and computes ratio images. 
+        Main function to analyze files. Groups files, computes ratio images, and saves results.
         """
         data, fname = self._load_group(entries, group_idx)
         output_data = self._correct_and_ratio(data, entries)
@@ -411,6 +424,7 @@ class MultispectralModel:
         return
     
     def _load_group(self, entries, group_idx):
+        # Load all files for a group and return data dictionary and base name
         fpaths = self._get_group(group_idx)
         fpaths = self.sort_wavenumbers(fpaths, entries['freq1'], entries['freq2'], entries['freq1c'], entries['freq2c'])
         fname = self._find_base_name(fpaths[0], entries['freq1'])
@@ -420,12 +434,15 @@ class MultispectralModel:
         return data, fname
 
     def _get_group(self, idx):
+        # Get file paths for a group
         return self.df[self.df['group'] == idx]['fpath'].values
 
     def _find_base_name(self, file, extra):
+        # Extract base name from file path
         return Path(file).stem.replace(extra, "")
         
     def generate_group_figure(self, num_images):
+        # Create a matplotlib figure with subplots for group images
         layout_mapping = {
             1: (1, 1),
             2: (1, 2),
@@ -446,6 +463,7 @@ class MultispectralModel:
         return fig, axs
     
     def create_histogram(self, data, title, suffix=''):
+        # Create and save a histogram for a data array
         # fig, ax = self.generate_group_figure(1)
         fig, ax = plt.subplots(1, 1, figsize=(10, 5))
         plt.grid(False)
@@ -457,6 +475,7 @@ class MultispectralModel:
         
 
     def create_group_histogram(self, data, group_id):
+        # Create and save a histogram for a group of data arrays
         df_slice = self.df[self.df['group'] == group_id]
         fig, axs = self.generate_group_figure(len(df_slice))
         # max_value = self.find_max_value(df_slice) # First 4 elements are non-ratio matrices
@@ -475,6 +494,7 @@ class MultispectralModel:
         return hist_path + self.get_ext()
 
     def create_image(self, data, title, ax, vmin=None, vmax=None, isRatio=False):
+        # Create an image with colorbar and optional scale bar
         if isRatio:
             vmin_var = 'ratio_vmin'
             vmax_var = 'ratio_vmax'
@@ -544,6 +564,7 @@ class MultispectralModel:
         return
 
     def create_group_image(self, data, group_id):
+        # Create and save a composite image for a group
         df_slice = self.df[self.df['group'] == group_id]
         fig, axs = self.generate_group_figure(len(df_slice))
         max_value = self.find_max_value(df_slice) # First 4 elements are non-ratio matrices
@@ -582,6 +603,7 @@ class MultispectralModel:
         return df.loc[idx, 'Max_Signal'].max()
 
     def get_item_description(self, item):
+        # Get label for an item type from preferences
         if item == 'Correction':
             return self.get_pref('freq1c_label')
         return self.get_pref(item + '_label')
@@ -592,36 +614,46 @@ class MultispectralModel:
         return self.df.loc[index, :]
     
     def get_single_histogram(self, df_slice):
+        # Get histogram path for a single file
         return df_slice.loc['hist_path']
 
     def get_group_histogram(self, group_id):
+        # Get histogram path for a group
         return self.group_histograms[group_id-1]
 
     def get_single_image(self, df_slice):
+        # Get image path for a single file
         return df_slice.loc['im_path']
 
     def get_group_image(self, group_id):
+        # Get image path for a group
         return self.group_images[group_id-1]
 
     def get_preferences(self):
+        # Return the preferences dictionary
         return self.preferences
 
     def get_pref(self, preference):
+        # Get a single preference value
         if preference not in self.preferences.keys():
             return None
         return self.preferences[preference]
     
     def set_pref(self, preference, value):
+        # Set a single preference value
         self.preferences[preference] = value
         return
 
     def get_ext(self):
+        # Get the current file extension for exports
         return self.preferences['filetype']
 
     def get_group_names(self):
+        # Get the list of group names
         return self.group_names
     
     def set_group_name(self, name, group_id):
+        # Set the name for a group
         if len(self.group_names) == group_id-1:
             self.group_names.append(name)
         elif len(self.group_names) > group_id-1:
@@ -633,15 +665,18 @@ class MultispectralModel:
         return
 
     def saveimg(self, title):
+        # Save the current matplotlib figure to file
         plt.savefig(title + self.get_ext(), dpi=self.get_pref('dpi'))
         return
         
     # Function to export the statistics to a CSV file
     def export_stats(self):
+        # Export the DataFrame statistics to CSV
         self.df.to_csv(os.path.join(self.get_pref('export_folder'), "Summary.csv"), mode='a')
         return
     
     def export_filelist(self, path):
+        # Export the list of file paths to a file
         # Ask for file name and location
         self.df['fpath'].to_csv(path, index=False, mode = 'w')
         # self.df['fpath'].to_csv(os.path.join(self.get_pref('export_folder'), f"fpaths_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv"), index=False, mode = 'w')

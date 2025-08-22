@@ -10,6 +10,7 @@ import os
 # Controller class to manage the logic between the Model and the View
 class MultispectralController:
     def __init__(self, model, view):
+        # Initialize controller with model and view, set up configs and signals
         self.model = model
         self.view = view
         self.config =['save_correction_freq1', 'save_correction_freq2', 'save_threshold_freq2','freq1_label',
@@ -24,7 +25,7 @@ class MultispectralController:
 
     # Connect signals from the view to controller methods
     def connect_signals(self):
-        # Define command mappings for buttons
+        # Map UI buttons and menu items to controller methods
         button_commands = {
             self.view.Button_Add: self.add_single_files,
             self.view.Button_Delete: self.delete_files,
@@ -88,6 +89,7 @@ class MultispectralController:
         self.text_bg = self.view.ListBox_1.cget('bg')  # Get the default background color of the listbox
 
     def on_click(self, event):
+        # Handle listbox selection logic with Ctrl/Shift support
         # Get the current selection index
         index = self.view.ListBox_1.nearest(event.y)
         
@@ -124,6 +126,7 @@ class MultispectralController:
         self.update_selection()
 
     def update_selection(self):
+        # Update listbox item background based on selection
         # Get the indices of selected items
         selected_indices = self.view.ListBox_1.curselection()
         for i in range(self.view.ListBox_1.size()):
@@ -133,6 +136,7 @@ class MultispectralController:
                 self.view.ListBox_1.itemconfig(i, {'bg': self.text_bg})      # Reset background color for unselected
 
     def rename_item(self, event):
+        # Allow renaming of group items in the listbox
         if not self.view.show_groups.get():  # Check if groups are shown
             return
 
@@ -152,6 +156,7 @@ class MultispectralController:
         return
 
     def preferences(self):
+        # Open preferences dialog for main settings
         prefs = [self.model.get_pref(key) for key in self.config]
         
         self.properties = self.view.PropertiesView(
@@ -162,6 +167,7 @@ class MultispectralController:
         return
 
     def pref_save_and_quit(self):
+        # Save preferences from dialog and close it
         # TODO: Make separate correction frequencies
         label_to_variable = {"Export File Type": "filetype",
                              "Freq 1:": "save_correction_freq1",
@@ -180,6 +186,7 @@ class MultispectralController:
         return
 
     def image_preferences(self):
+        # Open preferences dialog for image settings
         preferences = self.model.get_preferences()
         image_preferences = [preferences[key] for key in self.img_config]
         
@@ -202,6 +209,7 @@ class MultispectralController:
         return
     
     def image_pref_save_and_quit(self):
+        # Save image preferences from dialog and close it
         label_to_variable = {"Font": "font", #string
                              "Font Size": "font_size", #float
                              "Font Weight": "font_weight", #string
@@ -238,16 +246,19 @@ class MultispectralController:
         pass
 
     def save_string_pref(self, key, value):
+        # Save a string preference to the model
         self.model.set_pref(key, value)
         return
     
     def save_float_pref(self, key, value):
+        # Save a float preference to the model, with validation
         if self.is_number(value):
             self.model.set_pref(key, float(value))
         else:
             print(f"Invalid value for {key}: {value}")
 
     def is_number(s):
+        # Utility: check if string can be converted to float
         try:
             float(s)
             return True
@@ -255,6 +266,7 @@ class MultispectralController:
             return False
 
     def export_settings(self):
+        # Export current settings to a text file
         file_path = tk.filedialog.asksaveasfilename(
         defaultextension=".txt",  # Default file extension
         filetypes=[("Text files", "*.txt"), ("All files", "*.*")],  # Supported file types
@@ -272,6 +284,7 @@ class MultispectralController:
         return
 
     def import_default_settings(self):
+        # Import default settings from file if available
         if not os.path.exists('msa_options.txt'):
             self.model.set_pref('filetype','.jpg')
             return
@@ -285,6 +298,7 @@ class MultispectralController:
         return
 
     def import_settings(self, file_path = None):
+        # Import settings from a file and update UI/model
         if file_path == None:
             file_path = tk.filedialog.askopenfilename(
             defaultextension=".txt",  # Default file extension
@@ -336,6 +350,7 @@ class MultispectralController:
         self.update_listbox()
 
     def toggle_checkbox(self, checkbox):
+        # Toggle a Tkinter BooleanVar checkbox
         if checkbox.get():
             checkbox.set(False)
         else:
@@ -343,11 +358,13 @@ class MultispectralController:
         return
     
     def add_single_files(self):
+        # Open file dialog and add selected files
         progress = self.view.ProgressBar(title="Adding Files")
         files = askopenfilenames(filetypes=(("Comma Delimited", "*.csv"), ("All files", "*.*"),))
         self.add_files(files, progress)
         return
     def add_files(self, files, progress):
+        # Add files to the model, handle errors, update progress
         if len(files) == 0:
             progress.destroy()
             return
@@ -383,6 +400,7 @@ class MultispectralController:
         
 
     def delete_files(self):
+        # Delete selected files from listbox and model
         idx_to_del = list(self.view.ListBox_1.curselection())
         idx_to_del.sort()
         for i in range(len(idx_to_del)):
@@ -393,6 +411,7 @@ class MultispectralController:
 
     #TODO: Troubleshoot addition of dictionaries and swap to freq1 vs lw
     def validate_entries(self):
+        # Validate user input fields before analysis
         # Ignore analyze request if no files are loaded
         if self.model.df.empty:
             tk.messagebox.showerror("Add Files", "Add files using \"Add Files\" button before analyzing.")
@@ -433,9 +452,14 @@ class MultispectralController:
             args['freq1c'] = None
         if args['freq2cf'] == 0:
             args['freq2c'] = None
+        # If the view has multiple corrections/factors, add them to args
+        if hasattr(self.view, 'multiple_corrections') and hasattr(self.view, 'multiple_factors'):
+            args['multiple_corrections'] = self.view.multiple_corrections
+            args['multiple_factors'] = self.view.multiple_factors
         return args
 
     def count_unique_types(self, entries):
+        # Count unique types among frequency/correction entries
         types = set([entries['freq1'],
                  entries['freq2'],
                  entries['freq1c'],
@@ -445,11 +469,12 @@ class MultispectralController:
         return len(types)
 
     def profile_analyze_files(self):
+        # Profile the analyze_files method (for debugging/performance)
         cProfile.runctx('self.analyze_files()',globals(), locals(), "profile_analyze_files.txt")
         return
 
     def get_df_indices(self):
-        # Get the selected indices, and convert them to dataframe indices
+        # Get dataframe indices corresponding to selected listbox items
         # Mimic the listbox view with a dataframe slice
         selected_indices = list(self.view.ListBox_1.curselection())
         vsettings = self.view.get_settings()
@@ -465,6 +490,7 @@ class MultispectralController:
         return selection.index
 
     def analyze_files(self):
+        # Run analysis on selected files/groups, update progress
         # Validate user inputs and prepare them for model method
         entries = self.validate_entries()
         if entries is None:
@@ -486,6 +512,7 @@ class MultispectralController:
         progress.destroy()
 
     def set_export_folder(self):
+        # Set export folder and optionally move files there
         directory = askdirectory()
         self.model.set_pref('export_folder', directory)
         self.view.Button_ExportFolder['text'] = directory
@@ -496,6 +523,7 @@ class MultispectralController:
         return
     
     def move_files_to_export(self):
+        # Move all exported files to the new export folder
         # Prompt user if they want to move the files to the new export folder
         if not tk.messagebox.askyesno("Move Files", "Would you like to move the files to the new export folder?"):
             return
@@ -539,6 +567,7 @@ class MultispectralController:
         return
 
     def reselect_index(self):
+        # Reselect and update display for current index
         # self.view.ListBox_1.select_clear(0, tk.END)  # Clear previous selection
         # self.view.ListBox_1.select_set(self.index)        # Select the specified index
         # self.view.ListBox_1.activate(self.index)          # Make it the active item
@@ -550,6 +579,7 @@ class MultispectralController:
         
 
     def update_listbox(self):
+        # Update the listbox display based on current view settings
         self.model.df = self.model.df.sort_values(by=["group", "fpath"], ascending=[True, True], ignore_index=True)
 
         self.view.ListBox_1.delete(0, tk.END)
@@ -585,6 +615,7 @@ class MultispectralController:
         return
 
     def display_images(self, index):
+        # Display images for selected index/group
         """"""
         #What's next: You've just changed the index to the index of the dataframe. Make sure all
         # subsequent code works
@@ -598,6 +629,7 @@ class MultispectralController:
         return
 
     def display_histograms(self, index):
+        # Display histograms for selected index/group
         if self.view.show_groups.get():
             group = self.model.df.loc[index,'group'].unique()[0]
             self.view.display(self.model.get_group_histogram(group))
@@ -609,6 +641,7 @@ class MultispectralController:
         
 
     def display_statistics(self, index):
+        # Display statistics for selected index/group
         if self.view.show_groups.get():
             stats = "Statistics"
             self.view.Button_Statistics.configure(text=stats)
@@ -621,6 +654,7 @@ class MultispectralController:
         self.view.Button_Statistics.configure(text=stats)
 
     def get_listbox_index(self):
+        # Get currently selected listbox index
         return self.view.ListBox_1.curselection()[0]
 
     def convert_index(self, index: int) -> pd.Index:
@@ -645,6 +679,7 @@ class MultispectralController:
         return df_idx.tolist()
 
     def on_file_selection(self, evt):
+        # Handle listbox selection event, update display
         w = evt.widget
         if len(w.curselection()) == 0:
             return
@@ -655,6 +690,7 @@ class MultispectralController:
         return
     
     def update_display(self, listbox_idx):
+        # Update image/histogram/statistics display for selected index
         df_idx = self.convert_index(listbox_idx)
         if self.view.show_histograms.get():
             self.display_histograms(df_idx)
@@ -664,9 +700,11 @@ class MultispectralController:
         return
 
     def export_stats(self):
+        # Export statistics using the model
         self.model.export_stats()
 
     def export_filelist(self):
+        # Export current file list to a text file
         file_path = tk.filedialog.asksaveasfilename(
             defaultextension=".txt",  # Default file extension
             filetypes=[("Text files", "*.txt"), ("All files", "*.*")],  # Supported file types
@@ -681,6 +719,7 @@ class MultispectralController:
     #     cProfile.runctx('self.import_filelist()',globals(), locals(), "profile_import_filelist.txt")
     #     return
     def import_filelist(self):
+        # Import a list of files from a file and add them
         progress = self.view.ProgressBar(title="Adding Files")
         file_of_files = askopenfilenames(filetypes=(("Comma Delimited", "*.txt"), ("All files", "*.*"),))
         if len(file_of_files) == 0:

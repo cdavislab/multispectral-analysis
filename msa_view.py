@@ -1,23 +1,25 @@
 import tkinter as tk
 import tkinter.font as tkFont
 from tkinter import ttk
-# from pathlib import Path
 from PIL import Image, ImageTk
 
-# View class to handle the GUI components
 class MultispectralView:
-    def __init__(self, root):
+    """View class to handle the GUI components for multispectral analysis."""
+
+    DEFAULT_FONT_FAMILY = 'Verdana'
+    DEFAULT_FONT_SIZE = 10
+    DEFAULT_BG = "#e9e9ed"
+    DEFAULT_FG = "#000000"
+    DEFAULT_BLUE = "#08a1f7"
+
+    def __init__(self, root: tk.Tk):
+        """Initialize the main window and default styles."""
         self.root = root
         self.default_font = tkFont.nametofont("TkDefaultFont").actual()
-        self.default_blue = "#08a1f7"
-        # self.default_bg = "#1C1C1C"
-        # self.default_fg = "#FCFEFE"
-        self.default_bg = "#e9e9ed"
-        self.default_fg = "#000000"
         self.setup_ui()
-        
-    # Function to setup the GUI layout and components
+
     def setup_ui(self):
+        """Configure window size, layout, and add main UI components"""
         self.root.title("Multispectral Analysis")
         width = 800
         height = 500
@@ -26,9 +28,9 @@ class MultispectralView:
         alignstr = '%dx%d+%d+%d' % (width, height, (screenwidth - width) / 2, (screenheight - height) / 2)
         self.root.geometry(alignstr)
         self.root.resizable(True, True)
-        self.root.configure(bg=self.default_bg)
+        self.root.configure(bg=self.DEFAULT_BG)
 
-        for i in (1,3,5):
+        for i in (3,5):
             self.root.rowconfigure(i, weight=16)
             self.root.columnconfigure(i, weight=16)
         self.root.rowconfigure(14, weight=1)
@@ -41,29 +43,23 @@ class MultispectralView:
         self.build_wavenumber_inputs()
         self.build_menubar()
 
-    def decorate(self,widget):
-        font = tkFont.nametofont(widget.cget('font')).actual()
-        default_family = 'Verdana'
-        default_size = 10
-        # default_bg = "#e9e9ed"
-        # default_fg = "#000000"
-        
-        justify = "center"
-        # Override default if widget's font is already set
-        if widget.cget('justify') != 'center':
-            justify = widget.cget('justify')
-        if font['family'] != self.default_font['family']:
-            family = font['family']
-        if font['size'] != self.default_font['size']:
-            size = font['size']
-        widget.configure(bg=self.default_bg, fg=self.default_fg, justify=justify, font=(default_family, default_size))
+    def decorate(self, widget: tk.Widget) -> tk.Widget:
+        """Apply default styling to widgets."""
+        widget.configure(
+            bg=self.DEFAULT_BG,
+            fg=self.DEFAULT_FG,
+            justify="center",
+            font=(self.DEFAULT_FONT_FAMILY, self.DEFAULT_FONT_SIZE)
+        )
         return widget
 
-    def build_paned_window(self):
+    def build_paned_window(self) -> tk.PanedWindow:
+        """Create and place the main paned window."""
         paned_window = tk.PanedWindow(self.root, orient=tk.HORIZONTAL)
         paned_window.grid(row=0, column=0, rowspan=7, columnspan=16, sticky="nsew", padx=2, pady=2)  # Fill the entire window
         return paned_window
     def build_file_viewer(self, root):
+        """Build the file list viewer with scrollbar."""
         frm = tk.Frame(root)
         scrollbar = tk.Scrollbar(frm, orient="horizontal")
         scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
@@ -74,19 +70,30 @@ class MultispectralView:
         root.add(frm)
         return
     def build_image_viewer(self, root):
+        """Build the image display panel."""
         self.img_panel = tk.Label(root, bg='gray')
         self.panel_img = ""
         root.add(self.img_panel)
         return
     def build_user_buttons(self):
+        """Create and place main user action buttons and labels."""
         self.Button_Add = self.decorate(tk.Button(self.root, text="Add Files"))
-        self.Button_Add.grid(row=7, column=0, rowspan=1, columnspan=2, sticky="nsew", padx=2)
+        self.Button_Add.grid(row=7, column=0, rowspan=1, columnspan=1, sticky="nsew", padx=2)
 
         self.Button_Delete = self.decorate(tk.Button(self.root, text="Delete Files"))
-        self.Button_Delete.grid(row=8, column=0, rowspan=1, columnspan=2, sticky="nsew", padx=2)
+        self.Button_Delete.grid(row=8, column=0, rowspan=1, columnspan=1, sticky="nsew", padx=2)
 
         self.Button_Analyze = self.decorate(tk.Button(self.root, text="Analyze"))
-        self.Button_Analyze.grid(row=9, column=0, rowspan=1, columnspan=2, sticky="nsew", padx=2)
+        self.Button_Analyze.grid(row=9, column=0, rowspan=1, columnspan=1, sticky="nsew", padx=2)
+
+        self.Button_Frequency1 = self.decorate(tk.Button(self.root, text="Frequency 1", command=self.open_multi_corrections_dialog))
+        self.Button_Frequency1.grid(row=7, column=1, rowspan=1, columnspan=1, sticky="nsew", padx=2)
+
+        self.Button_Frequency2 = self.decorate(tk.Button(self.root, text="Frequency 2", command=self.open_multi_corrections_dialog))
+        self.Button_Frequency2.grid(row=8, column=1, rowspan=1, columnspan=1, sticky="nsew", padx=2)
+
+        self.Button_ExportFolder = self.decorate(tk.Button(self.root, text="Export Folder"))
+        self.Button_ExportFolder.grid(row=9, column=1, rowspan=1, columnspan=1, sticky="nsew", padx=2)
 
         self.Button_Filename = self.decorate(tk.Label(self.root, text="Filename", relief="groove"))
         self.Button_Filename.grid(row=7, column=2, rowspan=1, columnspan=4, sticky="nsew", padx=2)
@@ -95,15 +102,21 @@ class MultispectralView:
         self.Button_Statistics.grid(row=8, column=2, rowspan=2, columnspan=4, sticky="nsew", padx=2)
 
     def build_wavenumber_inputs(self):
+        """Build the input fields for wavenumber and export folder."""
+        return
         # Define configuration details for labels and entries
+        # widgets_config = [
+        #     {"text": "Frequency 1:", "row": 11, "col": 0, "entry_var": "freq1"},
+        #     {"text": "Frequency 1 Correction:", "row": 11, "col": 2, "entry_var": "freq1c"},
+        #     {"text": "Frequency 1 Correction Factor:", "row": 11, "col": 4, "entry_var": "freq1cf"},
+        #     {"text": "Frequency 2:", "row": 12, "col": 0, "entry_var": "freq2"},
+        #     {"text": "Frequency 2 Correction:", "row": 12, "col": 2, "entry_var": "freq2c"},
+        #     {"text": "Frequency 2 Correction Factor:", "row": 12, "col": 4, "entry_var": "freq2cf"},
+        #     {"text": "Threshold:", "row": 13, "col": 4, "entry_var": "threshold"},
+        # ]
         widgets_config = [
-            {"text": "Frequency 1:", "row": 11, "col": 0, "entry_var": "freq1"},
-            {"text": "Frequency 1 Correction:", "row": 11, "col": 2, "entry_var": "freq1c"},
-            {"text": "Frequency 1 Correction Factor:", "row": 11, "col": 4, "entry_var": "freq1cf"},
-            {"text": "Frequency 2:", "row": 12, "col": 0, "entry_var": "freq2"},
-            {"text": "Frequency 2 Correction:", "row": 12, "col": 2, "entry_var": "freq2c"},
-            {"text": "Frequency 2 Correction Factor:", "row": 12, "col": 4, "entry_var": "freq2cf"},
-            {"text": "Threshold:", "row": 13, "col": 4, "entry_var": "threshold"},
+            {"text": "Frequency 1:", "row": 7, "col": 1, "entry_var": "freq1"},
+            {"text": "Frequency 2:", "row": 8, "col": 1, "entry_var": "freq2"}
         ]
 
         # Store references to StringVars and Entries
@@ -130,10 +143,17 @@ class MultispectralView:
         self.Button_ExportFolder = self.decorate(tk.Button(self.root, justify="left", text="Export Folder Path", relief="sunken"))
         self.Button_ExportFolder.grid(row=13, column=1, rowspan=1, columnspan=3, sticky="nsew", padx=(0,2), pady=(2,0))
 
+        # Add button to open multiple corrections dialog
+        self.Button_MultiCorrections = self.decorate(
+            tk.Button(self.root, text="Set Multiple Corrections", command=self.open_multi_corrections_dialog)
+        )
+        self.Button_MultiCorrections.grid(row=13, column=5, rowspan=1, columnspan=1, sticky="nsew", padx=(2,2), pady=(2,0))
+
         bottom_spacer = self.decorate(tk.Label(self.root, text=""))
         bottom_spacer.grid(row=14, column=0, rowspan=1, columnspan=6, sticky="nsew")
 
     def build_menubar(self):
+        """Build the menu bar and menus for file/view/path options."""
         self.menubar = tk.Menu(self.root)
         self.root.config(menu=self.menubar)
         self.initialize_menu_vars()
@@ -163,6 +183,7 @@ class MultispectralView:
         return
 
     def initialize_menu_vars(self):
+        """Initialize Tkinter variables for menu state."""
         self.show_groups = tk.BooleanVar()
         self.show_histograms = tk.BooleanVar()
         self.show_single = tk.BooleanVar()
@@ -170,13 +191,15 @@ class MultispectralView:
         self.view_mode = tk.StringVar(value="full")
         return
 
-    def get_shape(self, widget):
+    def get_shape(self, widget: tk.Widget) -> tuple[int, int]:
+        """Utility: get widget width and height."""
         geometry = widget.winfo_geometry()  # Get the geometry string
         # Split the string to extract the width and height
         width, height = geometry.split('x')[0], geometry.split('x')[1].split('+')[0]
         return int(width), int(height)
 
-    def display(self, img_path):
+    def display(self, img_path: str):
+        """Display an image in the image panel, resizing as needed."""
         screen_width, screen_height = self.get_shape(self.root)
         sash_position = self.paned_window.sash_coord(0)[0]
         img_width = screen_width - sash_position
@@ -192,19 +215,25 @@ class MultispectralView:
         scalar2 = img_height / original_height
         scalar = min(scalar1, scalar2)
 
-        img = img.resize((int(original_width*scalar)-20, int(original_height*scalar)-20))
+        # Fix: Avoid negative dimensions when resizing
+        img = img.resize((
+            max(1, int(original_width * scalar) - 20),
+            max(1, int(original_height * scalar) - 20)
+        ))
         self.panel_img = ImageTk.PhotoImage(img)
         self.img_panel.configure(image=self.panel_img)
         return
     
-    def show_error(self, errors):
+    def show_error(self, errors: dict):
+        """Show error dialog for failed file additions."""
         error_str = "Could not add the following files:\n"
         for error in errors:
             error_str += error + "\n"
         tk.messagebox.showerror("Error", error_str)
         return
     
-    def get_settings(self):
+    def get_settings(self) -> dict:
+        """Gather current settings from the UI."""
         settings = {
             'freq1': self.entries['freq1'].get(),
             'freq2': self.entries['freq2'].get(),
@@ -222,7 +251,7 @@ class MultispectralView:
         return settings
 
     class PropertiesView:
-        
+        """Dialog for editing main preferences."""
         def __init__(self, root, *args):
             # Create a new window
             self.pref_window = tk.Toplevel(root)
@@ -249,6 +278,7 @@ class MultispectralView:
                 self.pref_frame.grid_columnconfigure(i, weight=1)
 
         def _create_widgets(self, *args):
+            # Build the form fields for preferences
             if len(args) != 9:
                 raise ValueError("Expected exactly 9 arguments. Got {}".format(len(args)))
 
@@ -298,6 +328,7 @@ class MultispectralView:
             return
 
         def make_label(self, label):
+            # Make a bold section label
             #Make a bold label
             label = tk.Label(self.pref_frame, text=label, font=("Verdana", 10, "bold"))
             label.grid(row=self.row, column=0, columnspan=1, sticky='w', padx=self.padx_label)
@@ -305,12 +336,13 @@ class MultispectralView:
             return
 
         def make_separator(self):
+            # Add a separator line
             separator = ttk.Separator(self.pref_frame, orient='horizontal')
             separator.grid(row=self.row, column=0, columnspan=5, sticky='ew')
             self.row += 1
             return
         def make_form(self, title, hint, type_of_entry, variable):
-            # Generalize making of the forms
+            # Generalized form field creation
             label = tk.Label(self.pref_frame, text=title)
             label.grid(row=self.row, column=0, sticky='w', padx=self.padx_label)
             if type_of_entry == "entry":
@@ -328,7 +360,7 @@ class MultispectralView:
             return
         
         def make_double_form(self, title, hint, type_of_entry, form1, form2):
-            # Generalize making of the forms
+            # Generalized double form field creation
             label = tk.Label(self.pref_frame, text=title)
             label.grid(row=self.row, column=0, sticky='w', padx=self.padx_label)
             label_hint = tk.Label(self.pref_frame, text=hint, fg='gray')
@@ -359,11 +391,14 @@ class MultispectralView:
             return
 
         def get_setting(self, title):
+            # Get value from a form field
             return self.properties[title]["entry"].get()
         
         def get_setting_keys(self):
+            # Get all setting keys
             return self.properties.keys()
     class ImagePropertiesView(PropertiesView):
+        """Dialog for editing image preferences."""
         def __init__(self, root, *args):
             super().__init__(root, *args)
             self.pref_window.title("Image Preferences")
@@ -371,6 +406,7 @@ class MultispectralView:
             return
 
         def _create_widgets(self, *args):
+            # Build the form fields for image preferences
             [font, font_size, font_weight, cmap, vmin, vmax, cunits,
              ratio_vmin, ratio_vmax, ratio_cunits, pixel_scale,
              scale_bar_units, scale_bar_color,scale_bar_location,
@@ -397,23 +433,89 @@ class MultispectralView:
             self.make_form("Number of Tick Marks", "Number of axis tick markers", "entry", num_ticks)
             return
         
-    class ProgressBar(tk.Tk):
+    class ProgressBar(tk.Toplevel):
+        """Simple progress bar dialog."""
         def __init__(self, title="Progress Bar"):
             super().__init__()
             self.title(title)
             self.geometry("400x150")
-
-            # Create a canvas for the progress bar
             self.canvas = tk.Canvas(self, width=300, height=30, bg='white', highlightthickness=1, highlightbackground='black')
             self.canvas.pack(pady=40)
-            
-            self.progress = 0  # Initialize progress value
+            self.progress = 0
             self.canvas.delete("progress")
             self.update_progress(0)
 
-        def update_progress(self, value):
+        def update_progress(self, value: float):
             """Update the progress bar on the canvas."""
-            self.canvas.delete("progress")  # Clear previous progress
-            fill_width = (value / 100) * 300  # Calculate the fill width
+            self.canvas.delete("progress")
+            fill_width = (value / 100) * 300
             self.canvas.create_rectangle(0, 0, fill_width, 30, fill="green", tags="progress")
             self.update()
+
+    def open_multi_corrections_dialog(self):
+        """Open dialog to input multiple corrections and factors."""
+        dialog = self.MultiCorrectionsDialog(self.root)
+        if dialog.result is not None:
+            # Store results for controller/model access
+            self.multiple_corrections = dialog.result['corrections']
+            self.multiple_factors = dialog.result['factors']
+
+    class MultiCorrectionsDialog(tk.Toplevel):
+        """Dialog for entering multiple correction files and factors."""
+        def __init__(self, parent):
+            super().__init__(parent)
+            self.title("Multiple Corrections")
+            self.geometry("400x300")
+            self.corrections = []
+            self.factors = []
+            self.entries = []
+            self.result = None
+
+            self.frame = tk.Frame(self)
+            self.frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+            self.entries_frame = tk.Frame(self.frame)
+            self.entries_frame.pack(fill=tk.BOTH, expand=True)
+
+            self.add_row_button = tk.Button(self.frame, text="Add Correction", command=self.add_row)
+            self.add_row_button.pack(side=tk.LEFT, padx=5, pady=5)
+
+            self.remove_row_button = tk.Button(self.frame, text="Remove Last", command=self.remove_row)
+            self.remove_row_button.pack(side=tk.LEFT, padx=5, pady=5)
+
+            self.save_button = tk.Button(self.frame, text="Save", command=self.save_and_close)
+            self.save_button.pack(side=tk.RIGHT, padx=5, pady=5)
+
+            self.add_row()  # Start with one row
+
+        def add_row(self):
+            row = len(self.entries)
+            corr_var = tk.StringVar()
+            factor_var = tk.StringVar()
+            corr_entry = tk.Entry(self.entries_frame, textvariable=corr_var, width=20)
+            factor_entry = tk.Entry(self.entries_frame, textvariable=factor_var, width=10)
+            corr_entry.grid(row=row, column=0, padx=2, pady=2)
+            factor_entry.grid(row=row, column=1, padx=2, pady=2)
+            self.entries.append((corr_var, factor_var, corr_entry, factor_entry))
+
+        def remove_row(self):
+            if self.entries:
+                _, _, corr_entry, factor_entry = self.entries.pop()
+                corr_entry.destroy()
+                factor_entry.destroy()
+
+        def save_and_close(self):
+            self.corrections = []
+            self.factors = []
+            for corr_var, factor_var, _, _ in self.entries:
+                corr = corr_var.get().strip()
+                factor = factor_var.get().strip()
+                if corr and factor:
+                    self.corrections.append(corr)
+                    try:
+                        self.factors.append(float(factor))
+                    except ValueError:
+                        tk.messagebox.showerror("Invalid Input", f"Correction factor '{factor}' is not a number.")
+                        return
+            self.result = {'corrections': self.corrections, 'factors': self.factors}
+            self.destroy()
