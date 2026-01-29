@@ -49,6 +49,7 @@ class MultispectralModel:
                             'scale_bar_location':'lower left',
                             'scale_bar_fixed_value':0,
                             'num_ticks':'auto'}
+        self.steps = None
         self.group_names = []
         self.group_images = []
         self.group_histograms = []
@@ -593,6 +594,17 @@ class MultispectralModel:
         plt.close()
         data['ratio'] = ratio
         return img_path + self.get_ext()
+
+    def set_steps(self, steps):
+        # Update the analysis steps
+        self.steps = steps
+        return
+    
+    def print_steps(self):
+        # Print the current analysis steps
+        print(self.steps)
+        return
+
 
     def find_max_value(self, df: pd.DataFrame, include_ratio=False) -> float:
         """ Helper function to find the maximum value among matrices in a DataFrame.

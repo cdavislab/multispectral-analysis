@@ -1,0 +1,34 @@
+
+from dataclasses import dataclass, asdict
+from typing import Optional
+
+@dataclass
+class ImagingSettings:
+    dpi: int = 300
+    cmap: str = "viridis"
+    interpolation: str = "nearest"
+    vmin: Optional[float] = None
+    vmax: Optional[float] = None
+    origin: str = "lower"
+    aspect: str = "auto"
+    bbox_inches: str = "tight"
+    transparent: bool = False
+    pad_inches: float = 0.1
+    format: Optional[str] = None
+    metadata: Optional[dict] = None
+    facecolor: Optional[str] = 'auto'
+    edgecolor: Optional[str] = 'auto'
+    backend: Optional[str] = None
+
+    def imshow_kwargs(self) -> dict:
+        return {
+            k: v for k, v in asdict(self).items()
+            if k in {"cmap", "interpolation", "vmin", "vmax", "origin", "aspect"}
+            and v is not None
+        }
+
+    def imsave_kwargs(self) -> dict:
+        return {
+            k: v for k, v in asdict(self).items()
+            if k in {"dpi", "vmin", "vmax", "cmap", "format", "origin", "dpi", "metadata"}
+        }

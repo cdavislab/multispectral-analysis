@@ -1,14 +1,14 @@
 import unittest
-from msa_model import MultispectralModel
-import msa_view
-import msa_controller
+from msagui.model import MultispectralModel
+import msagui.main_view
+import msagui.controller.main_controller
 
 import unittest
 from unittest.mock import Mock, patch
 import numpy as np
 import pandas as pd
 from pathlib import Path
-import multispectral_analysis as msa
+import msagui.multispectral_analysis as msa
 
 class TestMultispectralModel(unittest.TestCase):
 
@@ -26,6 +26,10 @@ class TestMultispectralModel(unittest.TestCase):
         self.assertEqual(result, 'natural_123.csv')
 
     def test_group_files(self):
+        files = ['cell1_123.csv', 'cell2_123.csv', 'cell1_456.csv', 'cell2_456.csv', 'cell1_789.csv', 'cell2_789.csv', 'extra.csv']
+        grouped = self.model.group_files(files, keywords)
+        expected = [['label_123.csv', 'natural_123.csv'], ['label_456.csv', 'natural_456.csv']]
+        self.assertEqual(grouped, expected)
         
 
 

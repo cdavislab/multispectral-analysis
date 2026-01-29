@@ -454,7 +454,7 @@ class MultispectralView:
 
     def open_multi_corrections_dialog(self):
         """Open dialog to input multiple corrections and factors."""
-        dialog = self.MultiCorrectionsDialog(self.root)
+        dialog = self.MultiCorrectionsDialog(self.root)#, self.steps)
         if dialog.result is not None:
             # Store results for controller/model access
             self.multiple_corrections = dialog.result['corrections']
@@ -567,7 +567,7 @@ class MultispectralView:
                 # Create new up/down/delete buttons with correct index
                 up_btn = tk.Button(self.left_pane, text="↑", width=2, command=lambda idx=idx-1: self.move_step_row(idx, -1))
                 down_btn = tk.Button(self.left_pane, text="↓", width=2, command=lambda idx=idx-1: self.move_step_row(idx, 1))
-                del_btn = tk.Button(self.left_pane, text="✕", width=2, fg="red", command=lambda idx=idx-1: self.delete_step_row(idx))
+                del_btn = tk.Button(self.left_pane, text="X", width=2, fg="red", command=lambda idx=idx-1: self.delete_step_row(idx))
                 row[6] = up_btn
                 row[7] = down_btn
                 row[8] = del_btn
