@@ -1,6 +1,5 @@
 import tkinter as tk
 import tkinter.font as tkFont
-from tkinter import ttk
 from PIL import Image, ImageTk
 
 class MultispectralView:
@@ -155,16 +154,15 @@ class MultispectralView:
         width, height = geometry.split('x')[0], geometry.split('x')[1].split('+')[0]
         return int(width), int(height)
 
-    def display(self, img_path: str):
+    def display(self, img):
         """Display an image in the image panel, resizing as needed."""
         screen_width, screen_height = self.get_shape(self.root)
         sash_position = self.paned_window.sash_coord(0)[0]
         img_width = screen_width - sash_position
 
-        bottom_menu_height = self.Button_Filename.winfo_height()*7
+        bottom_menu_height = self.labels['Filename'].winfo_height()*7
         img_height = screen_height - bottom_menu_height
 
-        img = Image.open(img_path)
         original_width, original_height = img.size
 
         # Resize the image to fit the window while maintaining the aspect ratio
@@ -206,3 +204,11 @@ class MultispectralView:
             "view_mode": self.view_mode.get()
         }
         return settings
+    
+    def set_button_text(self, button_name: str, text: str):
+        self.buttons[button_name] = text
+
+    def get_selected_indices(self) -> list[int]:
+        """Get indices of selected files in the listbox."""
+        print("Selected indices:", self.file_list.curselection())
+        return list(self.file_list.curselection())

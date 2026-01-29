@@ -7,7 +7,7 @@ import os
 class ImageMeta:
     """Metadata for a single image."""
     key: str
-    group: str
+    group: int
     kind: str           # "input" or "processed"
     keyword: Optional[str] = None
     nickname: Optional[str] = None
@@ -25,15 +25,19 @@ class MetadataStore:
     def basenames(self):
         return [os.path.splitext(os.path.basename(m.key))[0] for m in self.items]
 
+    @property
+    def nicknames(self):
+        return [m.nickname for m in self.items]
+
     def add(self, meta: ImageMeta):
         self.items.append(meta)
 
     def delete(self, key: str):
         self.items = [m for m in self.items if m.key != key]
 
-    def by_group(self, group: str):
+    def by_group(self, group: int):
         return [m for m in self.items if m.group == group]
-    
+
     def new_key(self):
         existing_keys = {m.key for m in self.items}
         # If existing_keys is empty, start from 1
@@ -50,7 +54,7 @@ class MetadataStore:
             if meta.key == key:
                 meta.keyword = new_keyword
     
-    def change_group(self, key: str, new_group: str):
+    def change_group(self, key: str, new_group: int):
         """
         Changes the group of an image metadata entry.
         """

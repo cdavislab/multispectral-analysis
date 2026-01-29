@@ -2,17 +2,24 @@
 from functools import lru_cache
 import h5py
 import numpy.typing as npt
-
+import numpy as np
 @lru_cache(maxsize=8)
 def _load(hdf5_path: str, key: str, f: h5py.File | None = None) -> npt.NDArray:
     """
     Loads a dataset from an HDF5 file. Optimized with LRU caching.
     """
-    if f is not None:
-        return f[key][:]
 
+    if f is not None:
+        data_obj = f[key]
+    
     with h5py.File(hdf5_path, "r") as f:
-        return f[key][:]
+        data_obj = f[key]
+    # if data_obj.dtype == 'O':
+        # stored as object, likely a file path
+        data = np.loadtxt(data_obj[()].decode(), delimiter=',')
+    # else:
+    #     data = data_obj[()]
+    return data
 
 def get_data(hdf5_path: str, keys: str | list[str]) -> list[npt.NDArray]:
     """
@@ -23,7 +30,10 @@ def get_data(hdf5_path: str, keys: str | list[str]) -> list[npt.NDArray]:
 
     # batch load
     with h5py.File(hdf5_path, "r") as f:
-        return [f[key][:] for key in keys]
+        data = []
+        for key in keys:
+            data.append(_load(hdf5_path, key, f=f))  # preload into cache
+        return data
     
 def add_processed(hdf5_path: str, key: str, image: npt.NDArray):
     """

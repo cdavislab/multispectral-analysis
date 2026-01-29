@@ -10,46 +10,30 @@ class ButtonsController:
         self.model = model
         self.view = view
 
-    def add_single_files(self):
-        with ProgressBar(title="Processing") as progress:
-            files = askopenfilenames(filetypes=(("Comma Delimited", "*.csv"), ("All files", "*.*"),))
-            self.add_files(files, progress)
-        return
-    def add_files(self, files, progress):
-        # Add files to the model, handle errors, update progress
-        if len(files) == 0:
-            progress.destroy()
+    def add(self):
+        files = askopenfilenames(
+            filetypes=(("Comma Delimited", "*.csv"), ("All files", "*.*"))
+        )
+        if not files:
             return
-        outpath = self.model.get_dir(files[0])
-        error_files = dict()
-        increment = 100 / len(files)
 
-        for i, file in enumerate(files):
-            try:
-                self.model.add_files(file, outpath)
-            except ValueError as e:
-                error_files[file] = e
-                continue
-            progress.update_progress(increment*i)
-        self.update_listbox()
+        with ProgressBar(title="Processing", total=len(files)) as progress:
+            results = self.model.add(files, progress_callback=progress.step)
 
-        progress.destroy()
-        if len(error_files.keys()) > 0:
-            print("Error loading the following files:")
-            for key in error_files.keys():
-                print(f"{key} : {error_files[key]}")
-            self.view.show_error(error_files)
-        return
+        if len(results.keys()) != 0:
+            self.view.show_error(results)
         
-
-    def delete_files(self):
+    def delete(self):
         # Delete selected files from listbox and model
-        idx_to_del = list(self.view.ListBox_1.curselection())
-        idx_to_del.sort()
-        for i in range(len(idx_to_del)):
-            self.view.ListBox_1.delete(idx_to_del[i] - i)
-        self.model.df = self.model.df.drop(idx_to_del).reset_index(drop=True)
-        self.update_listbox()
+        idx_to_del = self.view.get_selected_indices()
+        if not idx_to_del:
+            return
+
+        with ProgressBar(title="Deleting Files", total=len(idx_to_del)) as progress:
+            results = self.model.delete(idx_to_del, progress_callback=progress.step)
+
+        if len(results.keys()) != 0:
+            self.view.show_error(results)
 
 
     #TODO: Troubleshoot addition of dictionaries and swap to freq1 vs lw
@@ -111,37 +95,22 @@ class ButtonsController:
             types.remove(None)
         return len(types)
 
-    def analyze_files(self):
-        print(self.model.print_steps())
-        return
-        # Run analysis on selected files/groups, update progress
-        # Validate user inputs and prepare them for model method
-        entries = self.validate_entries()
-        if entries is None:
-            return
-        progress = self.view.ProgressBar(title="Analyzing Files")
-        selected_idx = self.get_df_indices()
-        unique_types = self.count_unique_types(entries)
-        groups = self.model.pre_analyze_files(entries, selected_idx, unique_types)
-        if groups is None:
-            progress.destroy()
-            messagebox.showinfo("More Files Needed", "Select more files of the same group to analyze")
-            return
-        increment = 100 / len(groups)
-        progress.update_progress(1)
-        for group_idx in groups:
-            self.model.analyze_files(entries, group_idx)
-            progress.update_progress(increment*group_idx)
-        self.update_listbox()
-        progress.destroy()
+    def group(self):
+        self.model.set_keywords()
+        self.model.set_groups()
+
+    def analyze(self):
+        selected_idx = self.view.get_selected_indices()
+        with ProgressBar(title="Analyzing", total=len(selected_idx)) as progress:
+            self.model.analyze(selected_idx, progress_callback=progress)
 
     def set_export_folder(self):
         # Set export folder and optionally move files there
         directory = askdirectory()
-        self.model.set_pref('export_folder', directory)
-        self.view.Button_ExportFolder['text'] = directory
+        self.model.settings.export_directory = directory
+        self.view.set_button_text('Export Folder', directory)
         
-        if not self.model.df.empty:
+        if len(self.model.metadata.keys) != 0:
             self.move_files_to_export()
         
         return

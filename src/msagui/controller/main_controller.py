@@ -16,7 +16,8 @@ class ControllerDispatcher:
         self.img_config = ['font', 'font_size', 'font_weight', 'cmap', 'vmin', 'vmax', 'cunits', 'ratio_vmin',
                            'ratio_vmax', 'ratio_cunits', 'pixel_scale', 'scale_bar_units', 'scale_bar_color','scale_bar_location',
                         'scale_bar_fixed_value','num_ticks']
-        # self.connect_signals()
+        self.recruit_controllers()
+        self.connect_signals()
         # self.import_default_settings()
         self.view_length = "Full" #Full, Parent, File
     
@@ -37,10 +38,10 @@ class ControllerDispatcher:
 
     def connect_button_signals(self):
         button_commands = {
-            self.view.Button_Add: self.button.add_single_files,
-            self.view.Button_Delete: self.button.delete_files,
-            self.view.Button_Analyze: self.button.analyze_files,
-            self.view.Button_ExportFolder: self.button.set_export_folder,
+            self.view.buttons['Add']: self.up(self.button.add),
+            self.view.buttons['Delete']: self.up(self.button.delete),
+            self.view.buttons['Analyze']: self.up(self.button.analyze),
+            self.view.buttons['Export Folder']: self.up(self.button.set_export_folder),
         }
         for button, command in button_commands.items():
             button.config(command=command)
@@ -48,13 +49,13 @@ class ControllerDispatcher:
     def connect_menu_signals(self):
         self.view.root.bind('<<MenuToggle>>', self.handle_menu_toggle)
         file_menu_commands = {
-            'Preferences': self.image_properties.preferences,
-            'Image Config': self.image_properties.image_preferences,
-            'Export Statistics': self.dropdown.export_stats,
-            'Export File List': self.dropdown.export_filelist,
-            'Import File List': self.dropdown.import_filelist,
-            'Export Settings': self.dropdown.export_settings,
-            'Import Settings': self.dropdown.import_settings,
+            'Preferences': self.up(self.image_properties.preferences),
+            'Image Config': self.up(self.image_properties.image_preferences),
+            'Export Statistics': self.up(self.dropdown.export_stats),
+            'Export File List': self.up(self.dropdown.export_filelist),
+            'Import File List': self.up(self.dropdown.import_filelist),
+            'Export Settings': self.up(self.dropdown.export_settings),
+            'Import Settings': self.up(self.dropdown.import_settings),
         }
         # view_menu_commands = {
         #     'Group View': self.dropdown.update_listbox,
@@ -80,8 +81,7 @@ class ControllerDispatcher:
 
     def _handle_histogram_shortcut(self, event):
         self.dropdown.toggle_checkbox(self.view.show_histograms)
-        self.file_list.reselect_index()
-        self.image.update_display(self.file_list.get_listbox_index())
+        # self.file_list.reselect_index()
 
     def handle_menu_toggle(self, event):
         state = {
@@ -92,11 +92,21 @@ class ControllerDispatcher:
             'View Mode': self.view.view_mode.get()
 
         }
-        self.file_list.update_listbox()
-        self.image.update_display(self.file_list.get_listbox_index())
 
     def connect_listbox_signals(self):
-        self.view.ListBox_1.bind('<<ListboxSelect>>', self.file_list.on_file_selection)
-        self.view.ListBox_1.bind('<Button-1>', self.file_list.on_click)
-        self.view.ListBox_1.bind('<Double-Button-1>', self.file_list.rename_item)
+        self.view.file_list.bind('<<ListboxSelect>>', self.up(self.file_list.on_file_selection))
+        # self.view.file_list.bind('<Button-1>', self.up(self.file_list.on_click))
+        self.view.file_list.bind('<Double-Button-1>', self.up(self.file_list.rename_item))
         
+    def up(self, func):
+        """Decorator to update view after function call."""
+        def wrapper(*args, **kwargs):
+            result = func(*args, **kwargs)
+            self.file_list.update_listbox()
+            idx = self.file_list.get_listbox_index()
+            # if len(idx) == 0:
+            #     return result
+            print("Updating display for index:", idx)
+            self.image.update_display(idx)
+            return result
+        return wrapper

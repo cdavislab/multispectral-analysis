@@ -19,6 +19,7 @@ class ImagingSettings:
     facecolor: Optional[str] = 'auto'
     edgecolor: Optional[str] = 'auto'
     backend: Optional[str] = None
+    export_directory: Optional[str] = 'msa_analysis'
 
     def imshow_kwargs(self) -> dict:
         return {
@@ -32,3 +33,4 @@ class ImagingSettings:
             k: v for k, v in asdict(self).items()
             if k in {"dpi", "vmin", "vmax", "cmap", "format", "origin", "dpi", "metadata"}
         }
+        

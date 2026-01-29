@@ -39,6 +39,7 @@ def construct_image(images: list, settings: ImagingSettings):
     for j in range(i + 1, len(axs_flat)):
         axs_flat[j].axis('off')
     tight_layout()
+    return fig, axs
 
 
 def find_substring(self, l: list, substr: str) -> list:
