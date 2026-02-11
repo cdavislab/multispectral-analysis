@@ -3,70 +3,71 @@ import os
 # import Path
 from tkinter.simpledialog import askstring
 import pandas as pd
+from msagui.view.display import ListboxView, ViewDefaults
+from msagui.view.defaults import ViewDefaults
 
 class FileListController:
-    def __init__(self, model, view):
+    def __init__(self, model, listbox: ListboxView):
         self.model = model
-        self.view = view
-        self.text_bg = self.view.file_list.cget('bg')  # Get the default background color of the listbox
+        self.listbox = listbox   
+        self.text_bg = ViewDefaults.bg
+        self.index = None
 
     def on_click(self, event):
-        # self.update_selection()
-        pass
-
-
-    # def on_click(self, event):
-    #     # Handle listbox selection logic with Ctrl/Shift support
-    #     # Get the current selection index
-    #     index = self.view.file_list.nearest(event.y)
+        # Handle listbox selection logic with Ctrl/Shift support
+        # Get the current selection index
+        index = self.listbox.file_list.nearest(event.y)
         
-    #     # Check whether Ctrl or Shift is pressed
-    #     ctrl_pressed = (event.state & 0x0004) != 0  # Check for Control key
-    #     shift_pressed = (event.state & 0x0001) != 0  # Check for Shift key
+        # Check whether Ctrl or Shift is pressed
+        ctrl_pressed = (event.state & 0x0004) != 0  # Check for Control key
+        shift_pressed = (event.state & 0x0001) != 0  # Check for Shift key
 
-    #     # Handle selection logic
-    #     if not ctrl_pressed and not shift_pressed:
-    #         # Deselect all other items if no modifier key is pressed
-    #         self.view.file_list.selection_clear(0, tk.END)
+        # Handle selection logic
+        if not ctrl_pressed and not shift_pressed:
+            # Deselect all other items if no modifier key is pressed
+            self.listbox.file_list.selection_clear(0, tk.END)
 
-    #     # If Shift is pressed, select a range of items
-    #     if shift_pressed:
-    #         # Get the indices of current selection
-    #         selected_indices = self.view.file_list.curselection()
-    #         if selected_indices:
-    #             # Select the first selected index
-    #             start_index = selected_indices[0]
-    #             # Select items between the last selected index and the current index
-    #             if start_index < index:
-    #                 self.view.file_list.selection_set(start_index, index)
-    #             else:
-    #                 self.view.file_list.selection_set(index, start_index)
+        # If Shift is pressed, select a range of items
+        if shift_pressed:
+            # Get the indices of current selection
+            selected_indices = self.listbox.file_list.curselection()
+            if selected_indices:
+                # Select the first selected index
+                start_index = selected_indices[0]
+                # Select items between the last selected index and the current index
+                if start_index < index:
+                    self.listbox.file_list.selection_set(start_index, index)
+                else:
+                    self.listbox.file_list.selection_set(index, start_index)
 
-    #     # If Ctrl is pressed, toggle the current item without affecting others
-    #     if ctrl_pressed:
-    #         if self.view.file_list.selection_includes(index):
-    #             self.view.file_list.selection_clear(index)
-    #         else:
-    #             self.view.file_list.selection_set(index)
+        # If Ctrl is pressed, toggle the current item without affecting others
+        if ctrl_pressed:
+            if self.listbox.file_list.selection_includes(index):
+                self.listbox.file_list.selection_clear(index)
+            else:
+                self.listbox.file_list.selection_set(index)
 
-    #     # Highlight the selected items
-    #     self.update_selection()
+        # Highlight the selected items
+        self.update_selection()
 
     def update_selection(self):
         # Update listbox item background based on selection
         # Get the indices of selected items
-        selected_indices = self.view.file_list.curselection()
-        for i in range(self.view.file_list.size()):
+        selected_indices = self.listbox.file_list.curselection()
+        for i in range(self.listbox.file_list.size()):
             if i in selected_indices:
-                self.view.file_list.itemconfig(i, {'bg': 'light blue'})  # Change background color for selected
+                self.listbox.file_list.itemconfig(i, {'bg': 'light blue'})  # Change background color for selected
             else:
-                self.view.file_list.itemconfig(i, {'bg': self.text_bg})      # Reset background color for unselected
+                self.listbox.file_list.itemconfig(i, {'bg': self.text_bg})      # Reset background color for unselected
 
     def update_listbox(self):
         # Update the listbox display based on current view settings
-        keys = self.model.metadata.nicknames
+        keys = self.model.metadata.nicknames(visible=True)
 
-        self.view.file_list.delete(0, tk.END)
+        self.listbox.update(keys)
+        self.reselect_index()
+        return
+        self.listbox.file_list.delete(0, tk.END)
 
         # vsettings = self.view.get_settings()
         # if self.view.show_groups.get(): # List only groups in the listbox
@@ -95,38 +96,42 @@ class FileListController:
         #             "is not a valid view mode. Defaulting to full path.")
         #     listbox_series = listbox_df['fpath']
         
-        self.view.file_list.insert(tk.END, *keys)
+        self.listbox.file_list.insert(tk.END, *keys)
 
         return
 
     def get_listbox_index(self):
         # Get currently selected listbox index
-        return int(self.index)
-        idx = self.view.get_selected_indices()
-        print("Listbox selected index:", idx)
-        if len(idx) > 0:
-            return int(idx[0])
-        return idx
-    
-    def on_file_selection(self, evt):
-        # Handle listbox selection event, update display
-        w = evt.widget
-        idx = self.view.get_selected_indices()
+        # return int(self.index)
+        idx = self.listbox.get_selected_indices()
         if len(idx) == 0:
             return
+        idx = int(idx[0])
+        return idx
+        # value = self.view.file_list.get(idx)
+    
+    def on_file_selection(self, evt) -> str:
+        # Handle listbox selection event, update display
+        w = evt.widget
+        idx = self.listbox.get_selected_indices()
+        print(f"[ListboxController.py | onf] Selected indices: {idx}")
+        if len(idx) == 0:
+            return ''
         self.index = int(idx[0])
         value = w.get(self.index)
-        self.view.labels['Filename'].configure(text=os.path.basename(value))
-        return
+        return value
     
     def reselect_index(self):
+        print(f"[ListboxController.py] Reselecting index: {self.index}")
+        if self.index is None:
+            return
         # Reselect and update display for current index
-        # self.view.file_list.select_clear(0, tk.END)  # Clear previous selection
-        # self.view.file_list.select_set(self.index)        # Select the specified index
-        # self.view.file_list.activate(self.index)          # Make it the active item
-        # index = self.view.file_list.curselection()
-        # if len(index) == 0:
-        #     return
+        self.listbox.file_list.select_clear(0, tk.END)  # Clear previous selection
+        self.listbox.file_list.select_set(self.index)        # Select the specified index
+        self.listbox.file_list.activate(self.index)          # Make it the active item
+        index = self.listbox.file_list.curselection()
+        if len(index) == 0:
+            return
         return
 
     def convert_index(self, index: int) -> pd.Index:
@@ -153,7 +158,7 @@ class FileListController:
     def get_df_indices(self):
         # Get dataframe indices corresponding to selected listbox items
         # Mimic the listbox view with a dataframe slice
-        selected_indices = list(self.view.file_list.curselection())
+        selected_indices = list(self.listbox.file_list.curselection())
         vsettings = self.view.get_settings()
         desired_groups = []
         if vsettings['show_single']: # Show
@@ -168,19 +173,19 @@ class FileListController:
     
     def rename_item(self, event):
         # Allow renaming of group items in the listbox
-        if not self.view.show_groups.get():  # Check if groups are shown
+        if not self.listbox.show_groups.get():  # Check if groups are shown
             return
 
-        selected_index = self.view.file_list.curselection()
+        selected_index = self.listbox.file_list.curselection()
         if not selected_index:  # Check if any item is selected
             return
         
         index = selected_index[0]  # Get the first selected index
-        current_value = self.view.file_list.get(index)  # Get the current value
+        current_value = self.listbox.file_list.get(index)  # Get the current value
         
         # Prompt user for new name using simpledialog
         new_value = askstring("Rename Item", "Enter new name:", initialvalue=current_value)
         if new_value is not None:  # Check if user didn't cancel
             self.model.set_group_name(new_value, index+1)  # Set the new name
-        self.update_listbox()
+        self.listbox.update()
         return

@@ -5,8 +5,8 @@ from typing import Optional
 @dataclass
 class ImagingSettings:
     dpi: int = 300
-    cmap: str = "viridis"
-    interpolation: str = "nearest"
+    cmap: str | None = "viridis"
+    interpolation: str | None= "nearest"
     vmin: Optional[float] = None
     vmax: Optional[float] = None
     origin: str = "lower"
@@ -31,6 +31,6 @@ class ImagingSettings:
     def imsave_kwargs(self) -> dict:
         return {
             k: v for k, v in asdict(self).items()
-            if k in {"dpi", "vmin", "vmax", "cmap", "format", "origin", "dpi", "metadata"}
+            if k in {"transparent", "dpi", "format", "metadata", "bbox_inches", "pad_inches", "facecolor", "edgecolor", "backend"}
+            and v is not None
         }
-        

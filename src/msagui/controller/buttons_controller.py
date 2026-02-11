@@ -25,7 +25,7 @@ class ButtonsController:
         
     def delete(self):
         # Delete selected files from listbox and model
-        idx_to_del = self.view.get_selected_indices()
+        idx_to_del = self.view.listbox.get_selected_indices()
         if not idx_to_del:
             return
 
@@ -100,7 +100,7 @@ class ButtonsController:
         self.model.set_groups()
 
     def analyze(self):
-        selected_idx = self.view.get_selected_indices()
+        selected_idx = self.view.listbox.get_selected_indices()
         with ProgressBar(title="Analyzing", total=len(selected_idx)) as progress:
             self.model.analyze(selected_idx, progress_callback=progress)
 

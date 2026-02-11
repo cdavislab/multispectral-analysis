@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-import msagui.msa_utils as msa_utils
+import msagui.model.msa_utils as msa_utils
 
 class DummySettings:
     def imsave_kwargs(self):
@@ -28,7 +28,7 @@ def test_save_image(monkeypatch):
         called['kwargs'] = kwargs
     monkeypatch.setattr(msa_utils, "imsave", fake_imsave)
     arr = np.zeros((2,2))
-    msa_utils.save_image("test.png", arr, DummySettings())
+    msa_utils.save_image("test.png", arr, DummySettings()) # type: ignore
     assert called['filename'] == "test.png"
     assert np.allclose(called['image'], arr)
     assert called['kwargs'] == {"cmap": "gray"}
@@ -40,7 +40,7 @@ def test_decorate_image(monkeypatch):
             called['image'] = image
             called['kwargs'] = kwargs
     arr = np.ones((2,2))
-    msa_utils.decorate_image(arr, DummyAx(), DummySettings())
+    msa_utils.decorate_image(arr, DummyAx(), DummySettings()) # type: ignore
     assert np.allclose(called['image'], arr)
     assert called['kwargs'] == {"cmap": "gray"}
 
@@ -88,6 +88,6 @@ def test_construct_image(monkeypatch):
     monkeypatch.setattr(msa_utils, "subplots", fake_subplots)
     monkeypatch.setattr(msa_utils, "tight_layout", lambda: None)
     images = [np.zeros((2,2)) for _ in range(5)]
-    msa_utils.construct_image(images, DummySettings())
+    msa_utils.construct_image(images, DummySettings()) # type: ignore
     # Should call axis('off') for empty slots
     assert 'off' in called

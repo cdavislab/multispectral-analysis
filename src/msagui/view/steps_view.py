@@ -1,11 +1,11 @@
 import tkinter as tk
 class MultiCorrectionsDialog(tk.Toplevel):
     """Dialog for entering multiple correction steps with operations and output keys."""
-    def __init__(self, parent):
+    def __init__(self, parent, steps):
         super().__init__(parent)
         self.title("Multiple Corrections")
-        self.geometry("700x400")
-        self.steps = []
+        self.geometry("1000x600")
+        self.steps = steps
         self.result = None
 
         # Main frame with two panes
@@ -21,12 +21,19 @@ class MultiCorrectionsDialog(tk.Toplevel):
         self.right_pane.pack(side=tk.RIGHT, fill=tk.Y)
 
         # Table headers
-        headers = ["#", "keyword", "operation", "keyword2", "value", "output key", "", ""]
+        headers = ["#", "keyword1", "operation", "keyword2", "value", "output key", "", ""]
         for col, header in enumerate(headers):
             tk.Label(self.left_pane, text=header, font=("Verdana", 9, "bold")).grid(row=0, column=col, padx=2, pady=2)
 
         self.step_rows = []
         self.next_row = 1
+
+        # Populate with existing steps
+        if self.steps:
+            for step in self.steps:
+                self.add_step_row(step)
+        else:
+            self.add_step_row()  # Optionally start with one empty row if no steps
 
         # Add step button at the bottom of left pane
         self.add_step_button = tk.Button(self.left_pane, text="Add step", command=self.add_step_row)
@@ -47,7 +54,7 @@ class MultiCorrectionsDialog(tk.Toplevel):
         self.threshold_button.pack(pady=(30, 10))
 
         # Save button
-        self.save_button = tk.Button(self.right_pane, text="Save", width=22, command=self.save_and_close)
+        self.save_button = tk.Button(self.right_pane, text="Save", width=22)
         self.save_button.pack(pady=(10, 0))
 
     def add_step_row(self, step=None):
@@ -66,7 +73,7 @@ class MultiCorrectionsDialog(tk.Toplevel):
         del_btn = None
         widgets = [step_num, keyword, operation, keyword2, value, output_key, up_btn, down_btn, del_btn]
         if step:
-            keyword.insert(0, step.get("keyword", ""))
+            keyword.insert(0, step.get("keyword1", ""))
             operation.insert(0, step.get("operation", ""))
             keyword2.insert(0, step.get("keyword2", ""))
             value.insert(0, step.get("value", ""))
@@ -154,7 +161,7 @@ class MultiCorrectionsDialog(tk.Toplevel):
         if dialog.result:
             # Add a new step row with dialog result
             step = {
-                "keyword": dialog.result["keyword1"],
+                "keyword1": dialog.result["keyword1"],
                 "operation": op,
                 "keyword2": dialog.result["keyword2"] if dialog.result["mode"] == "image" else "",
                 "value": dialog.result["value"] if dialog.result["mode"] == "constant" else "",
@@ -168,30 +175,13 @@ class MultiCorrectionsDialog(tk.Toplevel):
         self.wait_window(dialog)
         if dialog.result:
             step = {
-                "keyword": dialog.result["keyword"],
+                "keyword1": dialog.result["keyword1"],
                 "operation": "threshold",
                 "keyword2": "",
                 "value": dialog.result["threshold"],
                 "output_key": dialog.result["output_key"]
             }
             self.add_step_row(step)
-
-    def save_and_close(self):
-        """Collect all steps and close dialog."""
-        self.steps = []
-        for row in self.step_rows:
-            _, keyword, operation, keyword2, value, output_key, _, _, _ = row
-            step = {
-                "keyword": keyword.get().strip(),
-                "operation": operation.get().strip(),
-                "keyword2": keyword2.get().strip(),
-                "value": value.get().strip(),
-                "output_key": output_key.get().strip()
-            }
-            if step["keyword"] and step["operation"] and step["output_key"]:
-                self.steps.append(step)
-        self.result = self.steps
-        self.destroy()
 
     class OperationDialog(tk.Toplevel):
         """Dialog for arithmetic operation step."""
@@ -243,7 +233,7 @@ class MultiCorrectionsDialog(tk.Toplevel):
 
         def on_ok(self):
             self.result = {
-                "keyword": self.keyword.get().strip(),
+                "keyword1": self.keyword.get().strip(),
                 "threshold": self.threshold.get().strip(),
                 "output_key": self.output_key.get().strip()
             }

@@ -17,7 +17,7 @@ class ImageController:
         # df_slice = self.model.get_df_slice(index)
         # self.view.display(self.model.get_single_image(df_slice))
         img, stats = self.model.make_image(index)
-        self.view.display(img)
+        self.view.display.update(img)
         self.display_statistics(stats)
         
         return
@@ -38,13 +38,13 @@ class ImageController:
         # Display statistics for selected index/group
         if self.view.show_groups.get():
             stats = "Statistics"
-            self.view.Button_Statistics.configure(text=stats)
+            self.view.buttons.items['Statistics'].configure(text=stats)
             return
         stats = [np.round(stats[key], 3) for key in stats.keys()]
         stats = ("Mean:" + str(stats[0]) + ", Median:" + str(stats[1]) +
                  ", Max:" + str(stats[2]) + ", Stdev:" + str(stats[3]) +
                  ", SE:" + str(stats[4]) + ",  Count: " + str(int(stats[5])))
-        self.view.labels['Statistics'].configure(text=stats)
+        self.view.labels.update('Statistics', stats)
 
     def update_display(self, idx):
         # Update image/histogram/statistics display for selected index

@@ -1,5 +1,5 @@
 import pytest
-from msagui.metadata import ImageMeta, MetadataStore
+from msagui.model.metadata import ImageMeta, MetadataStore
 
 def test_add_and_keys():
     store = MetadataStore()
@@ -11,8 +11,8 @@ def test_add_and_keys():
 
 def test_basenames():
     store = MetadataStore()
-    meta1 = ImageMeta(key="/path/to/image1.tif", group="A", kind="input")
-    meta2 = ImageMeta(key="/another/path/image2.jpg", group="B", kind="processed")
+    meta1 = ImageMeta(key='1',nickname="/path/to/image1.tif", group="A", kind="input")
+    meta2 = ImageMeta(key='2',nickname="/another/path/image2.jpg", group="B", kind="processed")
     store.add(meta1)
     store.add(meta2)
     assert store.basenames == ["image1", "image2"]

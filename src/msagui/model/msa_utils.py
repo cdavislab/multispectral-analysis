@@ -1,4 +1,6 @@
+import io
 from math import ceil, sqrt
+from PIL import Image
 from msagui.model.imaging_settings import ImagingSettings
 from typing import Any
 import numpy.typing as npt
@@ -107,3 +109,25 @@ def is_number(s):
         return True
     except ValueError:
         return False
+    
+def compute_statistics(image: npt.NDArray) -> dict:
+    """
+    Computes basic statistics for a given image array.
+    """
+    stats = {
+        'mean': float(np.mean(image)),
+        'median': float(np.median(image)),
+        'max_signal': float(np.max(image)),
+        'standard_deviation': float(np.std(image)),
+        'standard_error': float(np.std(image) / np.sqrt(image.size)),
+        'count': int(image.size)
+    }
+    return stats
+
+def fig_to_img(fig, **kwargs):
+    """Convert a Matplotlib figure to a PIL Image."""
+    buf = io.BytesIO()
+    fig.savefig(buf, **kwargs)  # Save the figure in the buffer
+    buf.seek(0)
+    img = Image.open(buf)
+    return img

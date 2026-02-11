@@ -1,5 +1,5 @@
 import pytest
-from msagui.imaging_settings import ImagingSettings
+from msagui.model.imaging_settings import ImagingSettings
 
 def test_default_imshow_kwargs():
     settings = ImagingSettings()
@@ -15,14 +15,14 @@ def test_default_imsave_kwargs():
     settings = ImagingSettings()
     kwargs = settings.imsave_kwargs()
     assert kwargs == {
+        "transparent": False,
         "dpi": 300,
-        "cmap": "viridis",
-        "vmin": None,
-        "vmax": None,
-        "format": None,
-        "origin": "lower",
-        "metadata": None
+        "bbox_inches": "tight",
+        "pad_inches": 0.1,
+        "facecolor": 'auto',
+        "edgecolor": 'auto',
     }
+
 
 def test_custom_imshow_kwargs():
     settings = ImagingSettings(cmap="gray", interpolation="bilinear", vmin=0.0, vmax=1.0, aspect="equal")
@@ -40,13 +40,14 @@ def test_custom_imsave_kwargs():
     settings = ImagingSettings(dpi=150, cmap="plasma", vmin=0.1, vmax=0.9, format="png", metadata={"author": "test"})
     kwargs = settings.imsave_kwargs()
     assert kwargs == {
+        "transparent": False,
         "dpi": 150,
-        "cmap": "plasma",
-        "vmin": 0.1,
-        "vmax": 0.9,
-        "format": "png",
-        "origin": "lower",
-        "metadata": {"author": "test"}
+        'format': "png",
+        'metadata': {"author": "test"},
+        "bbox_inches": "tight",
+        "pad_inches": 0.1,
+        "facecolor": 'auto',
+        "edgecolor": 'auto',
     }
 
 def test_none_values_not_in_imshow_kwargs():
