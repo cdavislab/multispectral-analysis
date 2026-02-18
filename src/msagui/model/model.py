@@ -1,3 +1,4 @@
+import os
 from typing import Callable
 import numpy.typing as npt
 import msagui.model.msa_utils as utils
@@ -6,6 +7,10 @@ from msagui.model.metadata import ImageMeta, MetadataStore
 from msagui.model.imaging_settings import ImagingSettings
 from msagui.model.steps import Steps
 import matplotlib.pyplot as plt
+from PIL.Image import Image
+
+import logging
+logger = logging.getLogger(__name__)
 
 class MultiSpectralModel:
     def __init__(self):
@@ -14,9 +19,11 @@ class MultiSpectralModel:
         self.steps = Steps()
         self.hdf5_path: str = "hdf5_data.h5"
         self.group_cache = dict()
-
+        # if hdf5_path exists, delete
+        if os.path.exists(self.hdf5_path):
+            os.remove(self.hdf5_path)
     def process(self, items, func: Callable, progress_callback: Callable | None) -> dict[str, Exception]:
-        if not isinstance(items, list):
+        if not isinstance(items, list | tuple):
             items = [items]
 
         failed = {}
@@ -37,6 +44,7 @@ class MultiSpectralModel:
             new_key = self.metadata.new_key()
             meta = ImageMeta(key=new_key, nickname=fpath, group="default", kind="input")  # pyright: ignore[reportArgumentType]
             self.metadata.add(meta)
+            logger.info(f"Added metadata for file: {fpath} with key: {new_key}")
             parseH5.add_input(self.hdf5_path, meta.hdf5_path, fpath)
         
         return self.process(file_path, func=add_single, progress_callback=progress_callback)
@@ -45,6 +53,7 @@ class MultiSpectralModel:
         def delete_single(idx: int):
             item = self.metadata.items[idx]
             key = item.key
+            logger.info(f"Deleting file with key: {key}")
             parseH5.delete(self.hdf5_path, key)
             self.metadata.delete(key)
         
@@ -67,17 +76,20 @@ class MultiSpectralModel:
     def set_groups(self):
         """
         Updates image groups based on name matching after removing keywords.
+        Uses pre-existing groups as a starting point to maintain consistency.
+        Moves datasets in HDF5 file to new group paths accordingly.
         """
         keywords = self.steps.inputs()
         basenames_trimmed = [utils.remove_substr(keywords, basename) for basename in self.metadata.basenames]
-        groups_idx = utils.group_strlist(basenames_trimmed)
+        existing_groups = self.metadata.groups()
+        existing_groups = existing_groups = [group if group != "default" else -1 for group in existing_groups]
+        groups_idx = utils.group_strlist(basenames_trimmed, pregroup=existing_groups)
 
         for meta, group_idx in zip(self.metadata.items, groups_idx):
             old_path = meta.hdf5_path
             meta.group = group_idx
             parseH5.move(self.hdf5_path, old_path, meta.hdf5_path)  # move dataset to new group path
-            
-        
+            meta.common_name = utils.split_substr(keywords, meta.nickname)
 
     def set_hdf5_path(self, hdf5_path: str):
         """
@@ -112,20 +124,19 @@ class MultiSpectralModel:
 
         return images if len(images) > 1 else images[0]
     
-    def make_image(self, idx: int) -> npt.NDArray:
+    def make_image(self, idx: int) -> tuple[Image, dict]:
         """
         Makes processed image for given dataframe index.
         """
         item = self.metadata.items[idx]
-        key = item.key
-        data = parseH5.get_data(self.hdf5_path, key)  # Ensure image is loaded
+        data = parseH5.get_data(self.hdf5_path, item.hdf5_path)  # Ensure image is loaded
         fig, axs = utils.construct_image(data, self.settings)
         if item.statistics is None:
             stats = utils.compute_statistics(data[0]) #HACK
             item.statistics = stats
         stream = utils.fig_to_img(fig, **self.settings.imsave_kwargs())
         plt.close() #fig.close()
-        return stream, item.statistics # pyright: ignore[reportReturnType]
+        return stream, item.statistics
 
     def process_step(self, group: dict, step: dict) -> npt.NDArray:
         """
@@ -133,6 +144,7 @@ class MultiSpectralModel:
         Determines whether to use one or two input images based on presence of value or keyword_2.
         """
         assert type(group) == dict, f"Expected group to be a dict, got {type(group)}"
+        logger.info(f"Group: {group}")
         item_1 = group[step['keyword1']]
         item_2 = group.get(step['keyword2'])
         value = step.get('value')
@@ -148,35 +160,51 @@ class MultiSpectralModel:
     def add_processed(self, fpath: str, group: str, keyword: str):
         new_key = self.metadata.new_key()
         self.metadata.add(ImageMeta(key=new_key, nickname=fpath, group=group,
-                                    keyword=keyword, kind="processed"))  # pyright: ignore[reportArgumentType]
+                                    keyword=keyword, kind="processed"))
         parseH5.add_input(self.hdf5_path, new_key, fpath)
 
     def _analyze(self, group: dict, group_id: str, progress_callback: Callable):
         self.group_cache.clear()
+
+        # Pull the last used index for each output keyword across all steps to optimize caching strategy
         last_used = self.steps.last_used()
 
+        # Get the common name for the group to construct output nicknames.
+        common_name = self.metadata.by_group(group_id)[0].common_name
+        assert common_name is not None, f"Expected common_name to be set for group {group_id}"
+        assert len(common_name) == 2, f"Expected common_name to have 2 parts, got {len(common_name)}"
+
         for i, step in enumerate(self.steps.get_steps()):
+            # Perform single operation
             output_keyword = step['output_key']
             result = self.process_step(group, step)
+
+            # Save result before continuing
+            output_nickname = common_name[0] + output_keyword + common_name[1]
             meta = ImageMeta(
                 key=self.metadata.new_key(),
-                nickname=f"processed_{output_keyword}",
+                nickname=output_nickname,
+                common_name=common_name,
                 group=group_id,
                 keyword=output_keyword,
                 kind="processed"
             )
             self.metadata.add(meta)
             parseH5.add_processed(self.hdf5_path, meta.hdf5_path, result)
+            
+            # Cache the result if this step's output is used in a future step
             if i < last_used[output_keyword]:
                 self.group_cache[output_keyword] = result
-            
+                group[meta.keyword] = meta.hdf5_path  
 
     def analyze(self, idx: int | list[int], progress_callback: Callable):
+        self.set_keywords()
+        self.set_groups()
         groups = self.metadata.get_group(idx)
         for group in groups:
-            print("[analyze] Processing group:", group)
+            logging.info(f"Processing group: {group}")
             items = self.metadata.by_group(group)
             group_dict = {item.keyword: item.hdf5_path for item in items}
-            print("[analyze] Processing group_dict:", group_dict)
+            logging.info(f"Group dict for group {group}: {group_dict}")
             self._analyze(group_dict, group, progress_callback)
     

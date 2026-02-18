@@ -43,32 +43,66 @@ def construct_image(images: list, settings: ImagingSettings):
     tight_layout()
     return fig, axs
 
-
 def find_substring(self, l: list, substr: str) -> list:
     """
     Returns a list of idx from `l` that contain `substr`.
     """
     return [i for i, s in enumerate(l) if substr in s]
 
-def group_strlist(strlist: list[str]) -> npt.NDArray[np.integer[Any]]:
+def replace_item(arr: npt.NDArray, old_value, new_value) -> npt.NDArray:
+    """
+    Replaces all occurrences of old_value with new_value in arr.
+    Adds a temporary marker to avoid conflict when new value already in old value
+    """
+    arr = np.where(arr == new_value, -1, arr)
+    arr = np.where(arr == old_value, new_value, arr)
+    arr = np.where(arr == -1, old_value, arr)
+    return arr
+
+def _construct_group_dict(strlist: list[str], pregroup: list[int | str]) -> dict[str, int]:
+    group_dict = dict()
+    for s, group in zip(strlist, pregroup):
+        if group == -1:
+            continue
+        group_dict[s] = group
+    return group_dict
+
+def group_strlist(strlist: list[str], pregroup: list[int | str] | None = None) -> npt.NDArray[np.integer[Any]]:
     """
     Groups strings in strlist by common substrings
     Returns a list of group indices for each string in strlist.
     """
-    groups = dict()
+    if pregroup:
+        groups = _construct_group_dict(strlist, pregroup)
+    else:
+        groups = dict()
+
     groups_idx = []
-    count = 0
+    count = 1
     for s in strlist:
-        if s not in groups.keys():
+        # Find a group index for s that is not already assigned to another string.
+        while count in groups.values():
             count += 1
+        if s not in groups.keys():
             groups[s] = count
         groups_idx.append(groups[s])
     return np.array(groups_idx)
 
-def remove_substr(substr: list[str] | str, string: str) -> str:
-    if isinstance(substr, str):
-        substr = [substr]
-    for substring in substr:
+def split_substr(substrings: list[str] | str, string: str) -> list[str]:
+    if isinstance(substrings, str):
+        substrings = [substrings]
+
+    for substring in substrings:
+        if substring in string:
+            return string.split(substring)
+        
+    return [string]
+
+def remove_substr(substrings: list[str] | str, string: str) -> str:
+    """ Removes occurrences of substr from string. substr can be a single string or a list of strings."""
+    if isinstance(substrings, str):
+        substrings = [substrings]
+    for substring in substrings:
         string = string.replace(substring, "")
     return string
 

@@ -72,6 +72,10 @@ def test_process_step(monkeypatch):
 	assert np.allclose(result, [[0, 0.6], [0.7, 0]])
 
 def test_analyze_group(monkeypatch):
+	class DummyMeta:
+		def __init__(self, common_name):
+			self.common_name = common_name
+			
 	model = MultiSpectralModel()
 	# Patch steps
 	steps = [
@@ -82,6 +86,7 @@ def test_analyze_group(monkeypatch):
 	model.steps.last_used = lambda: {"C": 0, "D": 1}
 	model.get_images = lambda keys: [np.ones((2, 2)), np.ones((2, 2))]
 	model.process_step = lambda group, step: np.ones((2, 2))
+	model.metadata.by_group = lambda group_id: [DummyMeta(["test", "processed"])]  # type: ignore
 	group = {"A": "img1", "B": "img2", "C": "img3"}
 	model._analyze(group, "A",lambda: None)
 	assert isinstance(model.group_cache, dict)

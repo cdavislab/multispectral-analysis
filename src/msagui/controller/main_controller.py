@@ -1,4 +1,5 @@
 
+import logging
 import os
 from msagui.controller.buttons_controller import ButtonsController
 from msagui.controller.dropdown_controller import DropDownController
@@ -6,6 +7,8 @@ from msagui.controller.listbox_controller import FileListController
 from msagui.controller.image_controller import ImageController
 from msagui.controller.image_properties_controller import ImagePropertiesController
 from msagui.controller.steps_controller import StepsController
+
+logger = logging.getLogger(__name__)
 
 # Controller class to manage the logic between the Model and the View
 class ControllerDispatcher:
@@ -46,6 +49,7 @@ class ControllerDispatcher:
             self.view.buttons.items['Analyze']: self.up(self.button_ctrl.analyze),
             self.view.buttons.items['Export Folder']: self.up(self.button_ctrl.set_export_folder),
             self.view.buttons.items['Frequency']: self.steps_ctrl.open
+            # self.view.buttons.items['Groups']: self.button_ctrl.
         }
         for button, command in button_commands.items():
             button.config(command=command)
@@ -92,6 +96,7 @@ class ControllerDispatcher:
 
     def _on_file_selection(self, event):
         value = self.listbox_ctrl.on_file_selection(event)
+        logging.info(f"Selected file: {value}")
         value = os.path.basename(value)
         self.view.get_widget('Filename').update('Filename', value)
 

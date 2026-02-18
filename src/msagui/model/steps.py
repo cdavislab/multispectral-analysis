@@ -28,17 +28,22 @@ class Steps:
     
     def last_used(self):
         """
-        Determine idx of step when input keyword is last used and put it in dictionary
+        For each input keyword, Determine, at what step number when input keyword is last used and put it in dictionary
         """
+        
         input_keywords = self.inputs()
         input_order = dict()
+        
+        # Initialize all output keywords with -1 to indicate they are not used in any step
+        for keyword in self.outputs():
+            input_order[keyword] = -1
+
+        # Iterate through steps and update last used index for each input keyword
         for keyword in input_keywords:
             for idx, step in enumerate(self.steps):
                 if step.get('keyword1') == keyword or step.get('keyword2') == keyword:
                     input_order[keyword] = idx
-        for keyword in self.outputs():
-            input_order[keyword] = -1
-
+        
         return input_order
     
     def set_steps(self, steps):

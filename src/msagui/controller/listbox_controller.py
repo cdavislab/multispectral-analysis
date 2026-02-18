@@ -1,3 +1,4 @@
+import logging
 import tkinter as tk
 import os
 # import Path
@@ -5,6 +6,8 @@ from tkinter.simpledialog import askstring
 import pandas as pd
 from msagui.view.display import ListboxView, ViewDefaults
 from msagui.view.defaults import ViewDefaults
+
+logger = logging.getLogger(__name__)
 
 class FileListController:
     def __init__(self, model, listbox: ListboxView):
@@ -62,8 +65,9 @@ class FileListController:
 
     def update_listbox(self):
         # Update the listbox display based on current view settings
-        keys = self.model.metadata.nicknames(visible=True)
-
+        keys = self.model.metadata.nicknames(visible_only=True)
+        logger.info(f"Updating listbox with keys: {keys}")
+        logger.info(f"Type of keys: {type(keys)}")
         self.listbox.update(keys)
         self.reselect_index()
         return

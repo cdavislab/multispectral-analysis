@@ -48,8 +48,9 @@ class MultispectralView():
         button_details = {"Add": dict(row=7, column=0, rowspan=1, columnspan=1, sticky="nsew", padx=2),
                 "Delete": dict(row=8, column=0, rowspan=1, columnspan=1, sticky="nsew", padx=2),
                 "Analyze": dict(row=9, column=0, rowspan=1, columnspan=1, sticky="nsew", padx=2),
-                "Frequency": dict(row=7, column=1, rowspan=2, columnspan=1, sticky="nsew", padx=2),
-                "Export Folder": dict(row=9, column=1, rowspan=1, columnspan=1, sticky="nsew", padx=2)}
+                "Frequency": dict(row=7, column=1, rowspan=1, columnspan=1, sticky="nsew", padx=2),
+                # "Groups": dict(row=8, column=1, rowspan=1, columnspan=1, sticky="nsew", padx=2),
+                "Export Folder": dict(row=8, column=1, rowspan=1, columnspan=1, sticky="nsew", padx=2)}
         
         self.buttons = WidgetsView(self.root, button_details, tk.Button) # pyright: ignore[reportArgumentType]
         

@@ -9,10 +9,11 @@ class ImageMeta:
     key: str                        # Unique identifier for the image
     group: str                      # Group identifier for the image
     kind: str                       # "input" or "processed"
+    nickname: str                   # User-defined nickname for the UI
     visible: bool = True            # Whether the image is visible in the UI
     keyword: Optional[str] = None   # Keyword shared amongst files
-    common_name: Optional[str] = None   # Common name for grouping in the UI
-    nickname: Optional[str] = ''  # User-defined nickname for the UI
+    common_name: Optional[list[str]] = None  # Common name for grouping in the UI
+
     statistics: Optional[dict] = None # Dictionary to hold computed statistics for the image
     
     @property
@@ -50,6 +51,10 @@ class MetadataStore:
         return [m.nickname for m in self.items]
 
     def add(self, meta: ImageMeta):
+        for i, m in enumerate(self.items):
+            if m.nickname == meta.nickname:
+                self.items[i] = meta
+                return
         self.items.append(meta)
 
     def delete(self, key: str):
