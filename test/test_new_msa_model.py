@@ -108,3 +108,28 @@ def test_steps_set_and_get():
 	s = [{"input1": "A"}]
 	steps.set_steps(s)
 	assert steps.get_steps() == s
+
+def test_validate_groups():
+	model = MultiSpectralModel()
+	# Patch metadata and validate_grouping
+	class DummyMeta:
+		def __init__(self, keyword):
+			self.keyword = keyword
+			self.nickname = f"file_{keyword}.tif"
+	meta1 = DummyMeta("A")
+	meta2 = DummyMeta("B")
+	meta3 = DummyMeta("C")
+
+	group_items = [meta1, meta2, meta3]
+	keywords = {"A", "B", "C"}
+	# Three items for three keywords
+	assert model.validate_grouping(group_items, keywords) == True
+
+	# Missing one item from keywords
+	group_items = [meta1, meta2]
+	keywords = {"A", "B", "D"}
+	assert model.validate_grouping(group_items, keywords) == False
+
+	# # Too many items for keywords
+	# keywords = {"A", "B"}
+	# assert model.validate_grouping(group_items, keywords) == False

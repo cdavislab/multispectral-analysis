@@ -89,7 +89,7 @@ class ListboxView(View):
         """Update the listbox with a new list of files."""
         self.file_list.delete(0, tk.END)
         for name in files:
-            logger.info(f"Adding file to listbox: {name}")
+            # logger.info(f"Adding file to listbox: {name}")
             self.file_list.insert(tk.END, name)
             
     def build(self, paned_window):

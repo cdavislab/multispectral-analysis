@@ -49,6 +49,7 @@ def test_multistep(temp_hdf5, temp_img_paths):
     model.set_keywords()
     model.set_groups()
     with h5py.File(temp_hdf5, "r") as f:
+        assert f.keys() >= {"1/img1", "1/img2"}  # Check that both img1 and img2 are present in group 1
         assert "1/img1" in f
         assert "1/img2" in f
     model.analyze([0, 1], lambda: None)
@@ -61,3 +62,161 @@ def test_multistep(temp_hdf5, temp_img_paths):
         computed_data = f["1/computed_img1"][:]
         computed_expected = expected - np.full((5, 5), 2)
         assert np.allclose(computed_data, computed_expected)
+
+def test_double_analyze(temp_hdf5, temp_img_paths):
+    model = MultiSpectralModel()
+    model.set_hdf5_path(temp_hdf5)
+    model.add(temp_img_paths, lambda: None)
+    model.steps.set_steps([{"keyword1": "img1", "operation": "+", "keyword2": "img2", "value": "", "output_key": "result"}])
+    model.set_keywords()
+    model.set_groups()
+    model.analyze([0, 1], lambda: None)
+    # Analyze again with the same settings to test caching
+    model.analyze([0, 1, 2], lambda: None)
+    with h5py.File(temp_hdf5, "r") as f:
+        assert "1/result" in f
+        result_data = f["1/result"][:]
+        expected = np.ones((5, 5)) + np.full((5, 5), 2)
+        assert np.allclose(result_data, expected)
+
+def test_double_analyze1(temp_hdf5, temp_img_paths):
+    model = MultiSpectralModel()
+    model.set_hdf5_path(temp_hdf5)
+    model.add(temp_img_paths, lambda: None)
+    model.steps.set_steps([{"keyword1": "img1", "operation": "+", "keyword2": "img2", "value": "", "output_key": "result"}])
+    model.set_keywords()
+    model.set_groups()
+    assert model.metadata.keys == ["1", "2"]
+    assert model.metadata.groups() == [1]
+    assert model.metadata.nicknames() == temp_img_paths
+
+def test_single_keyword_twice(temp_hdf5, temp_img_paths):
+    model = MultiSpectralModel()
+    model.set_hdf5_path(temp_hdf5)
+    model.add(temp_img_paths, lambda: None)
+    model.steps.set_steps([{"keyword1": "img1", "operation": "+", "keyword2": "img1", "value": "", "output_key": "result"}])
+    model.set_keywords()
+    model.set_groups()
+    assert model.metadata.keys == ["1", "2"]
+    assert model.metadata.groups() == [1, "default"]
+    assert set(model.metadata.nicknames()) == set(temp_img_paths)
+
+def test_addition(temp_hdf5, temp_img_paths):
+    model = MultiSpectralModel()
+    model.set_hdf5_path(temp_hdf5)
+    model.add(temp_img_paths, lambda: None)
+    with h5py.File(temp_hdf5, "r") as f:
+        assert "default/1" in f
+        assert "default/2" in f
+    model.steps.set_steps([{"keyword1": "img1", "operation": "+", "keyword2": "img2", "value": "", "output_key": "result"}])
+    model.set_keywords()
+    model.set_groups()
+    with h5py.File(temp_hdf5, "r") as f:
+        assert "1/img1" in f
+        assert "1/img2" in f
+    model.analyze([0, 1], lambda: None)
+    with h5py.File(temp_hdf5, "r") as f:
+        assert "1/result" in f
+        result_data = f["1/result"][:]
+        expected = np.ones((5, 5)) + np.full((5, 5), 2)
+        assert np.allclose(result_data, expected)
+
+def test_subtraction(temp_hdf5, temp_img_paths):
+    model = MultiSpectralModel()
+    model.set_hdf5_path(temp_hdf5)
+    model.add(temp_img_paths, lambda: None)
+    with h5py.File(temp_hdf5, "r") as f:
+        assert "default/1" in f
+        assert "default/2" in f
+    model.steps.set_steps([{"keyword1": "img1", "operation": "-", "keyword2": "img2", "value": "", "output_key": "result"}])
+    model.set_keywords()
+    model.set_groups()
+    with h5py.File(temp_hdf5, "r") as f:
+        assert "1/img1" in f
+        assert "1/img2" in f
+    model.analyze([0, 1], lambda: None)
+    with h5py.File(temp_hdf5, "r") as f:
+        assert "1/result" in f
+        result_data = f["1/result"][:]
+        expected = np.ones((5, 5)) - np.full((5, 5), 2)
+        assert np.allclose(result_data, expected)
+
+def test_division(temp_hdf5, temp_img_paths):
+    model = MultiSpectralModel()
+    model.set_hdf5_path(temp_hdf5)
+    model.add(temp_img_paths, lambda: None)
+    with h5py.File(temp_hdf5, "r") as f:
+        assert "default/1" in f
+        assert "default/2" in f
+    model.steps.set_steps([{"keyword1": "img1", "operation": "/", "keyword2": "img2", "value": "", "output_key": "result"}])
+    model.set_keywords()
+    model.set_groups()
+    with h5py.File(temp_hdf5, "r") as f:
+        assert "1/img1" in f
+        assert "1/img2" in f
+    model.analyze([0, 1], lambda: None)
+    with h5py.File(temp_hdf5, "r") as f:
+        assert "1/result" in f
+        result_data = f["1/result"][:]
+        expected = np.ones((5, 5)) / np.full((5, 5), 2)
+        assert np.allclose(result_data, expected)
+
+def test_multiplication(temp_hdf5, temp_img_paths):
+    model = MultiSpectralModel()
+    model.set_hdf5_path(temp_hdf5)
+    model.add(temp_img_paths, lambda: None)
+    with h5py.File(temp_hdf5, "r") as f:
+        assert "default/1" in f
+        assert "default/2" in f
+    model.steps.set_steps([{"keyword1": "img1", "operation": "*", "keyword2": "img2", "value": "", "output_key": "result"}])
+    model.set_keywords()
+    model.set_groups()
+    with h5py.File(temp_hdf5, "r") as f:
+        assert "1/img1" in f
+        assert "1/img2" in f
+    model.analyze([0, 1], lambda: None)
+    with h5py.File(temp_hdf5, "r") as f:
+        assert "1/result" in f
+        result_data = f["1/result"][:]
+        expected = np.ones((5, 5)) * np.full((5, 5), 2)
+        assert np.allclose(result_data, expected)
+
+def test_multiplication_by_value(temp_hdf5, temp_img_paths):
+    model = MultiSpectralModel()
+    model.set_hdf5_path(temp_hdf5)
+    model.add(temp_img_paths, lambda: None)
+    with h5py.File(temp_hdf5, "r") as f:
+        assert "default/1" in f
+        assert "default/2" in f
+    model.steps.set_steps([{"keyword1": "img1", "operation": "*", "keyword2": "", "value": "3", "output_key": "result"}])
+    model.set_keywords()
+    model.set_groups()
+    with h5py.File(temp_hdf5, "r") as f:
+        assert "1/img1" in f
+        assert "default/2" in f
+    model.analyze([0, 1], lambda: None)
+    with h5py.File(temp_hdf5, "r") as f:
+        assert "1/result" in f
+        result_data = f["1/result"][:]
+        expected = np.ones((5, 5)) * 3
+        assert np.allclose(result_data, expected)
+
+def test_threshold(temp_hdf5, temp_img_paths):
+    model = MultiSpectralModel()
+    model.set_hdf5_path(temp_hdf5)
+    model.add(temp_img_paths, lambda: None)
+    with h5py.File(temp_hdf5, "r") as f:
+        assert "default/1" in f
+        assert "default/2" in f
+    model.steps.set_steps([{"keyword1": "img1", "operation": "threshold", 'keyword2': "", "value": "0.5", "output_key": "result"}])
+    model.set_keywords()
+    model.set_groups()
+    with h5py.File(temp_hdf5, "r") as f:
+        assert "1/img1" in f
+        assert "default/2" in f
+    model.analyze([0, 1], lambda: None)
+    with h5py.File(temp_hdf5, "r") as f:
+        assert "1/result" in f
+        result_data = f["1/result"][:]
+        expected = np.ones((5, 5)) > 0.5
+        assert np.allclose(result_data, expected)

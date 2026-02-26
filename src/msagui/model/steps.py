@@ -1,10 +1,14 @@
 from dataclasses import dataclass
+import logging
+
+logger = logging.getLogger(__name__)
+
 @dataclass
 class Steps:
     def __init__(self):
         self.steps = []
     
-    def inputs(self):
+    def inputs(self, include_computed=True):
         """
         Returns input keywords used in the processing steps.
         """
@@ -14,6 +18,9 @@ class Steps:
                 keywords.add(step['keyword1'])
             if 'keyword2' in step and step['keyword2']:
                 keywords.add(step['keyword2'])
+        if not include_computed:
+            for keyword in self.outputs():
+                keywords.discard(keyword)
         return list(keywords)
     
     def outputs(self):
@@ -50,6 +57,7 @@ class Steps:
         """
         Sets cleaned processing steps.
         """
+        logger.debug(f"Setting steps: {steps}")
         self.steps = steps
 
     def get_steps(self):

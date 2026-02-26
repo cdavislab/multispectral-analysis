@@ -101,8 +101,12 @@ class ButtonsController:
 
     def analyze(self):
         selected_idx = self.view.listbox.get_selected_indices()
+        if not selected_idx:
+            messagebox.showerror("No Selection", "Please select at least one file to analyze.")
+            return
         with ProgressBar(title="Analyzing", total=len(selected_idx)) as progress:
-            self.model.analyze(selected_idx, progress_callback=progress)
+            error = self.model.analyze(selected_idx, progress_callback=progress)
+            messagebox.showerror("Analysis Error", error) if error else None
 
     def set_export_folder(self):
         # Set export folder and optionally move files there

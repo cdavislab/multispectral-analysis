@@ -59,6 +59,13 @@ def replace_item(arr: npt.NDArray, old_value, new_value) -> npt.NDArray:
     arr = np.where(arr == -1, old_value, arr)
     return arr
 
+def find_unique(arr: npt.NDArray) -> npt.NDArray:
+    """
+    Returns values that appear only once
+    """
+    values, counts = np.unique(arr, return_counts=True)
+    return values[np.where(counts == 1)]
+
 def _construct_group_dict(strlist: list[str], pregroup: list[int | str]) -> dict[str, int]:
     group_dict = dict()
     for s, group in zip(strlist, pregroup):
@@ -69,7 +76,7 @@ def _construct_group_dict(strlist: list[str], pregroup: list[int | str]) -> dict
 
 def group_strlist(strlist: list[str], pregroup: list[int | str] | None = None) -> npt.NDArray[np.integer[Any]]:
     """
-    Groups strings in strlist by common substrings
+    Groups strings in list by matching strings.
     Returns a list of group indices for each string in strlist.
     """
     if pregroup:

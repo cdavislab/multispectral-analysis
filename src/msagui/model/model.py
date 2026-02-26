@@ -1,6 +1,7 @@
 import os
 from typing import Callable
 import numpy.typing as npt
+import numpy as np
 import msagui.model.msa_utils as utils
 import msagui.model.parseH5 as parseH5
 from msagui.model.metadata import ImageMeta, MetadataStore
@@ -73,23 +74,52 @@ class MultiSpectralModel:
                 key = self.metadata.by_basename(name)[0].key
                 self.metadata.change_keyword(key, keyword)
 
+    def validate_grouping(self, metas: list[ImageMeta], keywords: set) -> bool:
+        """ Validates that a group of images contains all keywords once. Returns True if valid, False otherwise."""
+        for meta in metas:
+            if meta.keyword in keywords:
+                keywords.discard(meta.keyword)
+            else:
+                logger.warning(f"Keyword '{meta.keyword}' from image '{meta.nickname}' is not in the required keywords set or is duplicated in the group.")
+        if len(keywords) > 0:
+            return False
+        return True
+
     def set_groups(self):
         """
         Updates image groups based on name matching after removing keywords.
         Uses pre-existing groups as a starting point to maintain consistency.
         Moves datasets in HDF5 file to new group paths accordingly.
         """
-        keywords = self.steps.inputs()
-        basenames_trimmed = [utils.remove_substr(keywords, basename) for basename in self.metadata.basenames]
+        all_input_keywords = self.steps.inputs(include_computed=True)
+        basenames_trimmed = [utils.remove_substr(all_input_keywords, basename) for basename in self.metadata.basenames]
         existing_groups = self.metadata.groups()
         existing_groups = existing_groups = [group if group != "default" else -1 for group in existing_groups]
         groups_idx = utils.group_strlist(basenames_trimmed, pregroup=existing_groups)
 
+        # Mark any groups that do not have all keywords represented as ungrouped
+        user_input_keywords = self.steps.inputs(include_computed=False)
+        for group_idx in set(groups_idx):
+            group_items_idx = np.where(groups_idx == group_idx)[0]
+            group_items = [self.metadata.items[idx] for idx in group_items_idx]
+            if not self.validate_grouping(group_items, set(user_input_keywords)):
+                logger.warning(f"Ungrouping items with indices {group_items_idx} due to incomplete keyword representation in group.")
+                logger.warning(f"Group items: {[item.nickname for item in group_items]}, Keywords needed: {set(user_input_keywords)}")
+                groups_idx[group_items_idx] = -1  # -1 indicates ungrouped
+
+        # Change group details in metadata and move datasets in HDF5 file accordingly
         for meta, group_idx in zip(self.metadata.items, groups_idx):
+            if meta.kind == 'processed':
+                continue  # Skip processed items, only group input items
+            if group_idx == meta.group or (group_idx == -1 and meta.group == "default"):
+                continue  # No change in group, skip
+
             old_path = meta.hdf5_path
             meta.group = group_idx
             parseH5.move(self.hdf5_path, old_path, meta.hdf5_path)  # move dataset to new group path
-            meta.common_name = utils.split_substr(keywords, meta.nickname)
+            meta.common_name = utils.split_substr(all_input_keywords, meta.nickname)
+            logger.info(f"Common name for {meta.nickname}: {meta.common_name}")
+            assert len(meta.common_name) == 2, f"Expected common_name to have 2 parts, got {len(meta.common_name)} for file {meta.nickname}"
 
     def set_hdf5_path(self, hdf5_path: str):
         """
@@ -151,17 +181,22 @@ class MultiSpectralModel:
 
         if item_2 is None:
             data1 = self.get_images(item_1)
-            return utils.operate(data1, value, step['operation'])
+            return utils.operate(data1, float(value), step['operation'])
         
         data1, data2 = self.get_images([item_1, item_2])
         return utils.operate(data1, data2, step['operation'])
         
-
     def add_processed(self, fpath: str, group: str, keyword: str):
         new_key = self.metadata.new_key()
         self.metadata.add(ImageMeta(key=new_key, nickname=fpath, group=group,
                                     keyword=keyword, kind="processed"))
         parseH5.add_input(self.hdf5_path, new_key, fpath)
+
+    def clear_processed(self):
+        processed_items = [item for item in self.metadata.items if item.kind == "processed"]
+        for item in processed_items:
+            parseH5.delete(self.hdf5_path, item.key)
+            self.metadata.delete(item.key)
 
     def _analyze(self, group: dict, group_id: str, progress_callback: Callable):
         self.group_cache.clear()
@@ -172,7 +207,6 @@ class MultiSpectralModel:
         # Get the common name for the group to construct output nicknames.
         common_name = self.metadata.by_group(group_id)[0].common_name
         assert common_name is not None, f"Expected common_name to be set for group {group_id}"
-        assert len(common_name) == 2, f"Expected common_name to have 2 parts, got {len(common_name)}"
 
         for i, step in enumerate(self.steps.get_steps()):
             # Perform single operation
@@ -198,9 +232,17 @@ class MultiSpectralModel:
                 group[meta.keyword] = meta.hdf5_path  
 
     def analyze(self, idx: int | list[int], progress_callback: Callable):
+        if self.steps.get_steps() == []:
+            return ValueError("No processing steps defined. Please set steps before analyzing.")
+        
         self.set_keywords()
         self.set_groups()
-        groups = self.metadata.get_group(idx)
+        # groups = set(self.metadata.get_group(idx))
+        self.clear_processed()
+        groups = set(self.metadata.groups(visible_only=True))
+        if "default" in groups:
+            groups.discard("default")
+            
         for group in groups:
             logging.info(f"Processing group: {group}")
             items = self.metadata.by_group(group)

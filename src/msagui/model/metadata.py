@@ -7,7 +7,7 @@ import os
 class ImageMeta:
     """Metadata for a single image."""
     key: str                        # Unique identifier for the image
-    group: str                      # Group identifier for the image
+    group: int | str                      # Group identifier for the image
     kind: str                       # "input" or "processed"
     nickname: str                   # User-defined nickname for the UI
     visible: bool = True            # Whether the image is visible in the UI
@@ -96,6 +96,7 @@ class MetadataStore:
 
         groups = set()
         for i in index:
+            assert i < len(self.items), f"Index {i} out of range for metadata items of length {len(self.items)}"
             groups.add(self.items[i].group)
 
         return list(groups)
