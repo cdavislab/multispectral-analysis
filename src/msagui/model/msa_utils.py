@@ -173,38 +173,49 @@ def group_strlist(strlist: list[str], pregroup: list[int | str] | None = None) -
     return np.array(groups_idx)
 
 def split_substr(substrings: list[str] | str, string: str) -> list[str]:
+    """Split *string* on the first matching substring.
+
+    Substrings are tried longest-first so that '1655_corr' takes priority over
+    the shorter prefix '1655'.
+    """
     if isinstance(substrings, str):
         substrings = [substrings]
-
-    for substring in substrings:
+    for substring in sorted(substrings, key=len, reverse=True):
         if substring in string:
             return string.split(substring)
-        
     return [string]
 
 def remove_substr(substrings: list[str] | str, string: str) -> str:
-    """ Removes occurrences of substr from string. substr can be a single string or a list of strings."""
+    """Remove occurrences of each substring from string.
+
+    Substrings are sorted longest-first so that more specific strings (e.g.
+    '1655_corr') are removed before shorter prefixes ('1655'), preventing
+    partial matches from corrupting the remainder.
+    """
     if isinstance(substrings, str):
         substrings = [substrings]
-    for substring in substrings:
+    for substring in sorted(substrings, key=len, reverse=True):
         string = string.replace(substring, "")
     return string
 
 def match_substr(substr: list[str], strings: list[str]) -> dict[str, list[str]]:
     """
     Sort strings into dictionary by matching keywords found as substring.
-    
-    :param self: Class instance
-    :param substr: List of substrings to match against strings
-    :param strings: List of strings to be matched against substrings
+
+    Each string is matched to the *longest* keyword that it contains, so that
+    '1655_corr' takes priority over the shorter prefix '1655'.
+
+    :param substr:   List of substrings (keywords) to match against strings
+    :param strings:  List of strings to be matched
     """
-    substr_match = dict()
+    # Longest-first so more specific keywords win over shorter prefix keywords.
+    ordered_substr = sorted(substr, key=len, reverse=True)
+    substr_match: dict[str, list[str]] = {}
     for string in strings:
-        for keyword in substr:
+        for keyword in ordered_substr:
             if keyword in string:
-                if keyword not in substr_match:
-                    substr_match[keyword] = []
-                substr_match[keyword].append(string)
+                substr_match.setdefault(keyword, []).append(string)
+                break  # stop at first (longest) match
     return substr_match
 
 def operate(a, b, operation: str) -> npt.NDArray:
