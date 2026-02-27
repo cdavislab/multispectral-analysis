@@ -6,6 +6,10 @@ from typing import Any
 import numpy.typing as npt
 import numpy as np
 from matplotlib.pyplot import imsave, subplots, tight_layout
+from matplotlib.ticker import MaxNLocator
+from matplotlib.font_manager import FontProperties
+from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 def shape_to_square(size) -> tuple:
     """
@@ -23,21 +27,94 @@ def save_image(filename: str, image: npt.NDArray, settings: ImagingSettings):
     """
     imsave(filename, image, **settings.imsave_kwargs())
 
+def _apply_font_and_ticks(ax, settings: ImagingSettings):
+    """Apply font and tick settings from ImagingSettings to an axis."""
+    font_props = {"fontfamily": settings.font,
+                  "fontsize":   settings.font_size,
+                  "fontweight": settings.font_weight}
+    for label in ax.get_xticklabels() + ax.get_yticklabels():
+        label.set_fontfamily(settings.font)
+        label.set_fontsize(settings.font_size)
+        label.set_fontweight(settings.font_weight)
+    if settings.num_ticks == 0:
+        ax.set_xticks([])
+        ax.set_yticks([])
+    else:
+        ax.xaxis.set_major_locator(MaxNLocator(settings.num_ticks))
+        ax.yaxis.set_major_locator(MaxNLocator(settings.num_ticks))
+    return font_props
+
+
+def _add_scale_bar(image: npt.NDArray, ax, settings: ImagingSettings):
+    """Overlay a scale bar on *ax* using pixel_scale / scale_bar_* settings.
+
+    The scale bar is suppressed when ``scale_bar_fixed_value == 0`` or
+    ``pixel_scale == 0``.
+    """
+    if settings.scale_bar_fixed_value == 0 or settings.pixel_scale == 0:
+        return
+    if settings.scale_bar_fixed_value is not None:
+        bar_pixels = settings.scale_bar_fixed_value / settings.pixel_scale
+        label = f"{settings.scale_bar_fixed_value} {settings.scale_bar_units}"
+    else:
+        # Auto: ~20 % of image width, rounded to a sensible value
+        bar_pixels = image.shape[1] * 0.2
+        bar_value = round(bar_pixels * settings.pixel_scale, 2)
+        label = f"{bar_value} {settings.scale_bar_units}"
+        bar_pixels = bar_value / settings.pixel_scale
+
+    fp = FontProperties(family=settings.font, size=settings.font_size,
+                        weight=settings.font_weight)
+    scalebar = AnchoredSizeBar(
+        ax.transData,
+        bar_pixels,
+        label,
+        settings.scale_bar_location,
+        pad=0.5,
+        color="white",
+        frameon=False,
+        size_vertical=max(1, image.shape[0] // 40),
+        fontproperties=fp,
+    )
+    ax.add_artist(scalebar)
+
+
 def decorate_image(image: npt.NDArray, ax, settings: ImagingSettings):
     """
-    Add an image to the provided axis with optional imshow kwargs.
+    Add an image to the provided axis and apply all ImagingSettings display
+    options: colormap/scale, font, tick count, and scale bar.
+
+    Returns the AxesImage so the caller can attach a colorbar.
     """
-    ax.imshow(image, **settings.imshow_kwargs())
-    
+    im = ax.imshow(image, **settings.imshow_kwargs())
+    _apply_font_and_ticks(ax, settings)
+    _add_scale_bar(image, ax, settings)
+    return im
+
+
 def construct_image(images: list, settings: ImagingSettings):
     """
-    Constructs a grid of images
+    Constructs a grid of images with optional colorbars labelled by ``cunits``.
+
+    Colorbars are attached via ``make_axes_locatable`` so the image axes keep
+    their natural aspect ratio regardless of colorbar presence.
     """
     rows, cols, _ = shape_to_square(len(images))
     fig, axs = subplots(rows, cols, figsize=(cols * 3, rows * 3))
-    axs_flat = np.atleast_1d(axs).flatten() # type: ignore
+    axs_flat = np.atleast_1d(axs).flatten()  # type: ignore
     for i, image in enumerate(images):
-        decorate_image(image, axs_flat[i], settings)
+        im = decorate_image(image, axs_flat[i], settings)
+        if settings.show_colorbar:
+            fp = FontProperties(family=settings.font, size=settings.font_size,
+                                weight=settings.font_weight)
+            divider = make_axes_locatable(axs_flat[i])
+            cax = divider.append_axes("right", size="5%", pad=0.05)
+            cbar = fig.colorbar(im, cax=cax)
+            if settings.cunits:
+                cbar.set_label(settings.cunits, fontproperties=fp)
+            for tick_label in cbar.ax.get_yticklabels():
+                tick_label.set_fontfamily(settings.font)
+                tick_label.set_fontsize(settings.font_size)
     for j in range(i + 1, len(axs_flat)):
         axs_flat[j].axis('off')
     tight_layout()

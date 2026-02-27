@@ -19,7 +19,26 @@ class ImagingSettings:
     facecolor: Optional[str] = 'auto'
     edgecolor: Optional[str] = 'auto'
     backend: Optional[str] = None
-    export_directory: Optional[str] = 'msa_analysis'
+    export_directory: Optional[str] = 'folder'
+
+    cunits: str = "Intensity"
+    font: str = "DejaVu Sans"
+    font_size: float = 12.0
+    font_weight: str = "normal"
+    pixel_scale: float = 1.0
+    scale_bar_units: str = "micrometer"
+    scale_bar_location: str = "lower right"
+    scale_bar_fixed_value: Optional[float] = 0
+    num_ticks: int = 0
+    show_colorbar: bool = False
+
+    def update_from_dict(self, settings_dict: dict):
+        for key, value in settings_dict.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
 
     def imshow_kwargs(self) -> dict:
         return {
