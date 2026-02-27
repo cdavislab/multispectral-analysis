@@ -3,6 +3,23 @@ from dataclasses import dataclass
 from typing import Optional
 import os
 
+
+def _folder_basename(nickname: str) -> str:
+    """Return ``'parent_folder/stem'`` for a file path.
+
+    Using the immediate parent folder plus the stem (filename without extension)
+    as the grouping key ensures that files with identical names in different
+    folders are placed in separate groups.
+
+    Example::
+
+        /data/condition_A/sample_488.csv  →  "condition_A/sample_488"
+        /data/condition_B/sample_488.csv  →  "condition_B/sample_488"
+    """
+    stem   = os.path.splitext(os.path.basename(nickname))[0]
+    parent = os.path.basename(os.path.dirname(nickname))
+    return f"{parent}/{stem}" if parent else stem
+
 @dataclass
 class ImageMeta:
     """Metadata for a single image."""
@@ -38,7 +55,7 @@ class MetadataStore:
 
     @property
     def basenames(self):
-        return [os.path.splitext(os.path.basename(m.nickname))[0] for m in self.items]
+        return [_folder_basename(m.nickname) for m in self.items]
 
     def groups(self, visible_only=False):
         if visible_only:
@@ -64,7 +81,7 @@ class MetadataStore:
         return [m for m in self.items if m.group == group]
     
     def by_basename(self, basename: str):
-        return [m for m in self.items if os.path.splitext(os.path.basename(m.nickname))[0] == basename]
+        return [m for m in self.items if _folder_basename(m.nickname) == basename]
 
     def new_key(self):
         existing_keys = {m.key for m in self.items}
