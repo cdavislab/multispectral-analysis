@@ -21,6 +21,8 @@ PREFS_SCHEMA = [
     {"kind": "section", "label": "Export"},
     {"kind": "entry",       "key": "export_directory", "label": "Export Directory",
      "hint": "Folder path for saved exports (e.g. /path/to/output or 'folder' for same folder as input)"},
+    {"kind": "entry",       "key": "export_format",    "label": "Export File Type",
+     "hint": "File format for the Export button (e.g. png, tif, jpg)"},
     {"kind": "entry",       "key": "format",           "label": "File Format",
      "hint": "Image format override (e.g. png, jpg, tiff); leave blank to infer from filename"},
     {"kind": "entry",       "key": "dpi",              "label": "DPI",

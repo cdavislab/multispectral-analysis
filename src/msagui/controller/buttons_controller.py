@@ -108,57 +108,44 @@ class ButtonsController:
             error = self.model.analyze(selected_idx, progress_callback=progress)
             messagebox.showerror("Analysis Error", error) if error else None
 
-    def set_export_folder(self):
-        # Set export folder and optionally move files there
-        directory = askdirectory()
+    def export_images(self):
+        """Prompt for a folder and save every visible image into it."""
+        directory = askdirectory(title="Choose Export Folder")
+        if not directory:
+            return
+
+        # Update the model setting so other parts of the app stay in sync.
         self.model.settings.export_directory = directory
-        self.view.set_button_text('Export Folder', directory)
-        
-        if len(self.model.metadata.keys) != 0:
-            self.move_files_to_export()
-        
-        return
 
-    def move_files_to_export(self):
-        # Move all exported files to the new export folder
-        # Prompt user if they want to move the files to the new export folder
-        if not messagebox.askyesno("Move Files", "Would you like to move the files to the new export folder?"):
-            return
-        # If the user selects yes, move the files to the new export folder
-        # Take all of the img_path and hist_path files and move them to the new export folder
-        for i in range(len(self.model.df)):
-            try:
-                img_path = self.model.df.loc[i, 'im_path']
-                hist_path = self.model.df.loc[i, 'hist_path']
-                img_path_new = os.path.join(self.model.get_pref('export_folder'), os.path.basename(img_path))
-                hist_path_new = os.path.join(self.model.get_pref('export_folder'), os.path.basename(hist_path))
-                os.rename(img_path, img_path_new)
-                os.rename(hist_path, hist_path_new)
-                self.model.df.loc[i, 'im_path'] = img_path_new
-                self.model.df.loc[i, 'hist_path'] = hist_path_new
-            except Exception as e:
-                messagebox.showerror("Error", f"Error moving file: {e}")
-        
-        # Check if the model has groups
-        if not (hasattr(self.model, 'group_images') and hasattr(self.model, 'group_histograms')):
+        items = [
+            (idx, meta)
+            for idx, meta in enumerate(self.model.metadata.items)
+            if meta.visible
+        ]
+        if not items:
+            messagebox.showinfo("Export", "No images to export.")
             return
 
-        # Move the group and histogram files located in the varirables self.model.group_images and self.model.group_histograms
-        for i in range(len(self.model.group_images)):
-            try:
-                group_path = self.model.group_images[i]
-                group_path_new = os.path.join(self.model.get_pref('export_folder'), os.path.basename(group_path))
-                os.rename(group_path, group_path_new)
-                self.model.group_images[i] = group_path_new
-            except Exception as e:
-                messagebox.showerror("Error", f"Error moving file: {e}")
-        #Do the same for self.model.group_histograms
-        for i in range(len(self.model.group_histograms)):
-            try:
-                group_path = self.model.group_histograms[i]
-                group_path_new = os.path.join(self.model.get_pref('export_folder'), os.path.basename(group_path))
-                os.rename(group_path, group_path_new)
-                self.model.group_histograms[i] = group_path_new
-            except Exception as e:
-                messagebox.showerror("Error", f"Error moving file: {e}")
-        return
+        ext = self.model.settings.export_format.lstrip(".")
+        ext = "." + ext
+
+        errors = {}
+        with ProgressBar(title="Exporting Images", total=len(items)) as progress:
+            for idx, meta in items:
+                try:
+                    image, _stats = self.model.make_image(idx)
+                    # JPEG/BMP don't support alpha — convert to RGB when needed.
+                    if ext.lower() in (".jpg", ".jpeg", ".bmp") and image.mode in ("RGBA", "LA", "P"):
+                        image = image.convert("RGB")
+                    basename = os.path.splitext(os.path.basename(meta.nickname))[0]
+                    out_path = os.path.join(directory, basename + ext)
+                    image.save(out_path)
+                except Exception as e:
+                    errors[meta.nickname] = e
+                finally:
+                    progress.step()
+
+        if errors:
+            self.view.show_error(errors)
+        else:
+            messagebox.showinfo("Export", f"Exported {len(items)} image(s) to:\n{directory}")

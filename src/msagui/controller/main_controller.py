@@ -47,7 +47,7 @@ class ControllerDispatcher:
             self.view.buttons.items['Add']: self.up(self.button_ctrl.add),
             self.view.buttons.items['Delete']: self.up(self.button_ctrl.delete),
             self.view.buttons.items['Analyze']: self.up(self.button_ctrl.analyze),
-            self.view.buttons.items['Export Folder']: self.up(self.button_ctrl.set_export_folder),
+            self.view.buttons.items['Export']: self.up(self.button_ctrl.export_images),
             self.view.buttons.items['Frequency']: self.steps_ctrl.open
             # self.view.buttons.items['Groups']: self.button_ctrl.
         }
