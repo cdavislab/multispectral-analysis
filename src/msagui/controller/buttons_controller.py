@@ -108,23 +108,74 @@ class ButtonsController:
             error = self.model.analyze(selected_idx, progress_callback=progress)
             messagebox.showerror("Analysis Error", error) if error else None
 
+    def _ask_export_scope(self) -> str | None:
+        """Show a dialog asking whether to export all or selected images.
+
+        Returns ``"all"``, ``"selected"``, or ``None`` if cancelled.
+        """
+        import tkinter as tk
+
+        result = [None]
+
+        win = tk.Toplevel()
+        win.title("Export Images")
+        win.resizable(False, False)
+        win.grab_set()
+
+        tk.Label(win, text="Which images would you like to export?",
+                 padx=20, pady=12).pack()
+
+        btn_frame = tk.Frame(win)
+        btn_frame.pack(pady=(0, 12))
+
+        def choose(value):
+            result[0] = value
+            win.destroy()
+
+        tk.Button(btn_frame, text="All Images", width=14,
+                  command=lambda: choose("all")).grid(row=0, column=0, padx=6)
+        tk.Button(btn_frame, text="Selected Only", width=14,
+                  command=lambda: choose("selected")).grid(row=0, column=1, padx=6)
+        tk.Button(btn_frame, text="Cancel", width=10,
+                  command=lambda: choose(None)).grid(row=0, column=2, padx=6)
+
+        win.wait_window()
+        return result[0]
+
     def export_images(self):
         """Prompt for a folder and save every visible image into it."""
+        scope = self._ask_export_scope()
+        if scope is None:
+            return
+
+        # Build the candidate list from all visible items.
+        all_visible = [
+            (idx, meta)
+            for idx, meta in enumerate(self.model.metadata.items)
+            if meta.visible
+        ]
+
+        if scope == "selected":
+            selected_lb = self.view.listbox.get_selected_indices()
+            if not selected_lb:
+                messagebox.showerror("Export", "No images are selected. "
+                                     "Please select images in the list first.")
+                return
+            # Listbox positions map 1-to-1 onto all_visible.
+            items = [all_visible[i] for i in selected_lb if i < len(all_visible)]
+        else:
+            items = all_visible
+
+        if not items:
+            messagebox.showinfo("Export", "No images to export.")
+            return
+
         directory = askdirectory(title="Choose Export Folder")
         if not directory:
             return
 
         # Update the model setting so other parts of the app stay in sync.
         self.model.settings.export_directory = directory
-
-        items = [
-            (idx, meta)
-            for idx, meta in enumerate(self.model.metadata.items)
-            if meta.visible
-        ]
-        if not items:
-            messagebox.showinfo("Export", "No images to export.")
-            return
 
         ext = self.model.settings.export_format.lstrip(".")
         ext = "." + ext
