@@ -15,7 +15,7 @@ class MultispectralView():
 
     def setup_ui(self):
         """Configure window size, layout, and add main UI components"""
-        self.root.title("Multispectral Analysis")
+        self.root.title("msaGUI")
         width = 800
         height = 500
         screenwidth = self.root.winfo_screenwidth()

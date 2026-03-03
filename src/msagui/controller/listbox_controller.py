@@ -10,11 +10,23 @@ from msagui.view.defaults import ViewDefaults
 logger = logging.getLogger(__name__)
 
 class FileListController:
-    def __init__(self, model, listbox: ListboxView):
+    def __init__(self, model, listbox: ListboxView, view_mode: tk.StringVar | None = None):
         self.model = model
-        self.listbox = listbox   
+        self.listbox = listbox
+        self.view_mode = view_mode
         self.text_bg = ViewDefaults.bg
         self.index = None
+
+    @staticmethod
+    def _format_name(nickname: str, mode: str) -> str:
+        """Return the display string for *nickname* according to *mode*."""
+        if mode == "parent":
+            parent = os.path.basename(os.path.dirname(nickname))
+            base = os.path.basename(nickname)
+            return f"{parent}/{base}" if parent else base
+        if mode == "file":
+            return os.path.basename(nickname)
+        return nickname  # "full"
 
     def on_click(self, event):
         # Handle listbox selection logic with Ctrl/Shift support
@@ -65,10 +77,11 @@ class FileListController:
 
     def update_listbox(self):
         # Update the listbox display based on current view settings
-        keys = self.model.metadata.nicknames(visible_only=True)
-        logger.info(f"Updating listbox with keys: {keys}")
-        logger.info(f"Type of keys: {type(keys)}")
-        self.listbox.update(keys)
+        mode = self.view_mode.get() if self.view_mode is not None else "full"
+        nicknames = self.model.metadata.nicknames(visible_only=True)
+        display_names = [self._format_name(n, mode) for n in nicknames]
+        logger.info(f"Updating listbox with display_names (mode={mode!r}): {display_names}")
+        self.listbox.update(display_names)
         self.reselect_index()
         return
         self.listbox.file_list.delete(0, tk.END)

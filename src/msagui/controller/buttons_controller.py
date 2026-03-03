@@ -188,8 +188,14 @@ class ButtonsController:
                     # JPEG/BMP don't support alpha — convert to RGB when needed.
                     if ext.lower() in (".jpg", ".jpeg", ".bmp") and image.mode in ("RGBA", "LA", "P"):
                         image = image.convert("RGB")
-                    basename = os.path.splitext(os.path.basename(meta.nickname))[0]
-                    out_path = os.path.join(directory, basename + ext)
+                    parent_folder = os.path.basename(os.path.dirname(meta.nickname))
+                    stem = os.path.splitext(os.path.basename(meta.nickname))[0]
+                    if parent_folder:
+                        subfolder = os.path.join(directory, parent_folder)
+                        os.makedirs(subfolder, exist_ok=True)
+                    else:
+                        subfolder = directory
+                    out_path = os.path.join(subfolder, stem + ext)
                     image.save(out_path)
                 except Exception as e:
                     errors[meta.nickname] = e
