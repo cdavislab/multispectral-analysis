@@ -7,6 +7,7 @@ from msagui.controller.listbox_controller import FileListController
 from msagui.controller.image_controller import ImageController
 from msagui.controller.image_properties_controller import ImagePropertiesController
 from msagui.controller.steps_controller import StepsController
+from msagui.controller.histogram_controller import HistogramController
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,7 @@ class ControllerDispatcher:
         self.image_properties_ctrl = ImagePropertiesController(self.model, self.view)
         self.image_ctrl = ImageController(self.model, self.view)
         self.steps_ctrl = StepsController(self.model, self.view)
+        self.histogram_ctrl = HistogramController(self.model, self.view)
         
     def connect_signals(self):
         self.connect_button_signals()
@@ -42,6 +44,7 @@ class ControllerDispatcher:
         self.connect_accelerators()
         self.connect_listbox_signals()
         self.view.view_mode.trace_add('write', lambda *_: self.listbox_ctrl.update_listbox())
+        self.view.show_histograms.trace_add('write', self._on_histogram_toggle)
 
     def connect_button_signals(self):
         button_commands = {
@@ -59,7 +62,6 @@ class ControllerDispatcher:
         self.view.root.bind('<<MenuToggle>>', self.handle_menu_toggle)
         file_menu_commands = {
             'Preferences': self.up(self.image_properties_ctrl.preferences),
-            'Image Config': self.up(self.image_properties_ctrl.image_preferences),
             'Export Statistics': self.up(self.dropdown_ctrl.export_stats),
             'Export File List': self.up(self.dropdown_ctrl.export_filelist),
             'Import File List': self.up(self.dropdown_ctrl.import_filelist),
@@ -68,6 +70,8 @@ class ControllerDispatcher:
         }
         for label, command in file_menu_commands.items():
             self.view.file_menu.entryconfig(label, command=command)
+        self.view.config_menu.entryconfig('Image', command=self.up(self.image_properties_ctrl.image_preferences))
+        self.view.config_menu.entryconfig('Histogram', command=self.histogram_ctrl.open)
 
     def connect_accelerators(self):
         self.view.view_menu.entryconfig('Histograms', accelerator='Ctrl+H')
@@ -75,7 +79,14 @@ class ControllerDispatcher:
 
     def _handle_histogram_shortcut(self, event):
         self.dropdown_ctrl.toggle_checkbox(self.view.show_histograms)
-        # self.file_list.reselect_index()
+        # trace_add on show_histograms will trigger _on_histogram_toggle automatically
+
+    def _on_histogram_toggle(self, *_):
+        """Called whenever show_histograms changes; refreshes the current display."""
+        idx = self.listbox_ctrl.get_listbox_index()
+        if idx is None:
+            return
+        self.image_ctrl.update_display(idx)
 
     def handle_menu_toggle(self, event):
         state = {

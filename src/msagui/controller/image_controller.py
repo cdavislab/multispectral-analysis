@@ -23,15 +23,10 @@ class ImageController:
         return
 
     def display_histograms(self, index):
-        # Display histograms for selected index/group
-        if self.view.show_groups.get():
-            group = self.model.df.loc[index,'group'].unique()[0]
-            self.view.display(self.model.get_group_histogram(group))
-            return
-        
-        df_slice = self.model.get_df_slice(index)
-        self.view.display(self.model.get_single_histogram(df_slice))
-        return
+        """Display a histogram for the image at *index*."""
+        img, stats = self.model.make_histogram(index)
+        self.view.display.update(img)
+        self.display_statistics(stats)
         
 
     def display_statistics(self, stats):

@@ -6,6 +6,7 @@ import msagui.model.msa_utils as utils
 import msagui.model.parseH5 as parseH5
 from msagui.model.metadata import ImageMeta, MetadataStore
 from msagui.model.imaging_settings import ImagingSettings
+from msagui.model.histogram_settings import HistogramSettings
 from msagui.model.steps import Steps
 import matplotlib.pyplot as plt
 from PIL.Image import Image
@@ -17,6 +18,7 @@ class MultiSpectralModel:
     def __init__(self):
         self.metadata = MetadataStore()
         self.settings = ImagingSettings()
+        self.histogram_settings = HistogramSettings()
         self.steps = Steps()
         self.hdf5_path: str = "hdf5_data.h5"
         self.group_cache = dict()
@@ -166,6 +168,20 @@ class MultiSpectralModel:
             item.statistics = stats
         stream = utils.fig_to_img(fig, **self.settings.imsave_kwargs())
         plt.close() #fig.close()
+        return stream, item.statistics
+
+    def make_histogram(self, idx: int) -> tuple[Image, dict]:
+        """
+        Makes a histogram image for the item at the given metadata index.
+        """
+        item = self.metadata.items[idx]
+        data = parseH5.get_data(self.hdf5_path, item.hdf5_path)
+        fig = utils.construct_histogram(data, self.histogram_settings)
+        if item.statistics is None:
+            stats = utils.compute_statistics(data[0])  # HACK: use first channel
+            item.statistics = stats
+        stream = utils.fig_to_img(fig, **self.settings.imsave_kwargs())
+        plt.close()
         return stream, item.statistics
 
     def process_step(self, group: dict, step: dict) -> npt.NDArray:

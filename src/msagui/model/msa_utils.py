@@ -2,12 +2,16 @@ import io
 from math import ceil, sqrt
 from PIL import Image
 from msagui.model.imaging_settings import ImagingSettings
+from msagui.model.histogram_settings import HistogramSettings
 from typing import Any
 import numpy.typing as npt
 import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
 from matplotlib.pyplot import imsave, subplots, tight_layout
 from matplotlib.ticker import MaxNLocator
 from matplotlib.font_manager import FontProperties
+from scipy.stats import gaussian_kde
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
@@ -119,6 +123,101 @@ def construct_image(images: list, settings: ImagingSettings):
         axs_flat[j].axis('off')
     tight_layout()
     return fig, axs
+
+def construct_histogram(images: list, settings: HistogramSettings):
+    """Build a matplotlib Figure containing one histogram per image in *images*.
+
+    Parameters
+    ----------
+    images:
+        List of 2-D (or N-D) numpy arrays.  All non-zero pixels are used when
+        ``settings.exclude_zeros`` is True.
+    settings:
+        A :class:`HistogramSettings` instance controlling appearance.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+    """
+    n = len(images)
+    rows, cols, _ = shape_to_square(n)
+    fig, axs = plt.subplots(
+        rows, cols,
+        figsize=(settings.figsize_w * cols, settings.figsize_h * rows),
+    )
+    axs_flat = np.atleast_1d(axs).flatten()  # type: ignore
+
+    font_kw = {
+        "fontfamily": settings.font,
+        "fontsize":   settings.font_size,
+        "fontweight": settings.font_weight,
+    }
+
+    for i, image in enumerate(images):
+        ax = axs_flat[i]
+        flat = image.flatten().astype(float)
+        if settings.exclude_zeros:
+            flat = flat[flat != 0]
+
+        if flat.size == 0:
+            ax.text(0.5, 0.5, "No data", ha="center", va="center",
+                    transform=ax.transAxes)
+            continue
+
+        ax.hist(
+            flat,
+            bins=settings.bins,
+            color=settings.color,
+            alpha=0.75,
+            range=(
+                settings.vmin if settings.vmin is not None else float(flat.min()),
+                settings.vmax if settings.vmax is not None else float(flat.max()),
+            ),
+        )
+
+        if settings.kde and flat.size > 1:
+            try:
+                kde_fn = gaussian_kde(flat)
+                x_range = np.linspace(
+                    settings.vmin if settings.vmin is not None else flat.min(),
+                    settings.vmax if settings.vmax is not None else flat.max(),
+                    300,
+                )
+                kde_vals = kde_fn(x_range)
+                # Scale KDE to match histogram counts
+                bin_width = (x_range[-1] - x_range[0]) / settings.bins
+                kde_scaled = kde_vals * flat.size * bin_width
+                ax.plot(x_range, kde_scaled,
+                        color=settings.kde_color, linewidth=1.5)
+            except Exception:
+                pass  # Silently skip KDE if it fails (e.g. all identical values)
+
+        if settings.log_scale:
+            ax.set_yscale("log")
+        if settings.grid:
+            ax.grid(True, alpha=0.3)
+        if settings.xlabel:
+            ax.set_xlabel(settings.xlabel, **font_kw)
+        if settings.ylabel:
+            ax.set_ylabel(settings.ylabel, **font_kw)
+        if settings.vmin is not None or settings.vmax is not None:
+            ax.set_xlim(
+                left  = settings.vmin if settings.vmin is not None else None,
+                right = settings.vmax if settings.vmax is not None else None,
+            )
+
+        for label in ax.get_xticklabels() + ax.get_yticklabels():
+            label.set_fontfamily(settings.font)
+            label.set_fontsize(settings.font_size)
+            label.set_fontweight(settings.font_weight)
+
+    # Hide any unused axes
+    for j in range(i + 1, len(axs_flat)):
+        axs_flat[j].set_visible(False)
+
+    tight_layout()
+    return fig
+
 
 def find_substring(self, l: list, substr: str) -> list:
     """

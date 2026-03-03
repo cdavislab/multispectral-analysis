@@ -68,11 +68,16 @@ class MultispectralView():
 
         self.file_menu = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="File", menu=self.file_menu)
-        labels = ["Preferences", "Image Config","Export Statistics", "Export File List",
+        labels = ["Preferences", "Export Statistics", "Export File List",
                   "Import File List", "Export Settings", "Import Settings"]
         for label in labels:
             self.file_menu.add_command(label=label)
-        
+
+        self.config_menu = tk.Menu(self.menubar, tearoff=0)
+        self.menubar.add_cascade(label="Config", menu=self.config_menu)
+        self.config_menu.add_command(label="Image")
+        self.config_menu.add_command(label="Histogram")
+
         self.view_menu = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="View", menu=self.view_menu)
         labels = ("Group View", "Histograms", "Show Single-Wavenumber", "Show Ratios")
@@ -80,7 +85,7 @@ class MultispectralView():
         for label, variable in zip(labels, variables):
             self.view_menu.add_checkbutton(label=label, onvalue=1, offvalue=0,
                                            variable=variable)
-        
+
         self.fpath_menu = tk.Menu(self.view_menu, tearoff=0)
         self.view_menu.add_cascade(label="File Path", menu=self.fpath_menu)
         self.fpath_menu.add_radiobutton(label="View Full Path", variable=self.view_mode, value="full")
