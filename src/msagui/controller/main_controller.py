@@ -60,17 +60,13 @@ class ControllerDispatcher:
 
     def connect_menu_signals(self):
         self.view.root.bind('<<MenuToggle>>', self.handle_menu_toggle)
-        file_menu_commands = {
-            'Preferences': self.up(self.image_properties_ctrl.preferences),
-            'Export Statistics': self.up(self.dropdown_ctrl.export_stats),
-            'Export File List': self.up(self.dropdown_ctrl.export_filelist),
-            'Import File List': self.up(self.dropdown_ctrl.import_filelist),
-            'Export Settings': self.up(self.dropdown_ctrl.export_settings),
-            'Import Settings': self.up(self.dropdown_ctrl.import_settings),
-        }
-        for label, command in file_menu_commands.items():
-            self.view.file_menu.entryconfig(label, command=command)
-        self.view.config_menu.entryconfig('Image', command=self.up(self.image_properties_ctrl.image_preferences))
+        self.view.file_menu.entryconfig('Preferences', command=self.up(self.image_properties_ctrl.preferences))
+        self.view.export_menu.entryconfig('Statistics', command=self.up(self.dropdown_ctrl.export_stats))
+        self.view.export_menu.entryconfig('File List',  command=self.up(self.dropdown_ctrl.export_filelist))
+        self.view.export_menu.entryconfig('Settings',   command=self.up(self.dropdown_ctrl.export_settings))
+        self.view.import_menu.entryconfig('File List',  command=self.up(self.dropdown_ctrl.import_filelist))
+        self.view.import_menu.entryconfig('Settings',   command=self.up(self.dropdown_ctrl.import_settings))
+        self.view.config_menu.entryconfig('Image',     command=self.up(self.image_properties_ctrl.image_preferences))
         self.view.config_menu.entryconfig('Histogram', command=self.histogram_ctrl.open)
 
     def connect_accelerators(self):

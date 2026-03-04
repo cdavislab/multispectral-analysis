@@ -68,10 +68,19 @@ class MultispectralView():
 
         self.file_menu = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="File", menu=self.file_menu)
-        labels = ["Preferences", "Export Statistics", "Export File List",
-                  "Import File List", "Export Settings", "Import Settings"]
-        for label in labels:
-            self.file_menu.add_command(label=label)
+        self.file_menu.add_command(label="Preferences")
+        self.file_menu.add_separator()
+
+        self.export_menu = tk.Menu(self.file_menu, tearoff=0)
+        self.file_menu.add_cascade(label="Export", menu=self.export_menu)
+        self.export_menu.add_command(label="Statistics")
+        self.export_menu.add_command(label="File List")
+        self.export_menu.add_command(label="Settings")
+
+        self.import_menu = tk.Menu(self.file_menu, tearoff=0)
+        self.file_menu.add_cascade(label="Import", menu=self.import_menu)
+        self.import_menu.add_command(label="File List")
+        self.import_menu.add_command(label="Settings")
 
         self.config_menu = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="Config", menu=self.config_menu)
