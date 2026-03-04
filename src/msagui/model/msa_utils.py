@@ -327,7 +327,7 @@ def operate(a, b, operation: str) -> npt.NDArray:
     elif operation == '/':
         return np.divide(a, b, out=np.zeros(a.shape), where=b!=0)
     elif operation == 'threshold':
-        return np.where(a >= b, a, 0)
+        return np.where(a >= b*np.max(a), a, 0)
     else:
         raise ValueError(f"Unsupported operation: {operation}")
 

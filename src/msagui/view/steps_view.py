@@ -223,13 +223,18 @@ class MultiCorrectionsDialog(tk.Toplevel):
             tk.Label(self, text="Keyword:").grid(row=0, column=0, padx=5, pady=5, sticky="e")
             self.keyword = tk.Entry(self)
             self.keyword.grid(row=0, column=1, padx=5, pady=5)
-            tk.Label(self, text="Threshold value:").grid(row=1, column=0, padx=5, pady=5, sticky="e")
+
+            tk.Label(self, text="Threshold proportion:").grid(row=1, column=0, padx=5, pady=(5,0), sticky="e")
             self.threshold = tk.Entry(self)
             self.threshold.grid(row=1, column=1, padx=5, pady=5)
-            tk.Label(self, text="Output key:").grid(row=2, column=0, padx=5, pady=5, sticky="e")
+            
+            hint = "Proportion of max value in image (e.g. 0.10)"
+            tk.Label(self, text=hint, fg='gray').grid(row=2, column=0, columnspan=2, padx=5, pady=(0,5), sticky="w")
+
+            tk.Label(self, text="Output key:").grid(row=3, column=0, padx=5, pady=5, sticky="e")
             self.output_key = tk.Entry(self)
-            self.output_key.grid(row=2, column=1, padx=5, pady=5)
-            tk.Button(self, text="OK", command=self.on_ok).grid(row=3, column=0, columnspan=2, pady=10)
+            self.output_key.grid(row=3, column=1, padx=5, pady=5)
+            tk.Button(self, text="OK", command=self.on_ok).grid(row=4, column=0, columnspan=2, pady=10)
 
         def on_ok(self):
             self.result = {
