@@ -52,7 +52,7 @@ class ControllerDispatcher:
             self.view.buttons.items['Delete']: self.up(self.button_ctrl.delete),
             self.view.buttons.items['Analyze']: self.up(self.button_ctrl.analyze),
             self.view.buttons.items['Export']: self.up(self.button_ctrl.export_images),
-            self.view.buttons.items['Frequency']: self.steps_ctrl.open
+            self.view.buttons.items['Set-Up']: self.steps_ctrl.open
             # self.view.buttons.items['Groups']: self.button_ctrl.
         }
         for button, command in button_commands.items():

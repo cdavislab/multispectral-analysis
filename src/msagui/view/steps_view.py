@@ -3,7 +3,7 @@ class MultiCorrectionsDialog(tk.Toplevel):
     """Dialog for entering multiple correction steps with operations and output keys."""
     def __init__(self, parent, steps):
         super().__init__(parent)
-        self.title("Multiple Corrections")
+        self.title("Analysis Set-Up")
         self.geometry("1000x600")
         self.steps = steps
         self.result = None
