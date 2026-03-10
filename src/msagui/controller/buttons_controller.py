@@ -108,10 +108,12 @@ class ButtonsController:
             error = self.model.analyze(selected_idx, progress_callback=progress)
             messagebox.showerror("Analysis Error", error) if error else None
 
-    def _ask_export_scope(self) -> str | None:
-        """Show a dialog asking whether to export all or selected images.
+    def _ask_export_scope(self) -> dict | None:
+        """Show a dialog asking whether to export all or selected images,
+        with an optional checkbox to also export statistics.
 
-        Returns ``"all"``, ``"selected"``, or ``None`` if cancelled.
+        Returns a dict ``{"scope": "all"|"selected", "export_stats": bool}``,
+        or ``None`` if the user cancels.
         """
         import tkinter as tk
 
@@ -126,7 +128,7 @@ class ButtonsController:
                  padx=20, pady=12).pack()
 
         btn_frame = tk.Frame(win)
-        btn_frame.pack(pady=(0, 12))
+        btn_frame.pack(pady=(0, 6))
 
         def choose(value):
             result[0] = value
@@ -139,14 +141,23 @@ class ButtonsController:
         tk.Button(btn_frame, text="Cancel", width=10,
                   command=lambda: choose(None)).grid(row=0, column=2, padx=6)
 
+        stats_var = tk.BooleanVar(value=False)
+        chk_frame = tk.Frame(win)
+        chk_frame.pack(pady=(0, 10))
+        tk.Checkbutton(chk_frame, text="Export Statistics", variable=stats_var).pack()
+
         win.wait_window()
-        return result[0]
+        if result[0] is None:
+            return None
+        return {"scope": result[0], "export_stats": stats_var.get()}
 
     def export_images(self):
         """Prompt for a folder and save every visible image into it."""
-        scope = self._ask_export_scope()
-        if scope is None:
+        choice = self._ask_export_scope()
+        if choice is None:
             return
+        scope = choice["scope"]
+        do_export_stats = choice["export_stats"]
 
         # Build the candidate list from all visible items.
         all_visible = [
@@ -206,3 +217,5 @@ class ButtonsController:
             self.view.show_error(errors)
         else:
             messagebox.showinfo("Export", f"Exported {len(items)} image(s) to:\n{directory}")
+        if do_export_stats:
+            self.model.export_stats()

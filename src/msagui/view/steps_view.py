@@ -53,6 +53,12 @@ class MultiCorrectionsDialog(tk.Toplevel):
         self.threshold_button = tk.Button(self.right_pane, text="Threshold", width=22, command=self.open_threshold_dialog)
         self.threshold_button.pack(pady=(30, 10))
 
+        # Import/Export buttons
+        self.import_button = tk.Button(self.right_pane, text="Import Steps", width=22)
+        self.import_button.pack(pady=(30, 5))
+        self.export_button = tk.Button(self.right_pane, text="Export Steps", width=22)
+        self.export_button.pack(pady=(0, 10))
+
         # Save button
         self.save_button = tk.Button(self.right_pane, text="Save", width=22)
         self.save_button.pack(pady=(10, 0))
@@ -153,6 +159,30 @@ class MultiCorrectionsDialog(tk.Toplevel):
             row[4].insert(0, values[3])
             row[5].delete(0, tk.END)
             row[5].insert(0, values[4])
+
+    def get_step_data(self):
+        """Return the current entry widget values as a list of step dicts."""
+        return [
+            {
+                "keyword1":   row[1].get().strip(),
+                "operation":  row[2].get().strip(),
+                "keyword2":   row[3].get().strip(),
+                "value":      row[4].get().strip(),
+                "output_key": row[5].get().strip(),
+            }
+            for row in self.step_rows
+        ]
+
+    def load_step_data(self, steps):
+        """Clear all current rows and repopulate the table from a list of step dicts."""
+        for row in list(self.step_rows):
+            for widget in row:
+                if widget is not None:
+                    widget.destroy()
+        self.step_rows.clear()
+        self.next_row = 1
+        for step in steps:
+            self.add_step_row(step)
 
     def open_op_dialog(self, op):
         """Open dialog for arithmetic operation step."""

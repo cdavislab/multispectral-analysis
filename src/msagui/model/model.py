@@ -1,4 +1,5 @@
 import os
+import csv
 from typing import Callable
 import numpy.typing as npt
 import numpy as np
@@ -122,6 +123,61 @@ class MultiSpectralModel:
             meta.common_name = utils.split_substr(all_input_keywords, meta.nickname)
             logger.info(f"Common name for {meta.nickname}: {meta.common_name}")
             assert len(meta.common_name) == 2, f"Expected common_name to have 2 parts, got {len(meta.common_name)} for file {meta.nickname}"
+
+    def export_stats(self, file_path: str | None = None) -> str:
+        """Write per-image statistics to a CSV file.
+
+        Only items whose ``statistics`` dict has been populated (i.e. images
+        that have been displayed or analysed) are included.
+
+        Parameters
+        ----------
+        file_path:
+            Destination path for the CSV.  When ``None`` the file is saved as
+            ``statistics.csv`` inside ``settings.export_directory`` (falling
+            back to the current working directory when the setting is ``None``
+            or ``'folder'``).
+
+        Returns
+        -------
+        str
+            The path of the written file.
+        """
+        items_with_stats = [
+            item for item in self.metadata.items
+            if item.statistics is not None
+        ]
+
+        if not items_with_stats:
+            logger.warning("export_stats: no statistics available yet.")
+            return ""
+
+        if file_path is None:
+            export_dir = self.settings.export_directory
+            if not export_dir or export_dir == "folder":
+                export_dir = os.getcwd()
+            os.makedirs(export_dir, exist_ok=True)
+            file_path = os.path.join(export_dir, "statistics.csv")
+
+        # Build column names from the first item's stats dict.
+        stat_keys = list(items_with_stats[0].statistics.keys())
+        fieldnames = ["nickname", "group", "keyword", "kind"] + stat_keys
+
+        with open(file_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            for item in items_with_stats:
+                row = {
+                    "nickname": item.nickname,
+                    "group":    item.group,
+                    "keyword":  item.keyword,
+                    "kind":     item.kind,
+                }
+                row.update(item.statistics)
+                writer.writerow(row)
+
+        logger.info(f"Statistics exported to {file_path}")
+        return file_path
 
     def set_hdf5_path(self, hdf5_path: str):
         """

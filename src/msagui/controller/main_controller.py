@@ -61,7 +61,6 @@ class ControllerDispatcher:
     def connect_menu_signals(self):
         self.view.root.bind('<<MenuToggle>>', self.handle_menu_toggle)
         self.view.file_menu.entryconfig('Preferences', command=self.up(self.image_properties_ctrl.preferences))
-        self.view.export_menu.entryconfig('Statistics', command=self.up(self.dropdown_ctrl.export_stats))
         self.view.export_menu.entryconfig('File List',  command=self.up(self.dropdown_ctrl.export_filelist))
         self.view.export_menu.entryconfig('Settings',   command=self.up(self.dropdown_ctrl.export_settings))
         self.view.import_menu.entryconfig('File List',  command=self.up(self.dropdown_ctrl.import_filelist))
