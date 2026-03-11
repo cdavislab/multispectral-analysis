@@ -1,6 +1,7 @@
 
 from dataclasses import dataclass
 from typing import Optional
+import csv
 import os
 
 
@@ -90,6 +91,15 @@ class MetadataStore:
         while str(i) in existing_keys:
             i += 1
         return str(i)
+
+    def export_filelist(self, file_path: str) -> None:
+        """Write the file paths of all input images to a CSV with a 'fpath' column."""
+        input_items = [item for item in self.items if item.kind == "input"]
+        with open(file_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(["fpath"])
+            for item in input_items:
+                writer.writerow([item.nickname])
     
     def change_keyword(self, key: str, new_keyword: str):
         """

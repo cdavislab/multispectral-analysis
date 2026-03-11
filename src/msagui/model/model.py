@@ -96,8 +96,7 @@ class MultiSpectralModel:
         """
         all_input_keywords = self.steps.inputs(include_computed=True)
         basenames_trimmed = [utils.remove_substr(all_input_keywords, basename) for basename in self.metadata.basenames]
-        existing_groups = self.metadata.groups()
-        existing_groups = existing_groups = [group if group != "default" else -1 for group in existing_groups]
+        existing_groups = [meta.group if meta.group != "default" else -1 for meta in self.metadata.items]
         groups_idx = utils.group_strlist(basenames_trimmed, pregroup=existing_groups)
 
         # Mark any groups that do not have all keywords represented as ungrouped
@@ -178,6 +177,11 @@ class MultiSpectralModel:
 
         logger.info(f"Statistics exported to {file_path}")
         return file_path
+
+    def export_filelist(self, file_path: str) -> None:
+        """Write the file paths of all input images to a CSV with a 'fpath' column."""
+        self.metadata.export_filelist(file_path)
+        logger.info(f"File list exported to {file_path}")
 
     def set_hdf5_path(self, hdf5_path: str):
         """

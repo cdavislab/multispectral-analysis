@@ -1,8 +1,9 @@
 from tkinter.filedialog import askopenfilename, askopenfilenames, asksaveasfilename
-import pandas as pd
+import csv
 import os
 import json
 import tkinter as tk
+from msagui.view.progress_bar import ProgressBar
 
 class DropDownController:
     def __init__(self, model, view):
@@ -26,16 +27,15 @@ class DropDownController:
         self.model.export_filelist(file_path)
 
     def import_filelist(self):
-        # Import a list of files from a file and add them
-        progress = self.view.ProgressBar(title="Adding Files")
-        file_of_files = askopenfilenames(filetypes=(("Comma Delimited", "*.txt"), ("All files", "*.*"),))
+        # Import a list of files from a CSV produced by export_filelist and add them
+        file_of_files = askopenfilenames(filetypes=(("CSV files", "*.csv"), ("All files", "*.*"),))
         if len(file_of_files) == 0:
-            progress.destroy()
             return
-        file_df = pd.read_csv(file_of_files[0])
-        file_df = file_df[~file_df.applymap(lambda x: isinstance(x, str) and "ratio" in x.lower()).any(axis=1)]
-        filelist = file_df['fpath'].tolist()
-        self.add_files(filelist, progress)
+        with open(file_of_files[0], newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            filelist = [row["fpath"] for row in reader]
+        with ProgressBar(title="Adding Files", total=len(filelist)) as progress:
+            self.model.add(filelist, progress_callback=progress.step)
         return
     
     def import_settings(self, file_path=None):

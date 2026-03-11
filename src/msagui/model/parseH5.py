@@ -52,6 +52,8 @@ def move(hdf5_path: str, old_path: str, new_path: str):
     """
     with h5py.File(hdf5_path, "a") as f:
         assert old_path in f, f"Old path {old_path} not found in HDF5 file"
+        if new_path in f:
+            del f[new_path]
         f.move(old_path, new_path)
         
 
