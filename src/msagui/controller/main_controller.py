@@ -32,7 +32,8 @@ class ControllerDispatcher:
         """Create and return instances of other controllers"""
         self.button_ctrl = ButtonsController(self.model, self.view)
         self.dropdown_ctrl = DropDownController(self.model, self.view)
-        self.listbox_ctrl = FileListController(self.model, self.view.listbox, self.view.view_mode)
+        self.listbox_ctrl = FileListController(self.model, self.view.listbox, self.view.view_mode,
+                                               show_groups=self.view.show_groups)
         self.image_properties_ctrl = ImagePropertiesController(self.model, self.view)
         self.image_ctrl = ImageController(self.model, self.view)
         self.steps_ctrl = StepsController(self.model, self.view)
@@ -45,6 +46,7 @@ class ControllerDispatcher:
         self.connect_listbox_signals()
         self.view.view_mode.trace_add('write', lambda *_: self.listbox_ctrl.update_listbox())
         self.view.show_histograms.trace_add('write', self._on_histogram_toggle)
+        self.view.show_groups.trace_add('write', self._on_group_toggle)
 
     def connect_button_signals(self):
         button_commands = {
@@ -83,6 +85,14 @@ class ControllerDispatcher:
             return
         self.image_ctrl.update_display(idx)
 
+    def _on_group_toggle(self, *_):
+        """Called whenever show_groups changes; rebuilds the listbox and refreshes display."""
+        self.listbox_ctrl.update_listbox()
+        idx = self.listbox_ctrl.get_listbox_index()
+        if idx is None:
+            return
+        self.image_ctrl.update_display(idx)
+
     def handle_menu_toggle(self, event):
         state = {
             'Group View': self.view.view_menu.entrycget('Group View', 'variable'),
@@ -103,9 +113,15 @@ class ControllerDispatcher:
 
     def _on_file_selection(self, event):
         value = self.listbox_ctrl.on_file_selection(event)
-        logging.info(f"Selected file: {value}")
-        value = os.path.basename(value)
-        self.view.get_widget('Filename').update('Filename', value)
+        if self.view.show_groups.get():
+            idx = self.listbox_ctrl.get_listbox_index()
+            if idx is None:
+                return
+            display_name = self.listbox_ctrl._group_display_name(idx)
+        else:
+            logging.info(f"Selected file: {value}")
+            display_name = os.path.basename(value)
+        self.view.get_widget('Filename').update('Filename', display_name)
 
     def up(self, func):
         """Decorator to update view after function call."""

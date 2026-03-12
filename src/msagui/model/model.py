@@ -21,7 +21,7 @@ class MultiSpectralModel:
         self.settings = ImagingSettings()
         self.histogram_settings = HistogramSettings()
         self.steps = Steps()
-        self.hdf5_path: str = "hdf5_data.h5"
+        self.hdf5_path: str = "msa_data.h5"
         self.group_cache = dict()
         # if hdf5_path exists, delete
         if os.path.exists(self.hdf5_path):
@@ -243,6 +243,44 @@ class MultiSpectralModel:
         stream = utils.fig_to_img(fig, **self.settings.imsave_kwargs())
         plt.close()
         return stream, item.statistics
+
+    def make_group_image(self, group_id) -> tuple[Image, dict]:
+        """
+        Makes a composite image showing all images in a group.
+        Each subplot is titled with the item's keyword.
+        Returns a blank statistics dict.
+        """
+        items = [item for item in self.metadata.by_group(group_id)]
+        paths = [item.hdf5_path for item in items]
+        data_list = parseH5.get_data(self.hdf5_path, paths)
+        fig, axs = utils.construct_image(data_list, self.settings)
+        axs_flat = np.atleast_1d(axs).flatten()
+        for i, item in enumerate(items):
+            axs_flat[i].set_title(item.keyword, fontsize=self.settings.font_size,
+                                   fontfamily=self.settings.font,
+                                   fontweight=self.settings.font_weight)
+        fig.tight_layout()
+        stream = utils.fig_to_img(fig, **self.settings.imsave_kwargs())
+        plt.close()
+        return stream, {}
+
+    def make_group_histogram(self, group_id) -> tuple[Image, dict]:
+        """
+        Makes a composite histogram figure for all images in a group.
+        Each subplot is titled with the item's keyword.
+        Returns a blank statistics dict.
+        """
+        items = [item for item in self.metadata.by_group(group_id)]
+        paths = [item.hdf5_path for item in items]
+        data_list = parseH5.get_data(self.hdf5_path, paths)
+        fig = utils.construct_histogram(data_list, self.histogram_settings)
+        axs_flat = np.atleast_1d(fig.axes).flatten()
+        for i, item in enumerate(items):
+            axs_flat[i].set_title(item.keyword)
+        fig.tight_layout()
+        stream = utils.fig_to_img(fig, **self.settings.imsave_kwargs())
+        plt.close()
+        return stream, {}
 
     def process_step(self, group: dict, step: dict) -> npt.NDArray:
         """

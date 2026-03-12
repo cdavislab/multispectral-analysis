@@ -27,6 +27,18 @@ class ImageController:
         img, stats = self.model.make_histogram(index)
         self.view.display.update(img)
         self.display_statistics(stats)
+
+    def display_group(self, group_id):
+        """Display a composite image of all images in the group."""
+        img, _ = self.model.make_group_image(group_id)
+        self.view.display.update(img)
+        self.view.labels.update('Statistics', '')
+
+    def display_group_histogram(self, group_id):
+        """Display a composite histogram for all images in the group."""
+        img, _ = self.model.make_group_histogram(group_id)
+        self.view.display.update(img)
+        self.view.labels.update('Statistics', '')
         
 
     def display_statistics(self, stats):
@@ -43,10 +55,13 @@ class ImageController:
 
     def update_display(self, idx):
         # Update image/histogram/statistics display for selected index
-        # df_idx = self.convert_index(listbox_idx)
-        if self.view.show_histograms.get():
+        if self.view.show_groups.get():
+            if self.view.show_histograms.get():
+                self.display_group_histogram(idx)
+            else:
+                self.display_group(idx)
+        elif self.view.show_histograms.get():
             self.display_histograms(idx)
         else:
             self.display_images(idx)
-        # self.display_statistics(idx)
         return

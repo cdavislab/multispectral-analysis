@@ -10,12 +10,27 @@ from msagui.view.defaults import ViewDefaults
 logger = logging.getLogger(__name__)
 
 class FileListController:
-    def __init__(self, model, listbox: ListboxView, view_mode: tk.StringVar | None = None):
+    def __init__(self, model, listbox: ListboxView, view_mode: tk.StringVar | None = None,
+                 show_groups: tk.BooleanVar | None = None):
         self.model = model
         self.listbox = listbox
         self.view_mode = view_mode
+        self.show_groups = show_groups
         self.text_bg = ViewDefaults.bg
         self.index = None
+        self._group_ids: list = []  # group IDs in listbox order when in group view
+
+    def _group_display_name(self, group_id) -> str:
+        """Return a display name for the group, respecting the current view mode."""
+        items = self.model.metadata.by_group(group_id)
+        if not items or not items[0].common_name:
+            return f"Group {group_id}"
+        mode = self.view_mode.get() if self.view_mode is not None else "full"
+        item = items[0]
+        formatted = self._format_name(item.nickname, mode)
+        if item.keyword:
+            formatted = formatted.replace(item.keyword, "")
+        return formatted
 
     @staticmethod
     def _format_name(nickname: str, mode: str) -> str:
@@ -77,6 +92,16 @@ class FileListController:
 
     def update_listbox(self):
         # Update the listbox display based on current view settings
+        if self.show_groups is not None and self.show_groups.get():
+            groups = [g for g in self.model.metadata.groups(visible_only=True) if g != "default"]
+            self._group_ids = groups
+            display_names = [self._group_display_name(g) for g in groups]
+            logger.info(f"Updating listbox with groups: {display_names}")
+            self.listbox.update(display_names)
+            self.reselect_index()
+            return
+
+        self._group_ids = []
         mode = self.view_mode.get() if self.view_mode is not None else "full"
         nicknames = self.model.metadata.nicknames(visible_only=True)
         display_names = [self._format_name(n, mode) for n in nicknames]
@@ -118,13 +143,14 @@ class FileListController:
         return
 
     def get_listbox_index(self):
-        # Get currently selected listbox index
-        # return int(self.index)
+        # Get currently selected listbox index; returns group_id in group view mode
         idx = self.listbox.get_selected_indices()
         if len(idx) == 0:
             return
-        idx = int(idx[0])
-        return idx
+        listbox_pos = int(idx[0])
+        if self.show_groups is not None and self.show_groups.get() and self._group_ids:
+            return self._group_ids[listbox_pos]
+        return listbox_pos
         # value = self.view.file_list.get(idx)
     
     def on_file_selection(self, evt) -> str:
