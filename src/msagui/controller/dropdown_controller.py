@@ -81,6 +81,18 @@ class DropDownController:
             checkbox.set(True)
         return
 
+    def _build_settings_dict(self) -> dict:
+        """Build the settings dict from current model and view state."""
+        return {
+            "imaging": self.model.settings.to_dict(),
+            "view": {
+                "show_groups":     self.view.show_groups.get(),
+                "show_histograms": self.view.show_histograms.get(),
+                "show_single":     self.view.show_single.get(),
+                "show_ratio":      self.view.show_ratio.get(),
+            },
+        }
+
     def export_settings(self):
         """Export ImagingSettings and view state to a JSON file chosen by the user."""
         file_path = asksaveasfilename(
@@ -91,16 +103,11 @@ class DropDownController:
         if not file_path:
             return
 
-        settings = {
-            "imaging": self.model.settings.to_dict(),
-            "view": {
-                "show_groups":     self.view.show_groups.get(),
-                "show_histograms": self.view.show_histograms.get(),
-                "show_single":     self.view.show_single.get(),
-                "show_ratio":      self.view.show_ratio.get(),
-            },
-        }
         with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(settings, f, indent=2)
+            json.dump(self._build_settings_dict(), f, indent=2)
 
-        return
+    def export_default_settings(self):
+        """Save current settings as the default (msa_options.json in the working directory)."""
+        with open("msa_options.json", "w", encoding="utf-8") as f:
+            json.dump(self._build_settings_dict(), f, indent=2)
+        tk.messagebox.showinfo("Default Settings", "Settings saved as default (msa_options.json).")

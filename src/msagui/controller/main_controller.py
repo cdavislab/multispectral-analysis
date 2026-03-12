@@ -25,7 +25,7 @@ class ControllerDispatcher:
                         'scale_bar_fixed_value','num_ticks']
         self.recruit_controllers()
         self.connect_signals()
-        # self.import_default_settings()
+        self.dropdown_ctrl.import_default_settings()
         self.view_length = "Full" #Full, Parent, File
     
     def recruit_controllers(self):
@@ -62,9 +62,10 @@ class ControllerDispatcher:
 
     def connect_menu_signals(self):
         self.view.root.bind('<<MenuToggle>>', self.handle_menu_toggle)
-        self.view.file_menu.entryconfig('Preferences', command=self.up(self.image_properties_ctrl.preferences))
+        self.view.config_menu.entryconfig('General', command=self.up(self.image_properties_ctrl.preferences))
         self.view.export_menu.entryconfig('File List',  command=self.up(self.dropdown_ctrl.export_filelist))
         self.view.export_menu.entryconfig('Settings',   command=self.up(self.dropdown_ctrl.export_settings))
+        self.view.export_menu.entryconfig('Default Settings', command=self.up(self.dropdown_ctrl.export_default_settings))
         self.view.import_menu.entryconfig('File List',  command=self.up(self.dropdown_ctrl.import_filelist))
         self.view.import_menu.entryconfig('Settings',   command=self.up(self.dropdown_ctrl.import_settings))
         self.view.config_menu.entryconfig('Image',     command=self.up(self.image_properties_ctrl.image_preferences))

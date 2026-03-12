@@ -5,7 +5,7 @@ from typing import Optional
 @dataclass
 class ImagingSettings:
     dpi: int = 300
-    cmap: str | None = "viridis"
+    cmap: str | None = "CMRmap"
     interpolation: str | None= "nearest"
     vmin: Optional[float] = None
     vmax: Optional[float] = None
