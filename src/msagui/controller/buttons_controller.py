@@ -185,9 +185,6 @@ class ButtonsController:
         if not directory:
             return
 
-        # Update the model setting so other parts of the app stay in sync.
-        self.model.settings.export_directory = directory
-
         ext = self.model.settings.export_format.lstrip(".")
         ext = "." + ext
 
@@ -218,4 +215,4 @@ class ButtonsController:
         else:
             messagebox.showinfo("Export", f"Exported {len(items)} image(s) to:\n{directory}")
         if do_export_stats:
-            self.model.export_stats()
+            self.model.export_stats(directory=directory)

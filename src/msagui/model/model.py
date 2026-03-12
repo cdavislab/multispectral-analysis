@@ -123,7 +123,7 @@ class MultiSpectralModel:
             logger.info(f"Common name for {meta.nickname}: {meta.common_name}")
             assert len(meta.common_name) == 2, f"Expected common_name to have 2 parts, got {len(meta.common_name)} for file {meta.nickname}"
 
-    def export_stats(self, file_path: str | None = None) -> str:
+    def export_stats(self, file_path: str | None = None, directory: str | None = None) -> str:
         """Write per-image statistics to a CSV file.
 
         Only items whose ``statistics`` dict has been populated (i.e. images
@@ -132,10 +132,10 @@ class MultiSpectralModel:
         Parameters
         ----------
         file_path:
-            Destination path for the CSV.  When ``None`` the file is saved as
-            ``statistics.csv`` inside ``settings.export_directory`` (falling
-            back to the current working directory when the setting is ``None``
-            or ``'folder'``).
+            Full destination path for the CSV.  Takes priority over *directory*.
+        directory:
+            Folder to write ``statistics.csv`` into.  Falls back to the
+            current working directory when neither this nor *file_path* is given.
 
         Returns
         -------
@@ -152,9 +152,7 @@ class MultiSpectralModel:
             return ""
 
         if file_path is None:
-            export_dir = self.settings.export_directory
-            if not export_dir or export_dir == "folder":
-                export_dir = os.getcwd()
+            export_dir = directory or os.getcwd()
             os.makedirs(export_dir, exist_ok=True)
             file_path = os.path.join(export_dir, "statistics.csv")
 
@@ -224,10 +222,10 @@ class MultiSpectralModel:
         data = parseH5.get_data(self.hdf5_path, item.hdf5_path)  # Ensure image is loaded
         fig, axs = utils.construct_image(data, self.settings)
         if item.statistics is None:
-            stats = utils.compute_statistics(data[0]) #HACK
+            stats = utils.compute_statistics(data[0])
             item.statistics = stats
         stream = utils.fig_to_img(fig, **self.settings.imsave_kwargs())
-        plt.close() #fig.close()
+        plt.close()
         return stream, item.statistics
 
     def make_histogram(self, idx: int) -> tuple[Image, dict]:
@@ -238,7 +236,7 @@ class MultiSpectralModel:
         data = parseH5.get_data(self.hdf5_path, item.hdf5_path)
         fig = utils.construct_histogram(data, self.histogram_settings)
         if item.statistics is None:
-            stats = utils.compute_statistics(data[0])  # HACK: use first channel
+            stats = utils.compute_statistics(data[0])
             item.statistics = stats
         stream = utils.fig_to_img(fig, **self.settings.imsave_kwargs())
         plt.close()

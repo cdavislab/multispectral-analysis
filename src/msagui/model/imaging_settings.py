@@ -11,15 +11,12 @@ class ImagingSettings:
     vmax: Optional[float] = None
     origin: str = "lower"
     aspect: str = "auto"
-    bbox_inches: str = "tight"
     transparent: bool = False
     pad_inches: float = 0.1
-    format: Optional[str] = None
     metadata: Optional[dict] = None
     facecolor: Optional[str] = 'auto'
     edgecolor: Optional[str] = 'auto'
-    backend: Optional[str] = None
-    export_directory: Optional[str] = 'folder'
+
     export_format: str = "png"
 
     cunits: str = "Intensity"
@@ -51,10 +48,8 @@ class ImagingSettings:
     def imsave_kwargs(self) -> dict:
         kwargs = {
             k: v for k, v in asdict(self).items()
-            if k in {"transparent", "dpi", "format", "metadata", "bbox_inches", "pad_inches", "facecolor", "edgecolor", "backend"}
+            if k in {"transparent", "dpi", "metadata", "pad_inches", "facecolor", "edgecolor"}
             and v is not None
         }
-        # matplotlib expects format without a leading dot (e.g. "png", not ".png")
-        if "format" in kwargs and kwargs["format"].startswith("."):
-            kwargs["format"] = kwargs["format"].lstrip(".")
+        kwargs["bbox_inches"] = "tight"
         return kwargs
