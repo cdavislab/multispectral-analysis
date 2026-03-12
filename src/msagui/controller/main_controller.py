@@ -107,6 +107,7 @@ class ControllerDispatcher:
         self.view.listbox.file_list.bind('<<ListboxSelect>>', self.up(self._on_file_selection))
         self.view.listbox.file_list.bind('<Button-1>', self.listbox_ctrl.on_click)
         self.view.listbox.file_list.bind('<Double-Button-1>', self.up(self.listbox_ctrl.rename_item))
+        self.view.listbox.file_list.bind('<Control-a>', self.listbox_ctrl.select_all)
         
     def _steps_view_update(self, event):
         self.steps_ctrl.open()

@@ -90,6 +90,12 @@ class FileListController:
             else:
                 self.listbox.file_list.itemconfig(i, {'bg': self.text_bg})      # Reset background color for unselected
 
+    def select_all(self, event=None):
+        """Select all items in the listbox."""
+        self.listbox.file_list.selection_set(0, tk.END)
+        self.update_selection()
+        return 'break'  # prevent default Tk handling
+
     def update_listbox(self):
         # Update the listbox display based on current view settings
         if self.show_groups is not None and self.show_groups.get():
