@@ -2,6 +2,8 @@ from tkinter.filedialog import askopenfilename, askopenfilenames, asksaveasfilen
 import csv
 import os
 import json
+import platform
+import tempfile
 import tkinter as tk
 from msagui.view.progress_bar import ProgressBar
 
@@ -9,6 +11,26 @@ class DropDownController:
     def __init__(self, model, view):
         self.model = model
         self.view = view
+        self.default_settings_path = self._resolve_default_settings_path()
+
+    def _resolve_default_settings_path(self) -> str:
+        home = os.path.expanduser("~")
+        system = platform.system()
+
+        if system == "Windows":
+            base_dir = os.environ.get("APPDATA") or os.environ.get("LOCALAPPDATA") or home
+            app_dir = os.path.join(base_dir, "msaGUI")
+        elif system == "Darwin":
+            app_dir = os.path.join(home, "Library", "Application Support", "msaGUI")
+        else:
+            base_dir = os.environ.get("XDG_CONFIG_HOME") or os.path.join(home, ".config")
+            app_dir = os.path.join(base_dir, "msaGUI")
+
+        try:
+            os.makedirs(app_dir, exist_ok=True)
+            return os.path.join(app_dir, "msa_options.json")
+        except OSError:
+            return os.path.join(tempfile.gettempdir(), "msaGUI_msa_options.json")
 
     def export_stats(self):
         # Export statistics using the model
@@ -74,9 +96,14 @@ class DropDownController:
             self.view.show_outputs.set(bool(view_settings["show_ratio"]))
 
     def import_default_settings(self):
-        """Import default settings from 'msa_options.json' if it exists."""
-        if os.path.exists("msa_options.json"):
-            self.import_settings("msa_options.json")
+        """Import default settings from user config location, with legacy fallback."""
+        if os.path.exists(self.default_settings_path):
+            self.import_settings(self.default_settings_path)
+            return
+
+        legacy_path = "msa_options.json"
+        if os.path.exists(legacy_path):
+            self.import_settings(legacy_path)
 
     def toggle_checkbox(self, checkbox):
         # Toggle a Tkinter BooleanVar checkbox
@@ -112,7 +139,9 @@ class DropDownController:
             json.dump(self._build_settings_dict(), f, indent=2)
 
     def export_default_settings(self):
-        """Save current settings as the default (msa_options.json in the working directory)."""
-        with open("msa_options.json", "w", encoding="utf-8") as f:
+        """Save current settings as the default in the per-user config location."""
+        parent_dir = os.path.dirname(self.default_settings_path)
+        os.makedirs(parent_dir, exist_ok=True)
+        with open(self.default_settings_path, "w", encoding="utf-8") as f:
             json.dump(self._build_settings_dict(), f, indent=2)
-        tk.messagebox.showinfo("Default Settings", "Settings saved as default (msa_options.json).")
+        tk.messagebox.showinfo("Default Settings", f"Settings saved as default:\n{self.default_settings_path}")
