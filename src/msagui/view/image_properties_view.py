@@ -34,6 +34,7 @@ class PropertiesView:
 
     def __init__(self, root, schema, values, max_height: int = 500, min_width: int = 560):
         self.pref_window = tk.Toplevel(root)
+        self._root = root
         self.pref_window.title("Preferences")
 
         # --- scrollable container -------------------------------------------
@@ -91,10 +92,31 @@ class PropertiesView:
         win_w = max(content_w, min_width)
         self._canvas.configure(height=win_h, width=win_w)
         self.pref_window.minsize(win_w + 20, 200)  # +20 for the scrollbar
+        self._position_window(win_w + 20, win_h)
 
     # ------------------------------------------------------------------
     # Scroll helpers
     # ------------------------------------------------------------------
+
+    def _position_window(self, width: int, height: int):
+        """Place the dialog centered over the parent and clamp to screen bounds."""
+        self.pref_window.update_idletasks()
+
+        parent_x = self._root.winfo_rootx()
+        parent_y = self._root.winfo_rooty()
+        parent_w = self._root.winfo_width()
+        parent_h = self._root.winfo_height()
+
+        screen_w = self.pref_window.winfo_screenwidth()
+        screen_h = self.pref_window.winfo_screenheight()
+
+        x = parent_x + max(0, (parent_w - width) // 2)
+        y = parent_y + max(0, (parent_h - height) // 2)
+
+        x = max(0, min(x, screen_w - width))
+        y = max(0, min(y, screen_h - height))
+
+        self.pref_window.geometry(f"{width}x{height}+{x}+{y}")
 
     def _on_frame_configure(self, _event=None):
         self._canvas.configure(scrollregion=self._canvas.bbox("all"))
