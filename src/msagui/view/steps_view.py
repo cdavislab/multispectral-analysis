@@ -1,10 +1,14 @@
 import tkinter as tk
+from tkinter import ttk
 class MultiCorrectionsDialog(tk.Toplevel):
     """Dialog for entering multiple correction steps with operations and output keys."""
     def __init__(self, parent, steps):
         super().__init__(parent)
         self.title("Analysis Set-Up")
-        self.geometry("1000x600")
+        self.transient(parent)
+        self.geometry("1050x400")
+        self.minsize(1050, 400)
+        self._position_window(parent, width=1050, height=400)
         self.steps = steps
         self.result = None
 
@@ -42,26 +46,52 @@ class MultiCorrectionsDialog(tk.Toplevel):
         # Right pane: operation buttons (2x2 grid)
         self.op_frame = tk.Frame(self.right_pane)
         self.op_frame.pack(pady=10)
+        self.op_frame.grid_columnconfigure(0, weight=1)
+        self.op_frame.grid_columnconfigure(1, weight=1)
         self.op_buttons = []
         ops = [("A + B", "+"), ("A * B", "*"), ("A - B", "-"), ("A / B", "/")]
         for i, (label, op) in enumerate(ops):
             btn = tk.Button(self.op_frame, text=label, width=10, command=lambda o=op: self.open_op_dialog(o))
-            btn.grid(row=i//2, column=i%2, padx=5, pady=5)
+            btn.grid(row=i//2, column=i%2, sticky="ew", padx=2, pady=2)
             self.op_buttons.append(btn)
 
         # Threshold button
-        self.threshold_button = tk.Button(self.right_pane, text="Threshold", width=22, command=self.open_threshold_dialog)
-        self.threshold_button.pack(pady=(30, 10))
+        self.threshold_button = tk.Button(self.op_frame, text="Threshold", command=self.open_threshold_dialog)
+        self.threshold_button.grid(row=2, column=0, columnspan=2, sticky="ew", padx=2, pady=2)
 
-        # Import/Export buttons
-        self.import_button = tk.Button(self.right_pane, text="Import Steps", width=22)
-        self.import_button.pack(pady=(30, 5))
-        self.export_button = tk.Button(self.right_pane, text="Export Steps", width=22)
-        self.export_button.pack(pady=(0, 10))
+        # Visual divider between operation controls and file/save controls
+        self.controls_separator = ttk.Separator(self.op_frame, orient="horizontal")
+        self.controls_separator.grid(row=3, column=0, columnspan=2, sticky="ew", padx=2, pady=(10, 10))
 
         # Save button
-        self.save_button = tk.Button(self.right_pane, text="Save", width=22)
-        self.save_button.pack(pady=(10, 0))
+        self.save_button = tk.Button(self.op_frame, text="Save")
+        self.save_button.grid(row=4, column=0, columnspan=2, sticky="ew", padx=2, pady=(0, 8))
+
+        # Import/Export buttons
+        self.import_button = tk.Button(self.op_frame, text="Import Steps")
+        self.import_button.grid(row=5, column=0, sticky="ew", padx=2, pady=(0, 2))
+        self.export_button = tk.Button(self.op_frame, text="Export Steps")
+        self.export_button.grid(row=5, column=1, sticky="ew", padx=2, pady=(0, 2))
+
+    def _position_window(self, parent, width: int, height: int):
+        """Center dialog over parent and keep it fully on-screen."""
+        self.update_idletasks()
+
+        px = parent.winfo_rootx()
+        py = parent.winfo_rooty()
+        pw = parent.winfo_width()
+        ph = parent.winfo_height()
+
+        sw = self.winfo_screenwidth()
+        sh = self.winfo_screenheight()
+
+        x = px + max(0, (pw - width) // 2)
+        y = py + max(0, (ph - height) // 2)
+
+        x = max(0, min(x, sw - width))
+        y = max(0, min(y, sh - height))
+
+        self.geometry(f"{width}x{height}+{x}+{y}")
 
     def add_step_row(self, step=None):
         """Add a row to the steps table. Optionally populate with a step dict."""
