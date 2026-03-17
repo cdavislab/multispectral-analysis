@@ -61,12 +61,17 @@ class DropDownController:
         bool_vars = {
             "show_groups":     self.view.show_groups,
             "show_histograms": self.view.show_histograms,
-            "show_single":     self.view.show_single,
-            "show_ratio":      self.view.show_ratio,
+            "show_inputs":     self.view.show_inputs,
+            "show_outputs":    self.view.show_outputs,
         }
         for key, var in bool_vars.items():
             if key in view_settings:
                 var.set(bool(view_settings[key]))
+
+        if "show_inputs" not in view_settings and "show_single" in view_settings:
+            self.view.show_inputs.set(bool(view_settings["show_single"]))
+        if "show_outputs" not in view_settings and "show_ratio" in view_settings:
+            self.view.show_outputs.set(bool(view_settings["show_ratio"]))
 
     def import_default_settings(self):
         """Import default settings from 'msa_options.json' if it exists."""
@@ -88,8 +93,8 @@ class DropDownController:
             "view": {
                 "show_groups":     self.view.show_groups.get(),
                 "show_histograms": self.view.show_histograms.get(),
-                "show_single":     self.view.show_single.get(),
-                "show_ratio":      self.view.show_ratio.get(),
+                "show_inputs":     self.view.show_inputs.get(),
+                "show_outputs":    self.view.show_outputs.get(),
             },
         }
 

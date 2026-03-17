@@ -47,6 +47,8 @@ class ControllerDispatcher:
         self.view.view_mode.trace_add('write', lambda *_: self.listbox_ctrl.update_listbox())
         self.view.show_histograms.trace_add('write', self._on_histogram_toggle)
         self.view.show_groups.trace_add('write', self._on_group_toggle)
+        self.view.show_inputs.trace_add('write', self._on_visibility_toggle)
+        self.view.show_outputs.trace_add('write', self._on_visibility_toggle)
 
     def connect_button_signals(self):
         button_commands = {
@@ -81,6 +83,7 @@ class ControllerDispatcher:
 
     def _on_histogram_toggle(self, *_):
         """Called whenever show_histograms changes; refreshes the current display."""
+        self._apply_visibility_filters()
         idx = self.listbox_ctrl.get_listbox_index()
         if idx is None:
             return
@@ -88,18 +91,39 @@ class ControllerDispatcher:
 
     def _on_group_toggle(self, *_):
         """Called whenever show_groups changes; rebuilds the listbox and refreshes display."""
+        self._apply_visibility_filters()
         self.listbox_ctrl.update_listbox()
         idx = self.listbox_ctrl.get_listbox_index()
         if idx is None:
             return
         self.image_ctrl.update_display(idx)
 
+    def _on_visibility_toggle(self, *_):
+        """Called whenever show_inputs/show_outputs changes; rebuild list and refresh display."""
+        self._apply_visibility_filters()
+        self.listbox_ctrl.update_listbox()
+        idx = self.listbox_ctrl.get_listbox_index()
+        if idx is None:
+            return
+        self.image_ctrl.update_display(idx)
+
+    def _apply_visibility_filters(self):
+        show_inputs = self.view.show_inputs.get()
+        show_outputs = self.view.show_outputs.get()
+        for item in self.model.metadata.items:
+            if item.kind == "input":
+                item.visible = show_inputs
+            elif item.kind == "processed":
+                item.visible = show_outputs
+            else:
+                item.visible = True
+
     def handle_menu_toggle(self, event):
         state = {
             'Group View': self.view.view_menu.entrycget('Group View', 'variable'),
             'Histograms': self.view.view_menu.entrycget('Histograms', 'variable'),
-            'Show Single-Wavenumber': self.view.view_menu.entrycget('Show Single-Wavenumber', 'variable'),
-            'Show Ratios': self.view.view_menu.entrycget('Show Ratios', 'variable'),
+            'Show Inputs': self.view.show_inputs.get(),
+            'Show Outputs': self.view.show_outputs.get(),
             'View Mode': self.view.view_mode.get()
 
         }
@@ -129,6 +153,7 @@ class ControllerDispatcher:
         """Decorator to update view after function call."""
         def wrapper(*args, **kwargs):
             result = func(*args, **kwargs)
+            self._apply_visibility_filters()
             self.listbox_ctrl.update_listbox()
             idx = self.listbox_ctrl.get_listbox_index()
             if idx is None:

@@ -2,7 +2,6 @@
 from functools import lru_cache
 import h5py
 import numpy.typing as npt
-import numpy as np
 import msagui.model.loader as loader
 
 def _decode_dataset(data_obj) -> npt.NDArray:

@@ -46,8 +46,8 @@ class ButtonsController:
         if self.view.show_groups.get():
             messagebox.showerror("Group View", "Cannot analyze in group view.")
             return None
-        if not self.view.show_single.get():
-            messagebox.showerror("Single Wavenumber", "Please select at least two non-ratio images to analyze.")
+        if not self.view.show_inputs.get():
+            messagebox.showerror("Inputs Hidden", "Please show inputs before analyzing.")
             return None
         # Get the values from the entries
         entry_keys = ('freq1', 'freq2', 'freq1c', 'freq2c', 'threshold', 'freq1cf', 'freq2cf')

@@ -1,11 +1,8 @@
 import logging
 import tkinter as tk
 import os
-# import Path
 from tkinter.simpledialog import askstring
-import pandas as pd
 from msagui.view.display import ListboxView, ViewDefaults
-from msagui.view.defaults import ViewDefaults
 
 logger = logging.getLogger(__name__)
 
@@ -183,43 +180,6 @@ class FileListController:
             return
         return
 
-    def convert_index(self, index: int) -> pd.Index:
-        """Convert listbox index to dataframe index by sorting out single wavenumber,
-        ratio, or histograms if needbe. Return array of indices if group is selected"""
-        if self.view.show_groups.get(): #TODO Check: May need to convert to listbox type to integer
-            group = self.get_listbox_index()
-            idx = self.model.df['group'] == group + 1
-            single_group_df = self.model.df.loc[idx,:]
-            df_idx = single_group_df.index
-            return df_idx.tolist()
-
-        # Create dataframe that mimics what is shown in the listbox
-        viewed_types = []
-        if self.view.show_single.get():
-            viewed_types += ['Freq1', 'Freq2', 'Freq1c', 'Freq2c', None]
-        if self.view.show_ratio.get():
-            viewed_types.append('Ratio')
-        listbox_df = self.model.df.loc[self.model.df['type'].isin(viewed_types)]
-        df_idx = listbox_df.index[index]
-        # Return the index of the dataframe that corresponds to the index of the listbox
-        return df_idx.tolist()
-    
-    def get_df_indices(self):
-        # Get dataframe indices corresponding to selected listbox items
-        # Mimic the listbox view with a dataframe slice
-        selected_indices = list(self.listbox.file_list.curselection())
-        vsettings = self.view.get_settings()
-        desired_groups = []
-        if vsettings['show_single']: # Show
-            desired_groups += ['Freq1', 'Freq2', 'Freq1c', 'Freq2c', None]
-        if vsettings['show_ratio']:
-            desired_groups.append('Ratio')
-        listbox_df = self.model.df.loc[self.model.df['type'].isin(desired_groups)]
-        # Select positional indices in dataframe from the listbox
-        selection = listbox_df.iloc[selected_indices,:]
-        # Return real dataframe indices
-        return selection.index
-    
     def rename_item(self, event):
         # Allow renaming of group items in the listbox
         if not self.listbox.show_groups.get():  # Check if groups are shown

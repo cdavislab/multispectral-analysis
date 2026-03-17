@@ -1,5 +1,4 @@
 import csv
-import io
 import tkinter.filedialog as filedialog
 import tkinter.messagebox as messagebox
 from msagui.view.steps_view import MultiCorrectionsDialog

@@ -1,5 +1,6 @@
 import os
 import csv
+import tempfile
 from typing import Callable
 import numpy.typing as npt
 import numpy as np
@@ -21,11 +22,38 @@ class MultiSpectralModel:
         self.settings = ImagingSettings()
         self.histogram_settings = HistogramSettings()
         self.steps = Steps()
-        self.hdf5_path: str = "msa_data.h5"
+        self.hdf5_path: str = self._default_hdf5_path()
         self.group_cache = dict()
-        # if hdf5_path exists, delete
+        logger.info(f"Using HDF5 workspace file: {self.hdf5_path}")
         if os.path.exists(self.hdf5_path):
-            os.remove(self.hdf5_path)
+            try:
+                os.remove(self.hdf5_path)
+            except OSError as e:
+                logger.warning(f"Could not remove existing HDF5 file {self.hdf5_path}: {e}")
+
+    def _default_hdf5_path(self) -> str:
+        import platform
+        
+        home = os.path.expanduser("~")
+        system = platform.system()
+        
+        if system == "Windows":
+            base_dir = os.environ.get("APPDATA") or os.environ.get("LOCALAPPDATA") or home
+            app_dir = os.path.join(base_dir, "msaGUI")
+        elif system == "Darwin":  # macOS
+            app_dir = os.path.join(home, "Library", "Application Support", "msaGUI")
+        else:  # Linux and other POSIX
+            base_dir = os.environ.get("XDG_DATA_HOME") or os.path.join(home, ".local", "share")
+            app_dir = os.path.join(base_dir, "msaGUI")
+
+        try:
+            os.makedirs(app_dir, exist_ok=True)
+            return os.path.join(app_dir, "msa_data.h5")
+        except OSError as e:
+            logger.warning(f"Could not create app data directory {app_dir}: {e}")
+            fallback_dir = tempfile.mkdtemp(prefix="msaGUI_")
+            return os.path.join(fallback_dir, "msa_data.h5")
+
     def process(self, items, func: Callable, progress_callback: Callable | None) -> dict[str, Exception]:
         if not isinstance(items, list | tuple):
             items = [items]

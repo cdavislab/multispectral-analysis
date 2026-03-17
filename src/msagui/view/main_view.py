@@ -1,6 +1,5 @@
 import tkinter as tk
 import tkinter.font as tkFont
-from PIL import Image, ImageTk
 
 from msagui.view.display import DisplayView, ListboxView, WidgetsView
 from msagui.view.defaults import ViewDefaults
@@ -90,11 +89,18 @@ class MultispectralView():
 
         self.view_menu = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="View", menu=self.view_menu)
-        labels = ("Group View", "Histograms", "Show Single-Wavenumber", "Show Ratios")
-        variables = (self.show_groups, self.show_histograms, self.show_single, self.show_ratio)
+        labels = ("Group View", "Histograms")
+        variables = (self.show_groups, self.show_histograms)
         for label, variable in zip(labels, variables):
             self.view_menu.add_checkbutton(label=label, onvalue=1, offvalue=0,
                                            variable=variable)
+
+        self.show_menu = tk.Menu(self.view_menu, tearoff=0)
+        self.view_menu.add_cascade(label="Show", menu=self.show_menu)
+        self.show_menu.add_checkbutton(label="Inputs", onvalue=1, offvalue=0,
+                           variable=self.show_inputs)
+        self.show_menu.add_checkbutton(label="Outputs", onvalue=1, offvalue=0,
+                           variable=self.show_outputs)
 
         self.fpath_menu = tk.Menu(self.view_menu, tearoff=0)
         self.view_menu.add_cascade(label="File Path", menu=self.fpath_menu)
@@ -107,8 +113,8 @@ class MultispectralView():
         """Initialize Tkinter variables for menu state."""
         self.show_groups = tk.BooleanVar()
         self.show_histograms = tk.BooleanVar()
-        self.show_single = tk.BooleanVar()
-        self.show_ratio = tk.BooleanVar()
+        self.show_inputs = tk.BooleanVar(value=True)
+        self.show_outputs = tk.BooleanVar(value=True)
         self.view_mode = tk.StringVar(value="full")
         return
     
@@ -132,8 +138,8 @@ class MultispectralView():
             'threshold': self.entries['threshold'].get(),
             "show_groups": self.show_groups.get(),
             "show_histograms": self.show_histograms.get(),
-            "show_single": self.show_single.get(),
-            "show_ratio": self.show_ratio.get(),
+            "show_inputs": self.show_inputs.get(),
+            "show_outputs": self.show_outputs.get(),
             "view_mode": self.view_mode.get()
         }
         return settings

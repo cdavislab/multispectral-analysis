@@ -6,7 +6,6 @@ from msagui.model.histogram_settings import HistogramSettings
 from typing import Any
 import numpy.typing as npt
 import numpy as np
-import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import imsave, subplots, tight_layout
 from matplotlib.ticker import MaxNLocator
