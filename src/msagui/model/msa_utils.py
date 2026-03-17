@@ -107,6 +107,10 @@ def construct_image(images: list, settings: ImagingSettings):
     axs_flat = np.atleast_1d(axs).flatten()  # type: ignore
     for i, image in enumerate(images):
         im = decorate_image(image, axs_flat[i], settings)
+        # Lock the axis box to the image's native row/column ratio so
+        # the displayed image is not distorted
+        if image.ndim >= 2 and image.shape[1] != 0:
+            axs_flat[i].set_box_aspect(image.shape[0] / image.shape[1])
         if settings.show_colorbar:
             fp = FontProperties(family=settings.font, size=settings.font_size,
                                 weight=settings.font_weight)
