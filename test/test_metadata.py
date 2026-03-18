@@ -15,7 +15,7 @@ def test_basenames():
     meta2 = ImageMeta(key='2',nickname="/another/path/image2.jpg", group="B", kind="processed")
     store.add(meta1)
     store.add(meta2)
-    assert store.basenames == ["image1", "image2"]
+    assert store.basenames == ["to/image1", "path/image2"]
 
 def test_delete():
     store = MetadataStore()
@@ -68,3 +68,46 @@ def test_statistics_optional():
     assert meta.statistics is None
     meta2 = ImageMeta(key="2", group="A", kind="input", nickname="/path/to/image2.tif", statistics={"mean": 1.0})
     assert meta2.statistics == {"mean": 1.0}
+
+
+def test_move_items_block_preserves_order():
+    store = MetadataStore()
+    for key in ["1", "2", "3", "4", "5"]:
+        store.add(ImageMeta(key=key, group="A", kind="input", nickname=f"/p/{key}.tif"))
+
+    moved = store.move_items([1, 2], 4)
+    assert moved is True
+    assert store.keys == ["1", "4", "2", "3", "5"]
+
+
+def test_sort_items_by_basename():
+    store = MetadataStore()
+    store.add(ImageMeta(key="1", group="A", kind="input", nickname="/x/c_file.tif"))
+    store.add(ImageMeta(key="2", group="A", kind="input", nickname="/x/a_file.tif"))
+    store.add(ImageMeta(key="3", group="A", kind="input", nickname="/x/b_file.tif"))
+
+    store.sort_items("basename")
+    assert [m.nickname for m in store.items] == [
+        "/x/a_file.tif", "/x/b_file.tif", "/x/c_file.tif"
+    ]
+
+
+def test_sort_items_by_time_imported_descending():
+    store = MetadataStore()
+    store.add(ImageMeta(key="1", group="A", kind="input", nickname="/x/one.tif"))
+    store.add(ImageMeta(key="2", group="A", kind="input", nickname="/x/two.tif"))
+    store.add(ImageMeta(key="3", group="A", kind="input", nickname="/x/three.tif"))
+
+    store.sort_items("time_imported", reverse=True)
+    assert store.keys == ["3", "2", "1"]
+
+
+def test_sort_items_by_group_descending_mixed_group_ids():
+    store = MetadataStore()
+    store.add(ImageMeta(key="1", group="2", kind="input", nickname="/x/g2.tif"))
+    store.add(ImageMeta(key="2", group="10", kind="input", nickname="/x/g10.tif"))
+    store.add(ImageMeta(key="3", group="alpha", kind="input", nickname="/x/ga.tif"))
+    store.add(ImageMeta(key="4", group="default", kind="input", nickname="/x/gd.tif"))
+
+    store.sort_items("group", reverse=True)
+    assert [m.group for m in store.items] == ["default", "alpha", "10", "2"]

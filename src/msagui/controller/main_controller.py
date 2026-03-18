@@ -30,10 +30,16 @@ class ControllerDispatcher:
     
     def recruit_controllers(self):
         """Create and return instances of other controllers"""
-        self.button_ctrl = ButtonsController(self.model, self.view)
+        self.listbox_ctrl = FileListController(
+            self.model,
+            self.view.listbox,
+            self.view.view_mode,
+            show_groups=self.view.show_groups,
+            sort_key=self.view.sort_key,
+            sort_desc=self.view.sort_desc,
+        )
+        self.button_ctrl = ButtonsController(self.model, self.view, self.listbox_ctrl)
         self.dropdown_ctrl = DropDownController(self.model, self.view)
-        self.listbox_ctrl = FileListController(self.model, self.view.listbox, self.view.view_mode,
-                                               show_groups=self.view.show_groups)
         self.image_properties_ctrl = ImagePropertiesController(self.model, self.view)
         self.image_ctrl = ImageController(self.model, self.view)
         self.steps_ctrl = StepsController(self.model, self.view)
@@ -49,6 +55,8 @@ class ControllerDispatcher:
         self.view.show_groups.trace_add('write', self._on_group_toggle)
         self.view.show_inputs.trace_add('write', self._on_visibility_toggle)
         self.view.show_outputs.trace_add('write', self._on_visibility_toggle)
+        self.view.sort_key.trace_add('write', self._on_sort_change)
+        self.view.sort_desc.trace_add('write', self._on_sort_change)
 
     def connect_button_signals(self):
         button_commands = {
@@ -107,6 +115,14 @@ class ControllerDispatcher:
             return
         self.image_ctrl.update_display(idx)
 
+    def _on_sort_change(self, *_):
+        self.listbox_ctrl.sort_items()
+        self.listbox_ctrl.update_listbox()
+        idx = self.listbox_ctrl.get_listbox_index()
+        if idx is None:
+            return
+        self.image_ctrl.update_display(idx)
+
     def _apply_visibility_filters(self):
         show_inputs = self.view.show_inputs.get()
         show_outputs = self.view.show_outputs.get()
@@ -129,25 +145,40 @@ class ControllerDispatcher:
         }
 
     def connect_listbox_signals(self):
-        self.view.listbox.file_list.bind('<<ListboxSelect>>', self.up(self._on_file_selection))
+        self.view.listbox.file_list.bind('<<ListboxSelect>>', self._on_file_selection)
         self.view.listbox.file_list.bind('<Button-1>', self.listbox_ctrl.on_click)
+        self.view.listbox.file_list.bind('<B1-Motion>', self.listbox_ctrl.on_drag_motion)
+        self.view.listbox.file_list.bind('<ButtonRelease-1>', self._on_drag_release)
         self.view.listbox.file_list.bind('<Double-Button-1>', self.up(self.listbox_ctrl.rename_item))
         self.view.listbox.file_list.bind('<Control-a>', self.listbox_ctrl.select_all)
+
+    def _on_drag_release(self, event):
+        moved = self.listbox_ctrl.on_drag_release(event)
+        if not moved:
+            return
+        self._apply_visibility_filters()
+        self.listbox_ctrl.update_listbox()
+        idx = self.listbox_ctrl.get_listbox_index()
+        if idx is None:
+            return
+        self.image_ctrl.update_display(idx)
         
     def _steps_view_update(self, event):
         self.steps_ctrl.open()
 
     def _on_file_selection(self, event):
         value = self.listbox_ctrl.on_file_selection(event)
+        idx = self.listbox_ctrl.get_listbox_index()
+        if idx is None:
+            return
+
         if self.view.show_groups.get():
-            idx = self.listbox_ctrl.get_listbox_index()
-            if idx is None:
-                return
             display_name = self.listbox_ctrl._group_display_name(idx)
         else:
             logging.info(f"Selected file: {value}")
             display_name = os.path.basename(value)
         self.view.get_widget('Filename').update('Filename', display_name)
+        self.image_ctrl.update_display(idx)
 
     def up(self, func):
         """Decorator to update view after function call."""

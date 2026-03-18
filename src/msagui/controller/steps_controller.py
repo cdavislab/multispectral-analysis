@@ -9,14 +9,32 @@ class StepsController:
     def __init__(self, model, view):
         self.model = model
         self.view = view
+        self.dialog = None
         
     def open(self):
         print("Opening steps dialog...")
         """Open dialog to input multiple corrections and factors."""
+        if self.dialog is not None:
+            try:
+                if self.dialog.winfo_exists():
+                    self.dialog.lift()
+                    self.dialog.focus_force()
+                    return
+            except Exception:
+                self.dialog = None
+
         self.dialog = MultiCorrectionsDialog(self.view.root, self.model.get_steps())
+        self.dialog.bind("<Destroy>", self._on_dialog_destroyed)
         self.dialog.save_button.config(command=self.close)
         self.dialog.import_button.config(command=self.import_steps)
         self.dialog.export_button.config(command=self.export_steps)
+
+    def _on_dialog_destroyed(self, _event=None):
+        if self.dialog is None:
+            return
+        if _event is not None and _event.widget is not self.dialog:
+            return
+        self.dialog = None
 
     def _parse_steps_csv(self, reader: csv.DictReader) -> list[dict[str, str]]:
         """Validate and parse step rows from a DictReader."""
@@ -41,8 +59,12 @@ class StepsController:
 
     def import_steps(self):
         """Load steps from a CSV file and populate the dialog view."""
+        if self.dialog is None:
+            return
+        dialog = self.dialog
+
         file_path = filedialog.askopenfilename(
-            parent=self.dialog,
+            parent=dialog,
             title="Import Steps",
             filetypes=[("CSV files", "*.csv"), ("All files", "*.*")]
         )
@@ -53,35 +75,42 @@ class StepsController:
                 reader = csv.DictReader(f)
                 steps = self._parse_steps_csv(reader)
         except ValueError as e:
-            messagebox.showerror("Import Error", str(e), parent=self.dialog)
+            messagebox.showerror("Import Error", str(e), parent=dialog)
             return
         except Exception as e:
-            messagebox.showerror("Import Error", f"Failed to read file:\n{e}", parent=self.dialog)
+            messagebox.showerror("Import Error", f"Failed to read file:\n{e}", parent=dialog)
             return
-        self.dialog.load_step_data(steps)
+        dialog.load_step_data(steps)
 
     def export_steps(self):
         """Write the current dialog step entries to a CSV file."""
+        if self.dialog is None:
+            return
+        dialog = self.dialog
+
         file_path = filedialog.asksaveasfilename(
-            parent=self.dialog,
+            parent=dialog,
             title="Export Steps",
             defaultextension=".csv",
             filetypes=[("CSV files", "*.csv"), ("All files", "*.*")]
         )
         if not file_path:
             return
-        steps = self.dialog.get_step_data()
+        steps = dialog.get_step_data()
         try:
             with open(file_path, "w", newline="", encoding="utf-8") as f:
                 writer = csv.DictWriter(f, fieldnames=_STEP_FIELDS)
                 writer.writeheader()
                 writer.writerows(steps)
         except Exception as e:
-            messagebox.showerror("Export Error", f"Failed to write file:\n{e}", parent=self.dialog)
+            messagebox.showerror("Export Error", f"Failed to write file:\n{e}", parent=dialog)
         
     def close(self):
         print("[Close] Saving steps and closing dialog...")
         """Collect all steps and close dialog."""
+        if self.dialog is None:
+            return
+
         steps = []
         for row in self.dialog.step_rows:
             _, keyword, operation, keyword2, value, output_key, _, _, _ = row

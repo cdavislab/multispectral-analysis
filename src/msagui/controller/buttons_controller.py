@@ -6,9 +6,10 @@ import os
 from msagui.view.progress_bar import ProgressBar
 
 class ButtonsController:
-    def __init__(self, model, view):
+    def __init__(self, model, view, listbox_ctrl=None):
         self.model = model
         self.view = view
+        self.listbox_ctrl = listbox_ctrl
 
     def add(self):
         files = askopenfilenames(
@@ -25,7 +26,10 @@ class ButtonsController:
         
     def delete(self):
         # Delete selected files from listbox and model
-        idx_to_del = self.view.listbox.get_selected_indices()
+        if self.listbox_ctrl is not None:
+            idx_to_del = self.listbox_ctrl.get_selected_metadata_indices()
+        else:
+            idx_to_del = self.view.listbox.get_selected_indices()
         if not idx_to_del:
             return
 
@@ -100,7 +104,10 @@ class ButtonsController:
         self.model.set_groups()
 
     def analyze(self):
-        selected_idx = self.view.listbox.get_selected_indices()
+        if self.listbox_ctrl is not None:
+            selected_idx = self.listbox_ctrl.get_selected_metadata_indices()
+        else:
+            selected_idx = self.view.listbox.get_selected_indices()
         if not selected_idx:
             messagebox.showerror("No Selection", "Please select at least one file to analyze.")
             return
@@ -190,9 +197,18 @@ class ButtonsController:
         ]
 
         selected_group_ids = []
+        selected_meta_idx = []
         if scope == "selected":
-            selected_lb = self.view.listbox.get_selected_indices()
-            if not selected_lb:
+            if is_group_view and self.listbox_ctrl is not None:
+                selected_group_ids = self.listbox_ctrl.get_selected_group_ids()
+                selected_lb = []
+            elif self.listbox_ctrl is not None:
+                selected_meta_idx = self.listbox_ctrl.get_selected_metadata_indices()
+                selected_lb = []
+            else:
+                selected_lb = self.view.listbox.get_selected_indices()
+
+            if (not selected_lb) and (not selected_group_ids) and (self.listbox_ctrl is None or not selected_meta_idx):
                 if is_group_view:
                     messagebox.showerror("Export", "No groups are selected. "
                                          "Please select groups in the list first.")
@@ -201,20 +217,25 @@ class ButtonsController:
                                          "Please select images in the list first.")
                 return
             if is_group_view:
-                # In group view, listbox rows map to visible group IDs.
-                all_visible_groups = [
-                    group_id for group_id in self.model.metadata.groups(visible_only=True)
-                    if group_id != "default"
-                ]
-                for i in selected_lb:
-                    if i < len(all_visible_groups):
-                        group_id = all_visible_groups[i]
-                        if group_id not in selected_group_ids:
-                            selected_group_ids.append(group_id)
+                if not selected_group_ids:
+                    # Fallback when listbox controller is unavailable.
+                    all_visible_groups = [
+                        group_id for group_id in self.model.metadata.groups(visible_only=True)
+                        if group_id != "default"
+                    ]
+                    for i in selected_lb:
+                        if i < len(all_visible_groups):
+                            group_id = all_visible_groups[i]
+                            if group_id not in selected_group_ids:
+                                selected_group_ids.append(group_id)
                 items = []
             else:
-                # In file view, listbox positions map 1-to-1 onto visible metadata items.
-                items = [all_visible[i] for i in selected_lb if i < len(all_visible)]
+                if self.listbox_ctrl is not None:
+                    selected_set = set(selected_meta_idx)
+                    items = [(idx, meta) for idx, meta in all_visible if idx in selected_set]
+                else:
+                    # Fallback when listbox controller is unavailable.
+                    items = [all_visible[i] for i in selected_lb if i < len(all_visible)]
         else:
             items = all_visible
 

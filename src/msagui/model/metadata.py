@@ -31,6 +31,7 @@ class ImageMeta:
     visible: bool = True            # Whether the image is visible in the UI
     keyword: Optional[str] = None   # Keyword shared amongst files
     common_name: Optional[list[str]] = None  # Common name for grouping in the UI
+    import_order: Optional[int] = None  # Stable insertion order token
 
     statistics: Optional[dict] = None # Dictionary to hold computed statistics for the image
     
@@ -44,6 +45,7 @@ class ImageMeta:
 class MetadataStore:
     def __init__(self):
         self.items: list[ImageMeta] = []
+        self._next_import_order = 1
 
     @property
     def keys(self):
@@ -59,9 +61,16 @@ class MetadataStore:
         return [_folder_basename(m.nickname) for m in self.items]
 
     def groups(self, visible_only=False):
-        if visible_only:
-            return list(set(m.group for m in self.items if m.visible))
-        return list(set(m.group for m in self.items))
+        groups = []
+        seen = set()
+        for meta in self.items:
+            if visible_only and not meta.visible:
+                continue
+            if meta.group in seen:
+                continue
+            seen.add(meta.group)
+            groups.append(meta.group)
+        return groups
 
     def nicknames(self, visible_only=False):
         if visible_only:
@@ -71,9 +80,97 @@ class MetadataStore:
     def add(self, meta: ImageMeta):
         for i, m in enumerate(self.items):
             if m.nickname == meta.nickname:
+                if meta.import_order is None:
+                    meta.import_order = m.import_order
                 self.items[i] = meta
                 return
+        if meta.import_order is None:
+            meta.import_order = self._next_import_order
+            self._next_import_order += 1
         self.items.append(meta)
+
+    def visible_indices(self) -> list[int]:
+        return [i for i, meta in enumerate(self.items) if meta.visible]
+
+    def move_item(self, from_idx: int, to_idx: int) -> None:
+        if from_idx == to_idx:
+            return
+        item = self.items.pop(from_idx)
+        self.items.insert(to_idx, item)
+
+    def move_items(self, from_indices: list[int], to_index: int) -> bool:
+        """Move a block of items to *to_index* while preserving relative order.
+
+        Parameters
+        ----------
+        from_indices:
+            Absolute indices in ``self.items`` to move as one block.
+        to_index:
+            Absolute destination index in the pre-move list.
+
+        Returns
+        -------
+        bool
+            True when list order changed, otherwise False.
+        """
+        if len(from_indices) == 0:
+            return False
+
+        unique_sorted = sorted(set(from_indices))
+        if any(i < 0 or i >= len(self.items) for i in unique_sorted):
+            return False
+        if to_index < 0 or to_index > len(self.items):
+            return False
+        if to_index >= unique_sorted[0] and to_index <= (unique_sorted[-1] + 1):
+            return False
+
+        move_set = set(unique_sorted)
+        block = [self.items[i] for i in unique_sorted]
+        remaining = [item for i, item in enumerate(self.items) if i not in move_set]
+
+        removed_before_target = sum(1 for i in unique_sorted if i < to_index)
+        insert_at = to_index - removed_before_target
+        if insert_at < 0:
+            insert_at = 0
+        if insert_at > len(remaining):
+            insert_at = len(remaining)
+
+        self.items = remaining[:insert_at] + block + remaining[insert_at:]
+        return True
+
+    def sort_items(self, sort_key: str, reverse: bool = False) -> None:
+        def text_key(value) -> str:
+            if value is None:
+                return ""
+            return str(value).casefold()
+
+        def group_rank(value) -> tuple[int, str]:
+            if value == "default":
+                return (1, "")
+            try:
+                return (0, f"{int(value):010d}")
+            except (TypeError, ValueError):
+                return (0, text_key(value))
+
+        def key_func(meta: ImageMeta):
+            nickname = meta.nickname or ""
+            basename = os.path.basename(nickname)
+            parent = os.path.basename(os.path.dirname(nickname))
+
+            if sort_key == "basename":
+                return (text_key(basename), text_key(parent), text_key(meta.key))
+            if sort_key == "parent_path":
+                return (text_key(parent), text_key(basename), text_key(meta.key))
+            if sort_key == "group":
+                return (group_rank(meta.group), text_key(meta.keyword), text_key(basename), text_key(meta.key))
+            if sort_key == "keyword":
+                return (text_key(meta.keyword), group_rank(meta.group), text_key(basename), text_key(meta.key))
+            return (
+                meta.import_order if meta.import_order is not None else 10**9,
+                text_key(meta.key),
+            )
+
+        self.items.sort(key=key_func, reverse=reverse)
 
     def delete(self, key: str):
         self.items = [m for m in self.items if m.key != key]

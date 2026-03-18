@@ -1,5 +1,6 @@
 import tkinter as tk
 import tkinter.font as tkFont
+import tkinter.messagebox as messagebox
 
 from msagui.view.display import DisplayView, ListboxView, WidgetsView
 from msagui.view.defaults import ViewDefaults
@@ -107,6 +108,17 @@ class MultispectralView():
         self.fpath_menu.add_radiobutton(label="View Full Path", variable=self.view_mode, value="full")
         self.fpath_menu.add_radiobutton(label="View Parent", variable=self.view_mode, value="parent")
         self.fpath_menu.add_radiobutton(label="View File Only", variable=self.view_mode, value="file")
+
+        self.sort_menu = tk.Menu(self.view_menu, tearoff=0)
+        self.view_menu.add_cascade(label="Sort", menu=self.sort_menu)
+        self.sort_menu.add_radiobutton(label="Time Imported", variable=self.sort_key, value="time_imported")
+        self.sort_menu.add_radiobutton(label="Basename", variable=self.sort_key, value="basename")
+        self.sort_menu.add_radiobutton(label="Parent Path", variable=self.sort_key, value="parent_path")
+        self.sort_menu.add_radiobutton(label="Group", variable=self.sort_key, value="group")
+        self.sort_menu.add_radiobutton(label="Keyword", variable=self.sort_key, value="keyword")
+        self.sort_menu.add_separator()
+        self.sort_menu.add_checkbutton(label="Descending", onvalue=1, offvalue=0,
+                           variable=self.sort_desc)
         return
 
     def initialize_menu_vars(self):
@@ -116,6 +128,8 @@ class MultispectralView():
         self.show_inputs = tk.BooleanVar(value=True)
         self.show_outputs = tk.BooleanVar(value=True)
         self.view_mode = tk.StringVar(value="full")
+        self.sort_key = tk.StringVar(value="time_imported")
+        self.sort_desc = tk.BooleanVar(value=False)
         return
     
     def show_error(self, errors: dict):
@@ -123,7 +137,7 @@ class MultispectralView():
         error_str = "Could not add/delete the following files:\n"
         for error in errors:
             error_str += str(error) + "\n"
-        tk.messagebox.showerror("Error", error_str)
+        messagebox.showerror("Error", error_str)
         return
     
     def get_settings(self) -> dict:
