@@ -18,6 +18,27 @@ class StepsController:
         self.dialog.import_button.config(command=self.import_steps)
         self.dialog.export_button.config(command=self.export_steps)
 
+    def _parse_steps_csv(self, reader: csv.DictReader) -> list[dict[str, str]]:
+        """Validate and parse step rows from a DictReader."""
+        header = reader.fieldnames or []
+        if header != _STEP_FIELDS:
+            expected = ", ".join(_STEP_FIELDS)
+            found_full = ", ".join(header) if header else "<missing header>"
+            found = (found_full[:50] + "...") if len(found_full) > 50 else found_full
+            raise ValueError(
+                "Invalid step file format.\n\n"
+                f"Expected header:\n{expected}\n\n"
+                f"Found:\n{found}"
+            )
+
+        steps = []
+        for row_idx, row in enumerate(reader, start=2):
+            if any(k not in row for k in _STEP_FIELDS):
+                raise ValueError(f"Invalid row format at line {row_idx}.")
+            cleaned = {k: (row.get(k, "") or "").strip() for k in _STEP_FIELDS}
+            steps.append(cleaned)
+        return steps
+
     def import_steps(self):
         """Load steps from a CSV file and populate the dialog view."""
         file_path = filedialog.askopenfilename(
@@ -30,7 +51,10 @@ class StepsController:
         try:
             with open(file_path, newline="", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
-                steps = [row for row in reader]
+                steps = self._parse_steps_csv(reader)
+        except ValueError as e:
+            messagebox.showerror("Import Error", str(e), parent=self.dialog)
+            return
         except Exception as e:
             messagebox.showerror("Import Error", f"Failed to read file:\n{e}", parent=self.dialog)
             return

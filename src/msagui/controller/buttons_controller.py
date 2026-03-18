@@ -110,9 +110,9 @@ class ButtonsController:
 
     def _ask_export_scope(self) -> dict | None:
         """Show a dialog asking whether to export all or selected images,
-        with an optional checkbox to also export statistics.
+        with optional export toggles.
 
-        Returns a dict ``{"scope": "all"|"selected", "export_stats": bool}``,
+        Returns a dict with ``scope`` and toggle states,
         or ``None`` if the user cancels.
         """
         import tkinter as tk
@@ -142,14 +142,33 @@ class ButtonsController:
                   command=lambda: choose(None)).grid(row=0, column=2, padx=6)
 
         stats_var = tk.BooleanVar(value=False)
+        is_group_view = hasattr(self.view, "show_groups") and self.view.show_groups.get()
+        groups_var = tk.BooleanVar(value=is_group_view)
+        histogram_var = tk.BooleanVar(value=False)
+        subdivide_var = tk.BooleanVar(value=True)
+
         chk_frame = tk.Frame(win)
         chk_frame.pack(pady=(0, 10))
-        tk.Checkbutton(chk_frame, text="Export Statistics", variable=stats_var).pack()
+        chk_frame.grid_columnconfigure(0, weight=1, uniform="export_opts")
+        chk_frame.grid_columnconfigure(1, weight=1, uniform="export_opts")
+        groups_chk = tk.Checkbutton(chk_frame, text="Groups", variable=groups_var)
+        groups_chk.grid(row=0, column=0, padx=10, sticky="w")
+        if is_group_view:
+            groups_chk.configure(state="disabled")
+        tk.Checkbutton(chk_frame, text="Histogram", variable=histogram_var).grid(row=0, column=1, padx=10, sticky="w")
+        tk.Checkbutton(chk_frame, text="Export Statistics", variable=stats_var).grid(row=1, column=0, padx=10, sticky="w")
+        tk.Checkbutton(chk_frame, text="Subdivide", variable=subdivide_var).grid(row=1, column=1, padx=10, sticky="w")
 
         win.wait_window()
         if result[0] is None:
             return None
-        return {"scope": result[0], "export_stats": stats_var.get()}
+        return {
+            "scope": result[0],
+            "export_stats": stats_var.get(),
+            "groups": groups_var.get(),
+            "histogram": histogram_var.get(),
+            "subdivide": subdivide_var.get(),
+        }
 
     def export_images(self):
         """Prompt for a folder and save every visible image into it."""
@@ -158,6 +177,10 @@ class ButtonsController:
             return
         scope = choice["scope"]
         do_export_stats = choice["export_stats"]
+        do_export_groups = choice["groups"]
+        do_export_histograms = choice["histogram"]
+        do_subdivide = choice["subdivide"]
+        is_group_view = hasattr(self.view, "show_groups") and self.view.show_groups.get()
 
         # Build the candidate list from all visible items.
         all_visible = [
@@ -166,20 +189,34 @@ class ButtonsController:
             if meta.visible
         ]
 
+        selected_group_ids = []
         if scope == "selected":
             selected_lb = self.view.listbox.get_selected_indices()
             if not selected_lb:
-                messagebox.showerror("Export", "No images are selected. "
-                                     "Please select images in the list first.")
+                if is_group_view:
+                    messagebox.showerror("Export", "No groups are selected. "
+                                         "Please select groups in the list first.")
+                else:
+                    messagebox.showerror("Export", "No images are selected. "
+                                         "Please select images in the list first.")
                 return
-            # Listbox positions map 1-to-1 onto all_visible.
-            items = [all_visible[i] for i in selected_lb if i < len(all_visible)]
+            if is_group_view:
+                # In group view, listbox rows map to visible group IDs.
+                all_visible_groups = [
+                    group_id for group_id in self.model.metadata.groups(visible_only=True)
+                    if group_id != "default"
+                ]
+                for i in selected_lb:
+                    if i < len(all_visible_groups):
+                        group_id = all_visible_groups[i]
+                        if group_id not in selected_group_ids:
+                            selected_group_ids.append(group_id)
+                items = []
+            else:
+                # In file view, listbox positions map 1-to-1 onto visible metadata items.
+                items = [all_visible[i] for i in selected_lb if i < len(all_visible)]
         else:
             items = all_visible
-
-        if not items:
-            messagebox.showinfo("Export", "No images to export.")
-            return
 
         directory = askdirectory(title="Choose Export Folder")
         if not directory:
@@ -188,31 +225,105 @@ class ButtonsController:
         ext = self.model.settings.export_format.lstrip(".")
         ext = "." + ext
 
+        def convert_for_format(image):
+            # JPEG/BMP don't support alpha — convert to RGB when needed.
+            if ext.lower() in (".jpg", ".jpeg", ".bmp") and image.mode in ("RGBA", "LA", "P"):
+                return image.convert("RGB")
+            return image
+
+        def build_subfolder(meta):
+            if not do_subdivide:
+                return directory
+            parent_folder = os.path.basename(os.path.dirname(meta.nickname))
+            if not parent_folder:
+                return directory
+            subfolder = os.path.join(directory, parent_folder)
+            os.makedirs(subfolder, exist_ok=True)
+            return subfolder
+
+        grouped_item_indices = {}
+        for idx, meta in items:
+            grouped_item_indices.setdefault(meta.group, []).append(idx)
+
+        if scope == "selected" and is_group_view:
+            # In group view + selected scope, export only selected groups.
+            group_ids = selected_group_ids
+        else:
+            group_ids = []
+            if do_export_groups:
+                for group_id in grouped_item_indices.keys():
+                    if group_id == "default":
+                        continue
+                    group_ids.append(group_id)
+
+        if not items and not group_ids:
+            messagebox.showinfo("Export", "No images or groups to export.")
+            return
+
+        total_exports = len(items) + len(group_ids)
+        if do_export_histograms:
+            total_exports += len(items) + len(group_ids)
+
         errors = {}
-        with ProgressBar(title="Exporting Images", total=len(items)) as progress:
+        export_count = 0
+        with ProgressBar(title="Exporting Images", total=total_exports) as progress:
             for idx, meta in items:
                 try:
                     image, _stats = self.model.make_image(idx)
-                    # JPEG/BMP don't support alpha — convert to RGB when needed.
-                    if ext.lower() in (".jpg", ".jpeg", ".bmp") and image.mode in ("RGBA", "LA", "P"):
-                        image = image.convert("RGB")
-                    parent_folder = os.path.basename(os.path.dirname(meta.nickname))
+                    image = convert_for_format(image)
                     stem = os.path.splitext(os.path.basename(meta.nickname))[0]
-                    if parent_folder:
-                        subfolder = os.path.join(directory, parent_folder)
-                        os.makedirs(subfolder, exist_ok=True)
-                    else:
-                        subfolder = directory
+                    subfolder = build_subfolder(meta)
                     out_path = os.path.join(subfolder, stem + ext)
                     image.save(out_path)
+                    export_count += 1
                 except Exception as e:
                     errors[meta.nickname] = e
                 finally:
                     progress.step()
 
+                if do_export_histograms:
+                    try:
+                        histogram, _stats = self.model.make_histogram(idx)
+                        histogram = convert_for_format(histogram)
+                        stem = os.path.splitext(os.path.basename(meta.nickname))[0]
+                        subfolder = build_subfolder(meta)
+                        out_path = os.path.join(subfolder, f"{stem}_histogram{ext}")
+                        histogram.save(out_path)
+                        export_count += 1
+                    except Exception as e:
+                        errors[f"{meta.nickname} (histogram)"] = e
+                    finally:
+                        progress.step()
+
+            for group_id in group_ids:
+                try:
+                    group_image, _stats = self.model.make_group_image(group_id)
+                    group_image = convert_for_format(group_image)
+                    safe_group_id = str(group_id).replace(os.sep, "_")
+                    out_path = os.path.join(directory, f"group_{safe_group_id}{ext}")
+                    group_image.save(out_path)
+                    export_count += 1
+                except Exception as e:
+                    errors[f"group {group_id}"] = e
+                finally:
+                    progress.step()
+
+                if do_export_histograms:
+                    try:
+                        group_histogram, _stats = self.model.make_group_histogram(group_id)
+                        group_histogram = convert_for_format(group_histogram)
+                        safe_group_id = str(group_id).replace(os.sep, "_")
+                        out_path = os.path.join(directory, f"group_{safe_group_id}_histogram{ext}")
+                        group_histogram.save(out_path)
+                        export_count += 1
+                    except Exception as e:
+                        errors[f"group {group_id} (histogram)"] = e
+                    finally:
+                        progress.step()
+
         if errors:
             self.view.show_error(errors)
         else:
-            messagebox.showinfo("Export", f"Exported {len(items)} image(s) to:\n{directory}")
+            messagebox.showinfo("Export", f"Exported {export_count} file(s) to:\n{directory}")
         if do_export_stats:
             self.model.export_stats(directory=directory)
