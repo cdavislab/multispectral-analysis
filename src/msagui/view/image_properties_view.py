@@ -2,6 +2,9 @@ import tkinter as tk
 from tkinter import ttk
 
 
+HINT_TEXT_COLOR = "#9A9A9A"
+
+
 class PropertiesView:
     """Generic schema-driven dialog for editing settings.
 
@@ -212,7 +215,7 @@ class PropertiesView:
             entry = variable  # tk.BooleanVar
             checkbox = tk.Checkbutton(self.pref_frame, variable=entry)
             checkbox.grid(row=self.row, column=1, columnspan=4, sticky='w', padx=self.padx_entry)
-        label_hint = tk.Label(self.pref_frame, text=hint, fg='gray')
+        label_hint = tk.Label(self.pref_frame, text=hint, fg=HINT_TEXT_COLOR)
         label_hint.grid(row=self.row + 1, column=0, columnspan=5, sticky='w', padx=self.padx_hint)
         self.properties[key] = {"label": label, "entry": entry, "label_hint": label_hint}
         self.row += 2
@@ -226,7 +229,7 @@ class PropertiesView:
         """
         label = tk.Label(self.pref_frame, text=title)
         label.grid(row=self.row, column=0, sticky='w', padx=self.padx_label)
-        label_hint = tk.Label(self.pref_frame, text=hint, fg='gray')
+        label_hint = tk.Label(self.pref_frame, text=hint, fg=HINT_TEXT_COLOR)
         label_hint.grid(row=self.row + 1, column=0, columnspan=5, sticky='w', padx=self.padx_hint)
         column_num = 1
         for key, sublabel, variable in fields:
