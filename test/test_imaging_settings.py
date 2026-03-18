@@ -5,10 +5,9 @@ def test_default_imshow_kwargs():
     settings = ImagingSettings()
     kwargs = settings.imshow_kwargs()
     assert kwargs == {
-        "cmap": "viridis",
+        "cmap": "CMRmap",
         "interpolation": "nearest",
-        "origin": "lower",
-        "aspect": "auto"
+        "origin": "lower"
     }
 
 def test_default_imsave_kwargs():
@@ -25,24 +24,22 @@ def test_default_imsave_kwargs():
 
 
 def test_custom_imshow_kwargs():
-    settings = ImagingSettings(cmap="gray", interpolation="bilinear", vmin=0.0, vmax=1.0, aspect="equal")
+    settings = ImagingSettings(cmap="gray", interpolation="bilinear", vmin=0.0, vmax=1.0)
     kwargs = settings.imshow_kwargs()
     assert kwargs == {
         "cmap": "gray",
         "interpolation": "bilinear",
         "vmin": 0.0,
         "vmax": 1.0,
-        "origin": "lower",
-        "aspect": "equal"
+        "origin": "lower"
     }
 
 def test_custom_imsave_kwargs():
-    settings = ImagingSettings(dpi=150, cmap="plasma", vmin=0.1, vmax=0.9, format="png", metadata={"author": "test"})
+    settings = ImagingSettings(dpi=150, cmap="plasma", vmin=0.1, vmax=0.9, metadata={"author": "test"})
     kwargs = settings.imsave_kwargs()
     assert kwargs == {
         "transparent": False,
         "dpi": 150,
-        'format': "png",
         'metadata': {"author": "test"},
         "bbox_inches": "tight",
         "pad_inches": 0.1,

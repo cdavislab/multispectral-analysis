@@ -33,9 +33,6 @@ PREFS_SCHEMA = [
      "hint": "Background color of the figure (e.g. 'white', 'auto')"},
     {"kind": "entry",       "key": "edgecolor",        "label": "Edge Color",
      "hint": "Edge color of the figure (e.g. 'black', 'auto')"},
-    {"kind": "section", "label": "Backend"},
-    {"kind": "entry",       "key": "backend",          "label": "Matplotlib Backend",
-     "hint": "Matplotlib rendering backend override; leave blank for default"},
 ]
 
 IMG_PREFS_SCHEMA = [
@@ -53,7 +50,6 @@ IMG_PREFS_SCHEMA = [
     {"kind": "section", "label": "Image Display"},
     {"kind": "entry", "key": "interpolation", "label": "Interpolation", "hint": "Pixel interpolation method (e.g. nearest, bilinear); leave blank for default"},
     {"kind": "entry", "key": "origin",       "label": "Origin",        "hint": "Image origin: 'upper' or 'lower'"},
-    {"kind": "entry", "key": "aspect",       "label": "Aspect",        "hint": "Axes aspect ratio (e.g. 'auto', 'equal')"},
     {"kind": "section", "label": "Scale Bar"},
     {"kind": "entry", "key": "pixel_scale",          "label": "Pixel Scale",          "hint": "Physical size of one pixel (in scale bar units)"},
     {"kind": "entry", "key": "scale_bar_units",      "label": "Scale Bar Units",      "hint": "Units label for the scale bar (e.g. micrometer)"},

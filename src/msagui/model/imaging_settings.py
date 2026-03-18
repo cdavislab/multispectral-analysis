@@ -10,7 +10,6 @@ class ImagingSettings:
     vmin: Optional[float] = None
     vmax: Optional[float] = None
     origin: str = "lower"
-    aspect: str = "auto"
     transparent: bool = False
     pad_inches: float = 0.1
     metadata: Optional[dict] = None
@@ -42,7 +41,7 @@ class ImagingSettings:
     def imshow_kwargs(self) -> dict:
         return {
             k: v for k, v in asdict(self).items()
-            if k in {"cmap", "interpolation", "vmin", "vmax", "origin", "aspect"}
+            if k in {"cmap", "interpolation", "vmin", "vmax", "origin"}
             and v is not None
         }
 
