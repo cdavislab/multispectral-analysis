@@ -1,4 +1,3 @@
-import numpy as np
 class ImageController:
     def __init__(self, model, view):
         self.model = model
@@ -40,18 +39,36 @@ class ImageController:
         self.view.display.update(img)
         self.view.labels.update('Statistics', '')
         
+    def _format_statistics(self, stats: dict) -> str:
+        def get_value(*keys):
+            for key in keys:
+                if key in stats and stats[key] is not None:
+                    return stats[key]
+            return None
+
+        mean = get_value("mean")
+        median = get_value("median")
+        max_signal = get_value("max_signal", "max")
+        std_dev = get_value("standard_deviation", "stdev")
+        std_err = get_value("standard_error", "se")
+        count = get_value("count")
+
+        def fmt_float(value):
+            return "—" if value is None else f"{float(value):.3f}"
+
+        def fmt_count(value):
+            return "—" if value is None else f"{int(value):,}"
+
+        line1 = f"Mean: {fmt_float(mean)} | Median: {fmt_float(median)} | Max: {fmt_float(max_signal)}"
+        line2 = f"Std Dev: {fmt_float(std_dev)} | Std Err: {fmt_float(std_err)} | Count: {fmt_count(count)}"
+        return line1 + "\n" + line2
 
     def display_statistics(self, stats):
         # Display statistics for selected index/group
         if self.view.show_groups.get():
-            stats = "Statistics"
-            self.view.buttons.items['Statistics'].configure(text=stats)
+            self.view.labels.update('Statistics', "Group view: per-image statistics hidden.")
             return
-        stats = [np.round(stats[key], 3) for key in stats.keys()]
-        stats = ("Mean:" + str(stats[0]) + ", Median:" + str(stats[1]) +
-                 ", Max:" + str(stats[2]) + ", Stdev:" + str(stats[3]) +
-                 ", SE:" + str(stats[4]) + ",  Count: " + str(int(stats[5])))
-        self.view.labels.update('Statistics', stats)
+        self.view.labels.update('Statistics', self._format_statistics(stats))
 
     def update_display(self, idx):
         # Update image/histogram/statistics display for selected index
