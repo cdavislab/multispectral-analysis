@@ -5,6 +5,7 @@ import json
 import platform
 import tempfile
 import tkinter as tk
+import tkinter.messagebox as messagebox
 from msagui.view.progress_bar import ProgressBar
 
 class DropDownController:
@@ -37,11 +38,11 @@ class DropDownController:
         self.model.export_stats()
 
     def export_filelist(self):
-        # Export current file list to a text file
+        # Export current file list to a CSV file
         file_path = asksaveasfilename(
-            defaultextension=".txt",  # Default file extension
-            filetypes=[("Text files", "*.txt"), ("All files", "*.*")],  # Supported file types
-            title="Save Settings As"
+            defaultextension=".csv",  # Default file extension
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],  # Supported file types
+            title="Save File List As"
         )
         if file_path == '':  # If the user cancels the save dialog, return
             return
@@ -144,4 +145,4 @@ class DropDownController:
         os.makedirs(parent_dir, exist_ok=True)
         with open(self.default_settings_path, "w", encoding="utf-8") as f:
             json.dump(self._build_settings_dict(), f, indent=2)
-        tk.messagebox.showinfo("Default Settings", f"Settings saved as default:\n{self.default_settings_path}")
+        messagebox.showinfo("Default Settings", f"Settings saved as default:\n{self.default_settings_path}")
