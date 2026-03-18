@@ -25,6 +25,7 @@ class ImagingSettings:
     font_weight: str = "normal"
     pixel_scale: float = 1.0
     scale_bar_units: str = "μm"
+    scale_bar_color: str = "white"
     scale_bar_location: str = "lower right"
     scale_bar_fixed_value: Optional[float] = 0
     num_ticks: int = 0

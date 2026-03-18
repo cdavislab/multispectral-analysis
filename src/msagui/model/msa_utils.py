@@ -74,7 +74,7 @@ def _add_scale_bar(image: npt.NDArray, ax, settings: ImagingSettings):
         label,
         settings.scale_bar_location,
         pad=0.5,
-        color="white",
+        color=settings.scale_bar_color or "white",
         frameon=False,
         size_vertical=max(1, image.shape[0] // 40),
         fontproperties=fp,

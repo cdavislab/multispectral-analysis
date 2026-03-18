@@ -57,6 +57,7 @@ IMG_PREFS_SCHEMA = [
     {"kind": "section", "label": "Scale Bar"},
     {"kind": "entry", "key": "pixel_scale",          "label": "Pixel Scale",          "hint": "Physical size of one pixel (in scale bar units)"},
     {"kind": "entry", "key": "scale_bar_units",      "label": "Scale Bar Units",      "hint": "Units label for the scale bar (e.g. micrometer)"},
+    {"kind": "entry", "key": "scale_bar_color",      "label": "Scale Bar Color",      "hint": "Color of the scale bar and its label (e.g. white, black, #FFFFFF)"},
     {"kind": "entry", "key": "scale_bar_location",   "label": "Scale Bar Location",   "hint": "Position of the scale bar (e.g. lower right)"},
     {"kind": "entry", "key": "scale_bar_fixed_value","label": "Scale Bar Fixed Value","hint": "Fixed length for the scale bar in scale bar units; 0 to disable, blank for auto"},
     {"kind": "section", "label": "Extra"},
@@ -85,6 +86,7 @@ _COERCE_MAP: dict[str, str] = {
     "scale_bar_fixed_value": "float_or_none",
     "cmap":                  "str_or_none",
     "interpolation":         "str_or_none",
+    "scale_bar_color":       "str_or_none",
     "facecolor":             "str_or_none",
     "edgecolor":             "str_or_none",
 }
