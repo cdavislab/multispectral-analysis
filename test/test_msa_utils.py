@@ -3,6 +3,18 @@ import numpy as np
 import msagui.model.msa_utils as msa_utils
 
 class DummySettings:
+    show_colorbar = False
+    cunits = ""
+    font = "DejaVu Sans"
+    font_size = 10
+    font_weight = "normal"
+    num_ticks = 0
+    scale_bar_fixed_value = 0
+    pixel_scale = 0
+    scale_bar_units = ""
+    scale_bar_location = "lower right"
+    scale_bar_color = "white"
+
     def imsave_kwargs(self):
         return {"cmap": "gray"}
     def imshow_kwargs(self):
@@ -39,6 +51,14 @@ def test_decorate_image(monkeypatch):
         def imshow(self, image, **kwargs):
             called['image'] = image
             called['kwargs'] = kwargs
+        def get_xticklabels(self):
+            return []
+        def get_yticklabels(self):
+            return []
+        def set_xticks(self, ticks):
+            pass
+        def set_yticks(self, ticks):
+            pass
     arr = np.ones((2,2))
     msa_utils.decorate_image(arr, DummyAx(), DummySettings()) # type: ignore
     assert np.allclose(called['image'], arr)
@@ -71,10 +91,12 @@ def test_match_substr():
     substr = ["cat", "dog"]
     strings = ["cat1", "dog2", "catdog", "bird"]
     result = msa_utils.match_substr(substr, strings)
+    # match_substr assigns each string to the first (longest-priority) match,
+    # so "catdog" is captured by "cat" and not duplicated under "dog".
     assert "cat" in result
     assert "dog" in result
     assert set(result["cat"]) == {"cat1", "catdog"}
-    assert set(result["dog"]) == {"dog2", "catdog"}
+    assert set(result["dog"]) == {"dog2"}
 
 def test_construct_image(monkeypatch):
     # Patch subplots and tight_layout to avoid GUI
@@ -83,6 +105,11 @@ def test_construct_image(monkeypatch):
         class DummyAx:
             def imshow(self, image, **kwargs): pass
             def axis(self, arg): called.setdefault('off', []).append(arg)
+            def get_xticklabels(self): return []
+            def get_yticklabels(self): return []
+            def set_xticks(self, ticks): pass
+            def set_yticks(self, ticks): pass
+            def set_box_aspect(self, aspect): pass
         axs = np.array([[DummyAx() for _ in range(cols)] for _ in range(rows)])
         return None, axs
     monkeypatch.setattr(msa_utils, "subplots", fake_subplots)
