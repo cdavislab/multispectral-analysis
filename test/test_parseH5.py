@@ -74,8 +74,6 @@ def test_overwrite_dataset(temp_h5_file):
 
 def test_decode_dataset_with_bytes(temp_h5_file):
     fake_path = "/tmp/fake_image.csv"
-    print(f"Creating fake image file at {fake_path}")
-    print(temp_h5_file)
     # Create a dummy file so loader.load can read it
     arr = np.random.rand(4, 4)
     np.savetxt(fake_path, arr, delimiter=",")  # Or use open(fake_path, 'wb').write(...) if loader expects a TIFF

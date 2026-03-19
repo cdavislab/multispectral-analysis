@@ -1,6 +1,9 @@
 from PIL import Image
+import logging
 import numpy as np
 import numpy.typing as npt
+
+logger = logging.getLogger(__name__)
 
 def load_tiff(path: str) -> npt.NDArray:
     """
@@ -22,7 +25,13 @@ def load(path: str) -> npt.NDArray:
 
     ext = path.split('.')[-1].lower()
     if ext in loader:
-        data = loader[ext](path)
+        try:
+            data = loader[ext](path)
+            logger.debug("Loaded %s file: %s", ext, path)
+        except Exception:
+            logger.exception("Failed to load %s file: %s", ext, path)
+            raise
     else:
+        logger.error("Unsupported file extension '%s' for path: %s", ext, path)
         raise ValueError(f"Unsupported file extension: {ext}")
     return data

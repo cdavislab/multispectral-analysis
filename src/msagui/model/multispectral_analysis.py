@@ -27,8 +27,6 @@ def bin_image(image_data, image_name=""): #variables are the image to bin (a sin
 
 def correct_spectra(data, reference, correction_factor: float) :
     corrected = data - correction_factor * reference
-    # if np.any(corrected < 0):
-    #     print("Warning: Negative values detected in corrected data. Setting them to zero.")
     corrected[corrected < 0] = 0
     # return data - correction_factor * reference
     return corrected
@@ -38,7 +36,6 @@ def correct_spectra(data, reference, correction_factor: float) :
 def threshold(data,threshpercent=0.05): # the thresholdpercent is automatically set to 5% but can be changed by inputting that variable#
     maxsignal = np.max(data)
     threshval = maxsignal * threshpercent
-    # print(threshval, threshpercent)
     #threshold out low lipid areas
     data[data<threshval] = 0
     return data, maxsignal

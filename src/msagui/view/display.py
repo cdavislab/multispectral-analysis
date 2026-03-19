@@ -107,8 +107,9 @@ class ListboxView(View):
     
     def get_selected_indices(self) -> list[int]:
         """Get indices of selected files in the listbox."""
-        print("[Display.py] Selected indices:", self.file_list.curselection())
-        return list(self.file_list.curselection())
+        selected = list(self.file_list.curselection())
+        logger.debug("Selected indices: %s", selected)
+        return selected
 
 class WidgetsView(View):
     def __init__(self, root, widgets: dict, widget_type: tk.Widget):

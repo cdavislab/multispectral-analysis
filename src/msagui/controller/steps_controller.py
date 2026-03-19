@@ -1,9 +1,12 @@
 import csv
+import logging
 import tkinter.filedialog as filedialog
 import tkinter.messagebox as messagebox
 from msagui.view.steps_view import MultiCorrectionsDialog
 
 _STEP_FIELDS = ["keyword1", "operation", "keyword2", "value", "output_key"]
+
+logger = logging.getLogger(__name__)
 
 class StepsController:
     def __init__(self, model, view):
@@ -12,15 +15,17 @@ class StepsController:
         self.dialog = None
         
     def open(self):
-        print("Opening steps dialog...")
         """Open dialog to input multiple corrections and factors."""
+        logger.debug("Opening steps dialog")
         if self.dialog is not None:
             try:
                 if self.dialog.winfo_exists():
                     self.dialog.lift()
                     self.dialog.focus_force()
+                    logger.debug("Reusing existing steps dialog")
                     return
             except Exception:
+                logger.exception("Failed to focus existing steps dialog; recreating")
                 self.dialog = None
 
         self.dialog = MultiCorrectionsDialog(self.view.root, self.model.get_steps())
@@ -69,17 +74,21 @@ class StepsController:
             filetypes=[("CSV files", "*.csv"), ("All files", "*.*")]
         )
         if not file_path:
+            logger.debug("Steps import canceled by user")
             return
         try:
             with open(file_path, newline="", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
                 steps = self._parse_steps_csv(reader)
         except ValueError as e:
+            logger.warning("Invalid steps CSV format for %s: %s", file_path, e)
             messagebox.showerror("Import Error", str(e), parent=dialog)
             return
         except Exception as e:
+            logger.exception("Failed to import steps from %s", file_path)
             messagebox.showerror("Import Error", f"Failed to read file:\n{e}", parent=dialog)
             return
+        logger.info("Imported %d step(s) from %s", len(steps), file_path)
         dialog.load_step_data(steps)
 
     def export_steps(self):
@@ -95,6 +104,7 @@ class StepsController:
             filetypes=[("CSV files", "*.csv"), ("All files", "*.*")]
         )
         if not file_path:
+            logger.debug("Steps export canceled by user")
             return
         steps = dialog.get_step_data()
         try:
@@ -102,12 +112,14 @@ class StepsController:
                 writer = csv.DictWriter(f, fieldnames=_STEP_FIELDS)
                 writer.writeheader()
                 writer.writerows(steps)
+            logger.info("Exported %d step(s) to %s", len(steps), file_path)
         except Exception as e:
+            logger.exception("Failed to export steps to %s", file_path)
             messagebox.showerror("Export Error", f"Failed to write file:\n{e}", parent=dialog)
         
     def close(self):
-        print("[Close] Saving steps and closing dialog...")
         """Collect all steps and close dialog."""
+        logger.debug("Saving steps and closing dialog")
         if self.dialog is None:
             return
 
@@ -124,5 +136,5 @@ class StepsController:
             if step["keyword1"] and step["operation"] and step["output_key"]:
                 steps.append(step)
         self.dialog.destroy()
-        print("Collected steps:", steps)
+        logger.debug("Collected steps: %s", steps)
         self.model.steps.set_steps(steps)

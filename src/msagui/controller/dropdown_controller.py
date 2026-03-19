@@ -4,9 +4,14 @@ import os
 import json
 import platform
 import tempfile
+import logging
 import tkinter as tk
 import tkinter.messagebox as messagebox
+from datetime import datetime
 from msagui.view.progress_bar import ProgressBar
+from msagui.model.logging_utils import export_logs_bundle
+
+logger = logging.getLogger(__name__)
 
 class DropDownController:
     def __init__(self, model, view):
@@ -146,3 +151,29 @@ class DropDownController:
         with open(self.default_settings_path, "w", encoding="utf-8") as f:
             json.dump(self._build_settings_dict(), f, indent=2)
         messagebox.showinfo("Default Settings", f"Settings saved as default:\n{self.default_settings_path}")
+
+    def export_logs(self):
+        """Export current logs and metadata as a ZIP bundle for bug reporting."""
+        default_name = f"msa_logs_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+        destination = asksaveasfilename(
+            defaultextension=".zip",
+            filetypes=[("ZIP files", "*.zip"), ("All files", "*.*")],
+            title="Export Logs As",
+            initialfile=default_name,
+        )
+        if not destination:
+            return
+
+        try:
+            saved_path = export_logs_bundle(destination)
+            messagebox.showinfo(
+                "Logs Exported",
+                f"A diagnostic log bundle was saved to:\n{saved_path}\n\nPlease attach this ZIP file to your bug report.",
+            )
+            logger.info("Exported log bundle to %s", saved_path)
+        except Exception:
+            logger.exception("Failed to export log bundle")
+            messagebox.showerror(
+                "Export Failed",
+                "Could not export logs. Please try a different location and try again.",
+            )

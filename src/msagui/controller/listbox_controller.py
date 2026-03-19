@@ -30,6 +30,13 @@ class FileListController:
         self._drag_hover_list_idx: int | None = None
         self._drag_hover_after: bool = False
 
+    def _emit_listbox_select_event(self) -> None:
+        event_generate = getattr(self.listbox.file_list, "event_generate", None)
+        if callable(event_generate):
+            event_generate('<<ListboxSelect>>')
+        else:
+            logger.debug("Listbox does not support event_generate; skipping synthetic <<ListboxSelect>>")
+
     def _group_display_name(self, group_id) -> str:
         """Return a display name for the group, respecting the current view mode."""
         items = self.model.metadata.by_group(group_id)
@@ -70,7 +77,7 @@ class FileListController:
 
         if not ctrl_pressed and not shift_pressed and clicked_is_selected and len(selected_indices) > 1:
             self.update_selection()
-            self.listbox.file_list.event_generate('<<ListboxSelect>>')
+            self._emit_listbox_select_event()
             return 'break'
 
         if not ctrl_pressed and not shift_pressed:
@@ -92,7 +99,7 @@ class FileListController:
                 self.listbox.file_list.selection_set(index)
 
         self.update_selection()
-        self.listbox.file_list.event_generate('<<ListboxSelect>>')
+        self._emit_listbox_select_event()
         return 'break'
 
     def update_selection(self):
@@ -220,7 +227,7 @@ class FileListController:
             self._visible_indices = []
             self._group_ids = groups
             display_names = [self._group_display_name(g) for g in groups]
-            logger.info(f"Updating listbox with groups: {display_names}")
+            logger.debug("Updating listbox with groups: %s", display_names)
             self.listbox.update(display_names)
             self._reselect_saved_selection()
             return
@@ -233,7 +240,7 @@ class FileListController:
             self._format_name(self.model.metadata.items[idx].nickname, mode)
             for idx in self._visible_indices
         ]
-        logger.info(f"Updating listbox with display_names (mode={mode!r}): {display_names}")
+        logger.debug("Updating listbox with display_names (mode=%r): %s", mode, display_names)
         self.listbox.update(display_names)
         self._reselect_saved_selection()
         return
@@ -272,7 +279,7 @@ class FileListController:
     def on_file_selection(self, evt) -> str:
         w = evt.widget
         idx = self.listbox.get_selected_indices()
-        print(f"[ListboxController.py | onf] Selected indices: {idx}")
+        logger.debug("Selected indices: %s", idx)
         if len(idx) == 0:
             return ''
         self.index = int(idx[0])

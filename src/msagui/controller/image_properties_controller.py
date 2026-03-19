@@ -1,5 +1,9 @@
+import logging
+
 from msagui.model.msa_utils import is_number
 from msagui.view.image_properties_view import PropertiesView, ImagePropertiesView
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Schemas
@@ -140,4 +144,4 @@ class ImagePropertiesController:
         if is_number(value):
             self.model.settings.update_from_dict({key: float(value)})
         else:
-            print(f"Invalid value for {key}: {value}")
+            logger.warning("Invalid value for %s: %r", key, value)

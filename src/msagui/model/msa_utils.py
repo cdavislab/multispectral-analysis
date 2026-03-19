@@ -1,4 +1,5 @@
 import io
+import logging
 from math import ceil, sqrt
 from PIL import Image
 from msagui.model.imaging_settings import ImagingSettings
@@ -13,6 +14,8 @@ from matplotlib.font_manager import FontProperties
 from scipy.stats import gaussian_kde
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+logger = logging.getLogger(__name__)
 
 def shape_to_square(size) -> tuple:
     """
@@ -193,7 +196,7 @@ def construct_histogram(images: list, settings: HistogramSettings):
                 ax.plot(x_range, kde_scaled,
                         color=settings.kde_color, linewidth=1.5)
             except Exception:
-                pass  # Silently skip KDE if it fails (e.g. all identical values)
+                logger.debug("Skipping KDE due to failure", exc_info=True)
 
         if settings.log_scale:
             ax.set_yscale("log")

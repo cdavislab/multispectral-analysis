@@ -76,7 +76,7 @@ class MultiSpectralModel:
             new_key = self.metadata.new_key()
             meta = ImageMeta(key=new_key, nickname=fpath, group="default", kind="input")  # pyright: ignore[reportArgumentType]
             self.metadata.add(meta)
-            logger.info(f"Added metadata for file: {fpath} with key: {new_key}")
+            logger.debug("Added metadata for file: %s with key: %s", fpath, new_key)
             parseH5.add_input(self.hdf5_path, meta.hdf5_path, fpath)
         
         return self.process(file_path, func=add_single, progress_callback=progress_callback)
@@ -85,7 +85,7 @@ class MultiSpectralModel:
         def delete_single(idx: int):
             item = self.metadata.items[idx]
             key = item.key
-            logger.info(f"Deleting file with key: {key}")
+            logger.debug("Deleting file with key: %s", key)
             parseH5.delete(self.hdf5_path, key)
             self.metadata.delete(key)
         
@@ -148,7 +148,7 @@ class MultiSpectralModel:
             meta.group = group_idx
             parseH5.move(self.hdf5_path, old_path, meta.hdf5_path)  # move dataset to new group path
             meta.common_name = utils.split_substr(all_input_keywords, meta.nickname)
-            logger.info(f"Common name for {meta.nickname}: {meta.common_name}")
+            logger.debug("Common name for %s: %s", meta.nickname, meta.common_name)
             assert len(meta.common_name) == 2, f"Expected common_name to have 2 parts, got {len(meta.common_name)} for file {meta.nickname}"
 
     def export_stats(self, file_path: str | None = None, directory: str | None = None) -> str:
@@ -314,7 +314,7 @@ class MultiSpectralModel:
         Determines whether to use one or two input images based on presence of value or keyword_2.
         """
         assert type(group) == dict, f"Expected group to be a dict, got {type(group)}"
-        logger.info(f"Group: {group}")
+        logger.debug("Group: %s", group)
         item_1 = group[step['keyword1']]
         item_2 = group.get(step['keyword2'])
         value = step.get('value')
@@ -373,7 +373,12 @@ class MultiSpectralModel:
 
     def analyze(self, idx: int | list[int], progress_callback: Callable):
         if self.steps.get_steps() == []:
+            logger.warning("Analyze aborted: no processing steps defined")
             return ValueError("No processing steps defined. Please set steps before analyzing.")
+
+        selected_count = len(idx) if isinstance(idx, list) else 1
+        logger.info("Analyze started for %d selected item(s)", selected_count)
+        logger.info("Configured processing step count: %d", len(self.steps.get_steps()))
         
         self.set_keywords()
         self.set_groups()
@@ -382,11 +387,15 @@ class MultiSpectralModel:
         groups = set(self.metadata.groups(visible_only=True))
         if "default" in groups:
             groups.discard("default")
+
+        logger.info("Analyze will process %d grouped item set(s)", len(groups))
             
         for group in groups:
-            logging.info(f"Processing group: {group}")
+            logger.info(f"Processing group: {group}")
             items = self.metadata.by_group(group)
             group_dict = {item.keyword: item.hdf5_path for item in items}
-            logging.info(f"Group dict for group {group}: {group_dict}")
+            logger.debug("Group dict for group %s: %s", group, group_dict)
             self._analyze(group_dict, group, progress_callback)
+
+        logger.info("Analyze completed")
     

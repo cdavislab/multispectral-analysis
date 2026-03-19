@@ -76,6 +76,7 @@ class ControllerDispatcher:
         self.view.export_menu.entryconfig('File List',  command=self.up(self.dropdown_ctrl.export_filelist))
         self.view.export_menu.entryconfig('Settings',   command=self.up(self.dropdown_ctrl.export_settings))
         self.view.export_menu.entryconfig('Default Settings', command=self.up(self.dropdown_ctrl.export_default_settings))
+        self.view.export_menu.entryconfig('Logs', command=self.dropdown_ctrl.export_logs)
         self.view.import_menu.entryconfig('File List',  command=self.up(self.dropdown_ctrl.import_filelist))
         self.view.import_menu.entryconfig('Settings',   command=self.up(self.dropdown_ctrl.import_settings))
         self.view.config_menu.entryconfig('Image',     command=self.up(self.image_properties_ctrl.image_preferences))
@@ -175,7 +176,7 @@ class ControllerDispatcher:
         if self.view.show_groups.get():
             display_name = self.listbox_ctrl._group_display_name(idx)
         else:
-            logging.info(f"Selected file: {value}")
+            logger.debug("Selected file: %s", value)
             display_name = os.path.basename(value)
         self.view.get_widget('Filename').update('Filename', display_name)
         self.image_ctrl.update_display(idx)
@@ -189,7 +190,7 @@ class ControllerDispatcher:
             idx = self.listbox_ctrl.get_listbox_index()
             if idx is None:
                 return result
-            print(f"Updating display for index: {idx}")
+            logger.debug("Updating display for index: %s", idx)
             self.image_ctrl.update_display(idx)
             return result
         return wrapper

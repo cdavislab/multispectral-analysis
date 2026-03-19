@@ -1,4 +1,5 @@
 import os
+import logging
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -8,6 +9,8 @@ import multispectral_analysis as msa
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib_scalebar.scalebar import ScaleBar
 from matplotlib import ticker
+
+logger = logging.getLogger(__name__)
 
 # Model class for managing data, analysis, and file operations
 class MultispectralModel:
@@ -295,7 +298,7 @@ class MultispectralModel:
                     raise Exception(filepath + " contains non-numeric data")
                 loaded_data.append(data)
             except Exception as e:
-                print(f"Error loading file {filepath}: {e}")
+                logger.warning("Error loading file %s: %s", filepath, e)
         
         return loaded_data
 
@@ -602,7 +605,7 @@ class MultispectralModel:
     
     def print_steps(self):
         # Print the current analysis steps
-        print(self.steps)
+        logger.info("Current analysis steps: %s", self.steps)
         return
 
 

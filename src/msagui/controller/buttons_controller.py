@@ -3,7 +3,10 @@ from tkinter.filedialog import askopenfilenames, askdirectory
 import tkinter as tk
 import tkinter.messagebox as messagebox
 import os
+import logging
 from msagui.view.progress_bar import ProgressBar
+
+logger = logging.getLogger(__name__)
 
 class ButtonsController:
     def __init__(self, model, view, listbox_ctrl=None):
@@ -16,12 +19,15 @@ class ButtonsController:
             filetypes=(("Comma Delimited", "*.csv"), ("All files", "*.*"))
         )
         if not files:
+            logger.debug("Add canceled by user")
             return
 
+        logger.info("Adding %d file(s)", len(files))
         with ProgressBar(title="Processing", total=len(files)) as progress:
             results = self.model.add(files, progress_callback=progress.step)
 
         if len(results.keys()) != 0:
+            logger.warning("Add completed with %d failure(s)", len(results))
             self.view.show_error(results)
         
     def delete(self):
@@ -31,12 +37,15 @@ class ButtonsController:
         else:
             idx_to_del = self.view.listbox.get_selected_indices()
         if not idx_to_del:
+            logger.debug("Delete requested with no selected items")
             return
 
+        logger.info("Deleting %d selected item(s)", len(idx_to_del))
         with ProgressBar(title="Deleting Files", total=len(idx_to_del)) as progress:
             results = self.model.delete(idx_to_del, progress_callback=progress.step)
 
         if len(results.keys()) != 0:
+            logger.warning("Delete completed with %d failure(s)", len(results))
             self.view.show_error(results)
 
 
@@ -45,12 +54,15 @@ class ButtonsController:
         # Validate user input fields before analysis
         # Ignore analyze request if no files are loaded
         if self.model.df.empty:
+            logger.warning("Analyze blocked: no files loaded")
             messagebox.showerror("Add Files", "Add files using \"Add Files\" button before analyzing.")
             return None
         if self.view.show_groups.get():
+            logger.warning("Analyze blocked: attempted in group view")
             messagebox.showerror("Group View", "Cannot analyze in group view.")
             return None
         if not self.view.show_inputs.get():
+            logger.warning("Analyze blocked: inputs are hidden")
             messagebox.showerror("Inputs Hidden", "Please show inputs before analyzing.")
             return None
         # Get the values from the entries
@@ -59,6 +71,7 @@ class ButtonsController:
         args = {key: args[key] for key in entry_keys}
         # Check if required fields are empty
         if any(args[key] == '' for key in ['freq1', 'freq2']):
+            logger.warning("Analyze blocked: missing required frequency fields")
             messagebox.showerror("Missing Fields", "Please fill out all fields before analyzing.")
             return None
         # Convert the string inputs to floats
@@ -67,15 +80,18 @@ class ButtonsController:
             try:
                 args[key] = float(s) if s.strip() else 0.0
             except ValueError:
+                logger.warning("Analyze blocked: invalid numeric value for %s: %r", key, s)
                 messagebox.showerror("Invalid Input", "Please enter an integer or decimal for the number of wavenumbers.")
                 return None
             
         
         # If the correction factor is non-zero, but no correction factor label is entered, show an error
         if ('' == args['freq1c']) and (args['freq1cf'] != 0):
+            logger.warning("Analyze blocked: freq1 correction factor provided without freq1c label")
             messagebox.showerror("Missing Fields", "Please enter a label for Frequency 1 Correction.")
             return None
         if ('' == args['freq2c']) and (args['freq2cf'] != 0):
+            logger.warning("Analyze blocked: freq2 correction factor provided without freq2c label")
             messagebox.showerror("Missing Fields", "Please enter a label for Frequency 2 Correction.")
             return None
         # If the correction factor for frequency is 0, set correction factor label to None
@@ -109,11 +125,17 @@ class ButtonsController:
         else:
             selected_idx = self.view.listbox.get_selected_indices()
         if not selected_idx:
+            logger.warning("Analyze requested with no selection")
             messagebox.showerror("No Selection", "Please select at least one file to analyze.")
             return
+        logger.info("Starting analyze for %d selected item(s)", len(selected_idx))
         with ProgressBar(title="Analyzing", total=len(selected_idx)) as progress:
             error = self.model.analyze(selected_idx, progress_callback=progress)
-            messagebox.showerror("Analysis Error", error) if error else None
+            if error:
+                logger.error("Analyze failed: %s", error)
+                messagebox.showerror("Analysis Error", error)
+            else:
+                logger.info("Analyze completed successfully")
 
     def _ask_export_scope(self) -> dict | None:
         """Show a dialog asking whether to export all or selected images,
@@ -181,6 +203,7 @@ class ButtonsController:
         """Prompt for a folder and save every visible image into it."""
         choice = self._ask_export_scope()
         if choice is None:
+            logger.debug("Export canceled at scope selection")
             return
         scope = choice["scope"]
         do_export_stats = choice["export_stats"]
@@ -210,9 +233,11 @@ class ButtonsController:
 
             if (not selected_lb) and (not selected_group_ids) and (self.listbox_ctrl is None or not selected_meta_idx):
                 if is_group_view:
+                    logger.warning("Export blocked: no groups selected in selected scope")
                     messagebox.showerror("Export", "No groups are selected. "
                                          "Please select groups in the list first.")
                 else:
+                    logger.warning("Export blocked: no images selected in selected scope")
                     messagebox.showerror("Export", "No images are selected. "
                                          "Please select images in the list first.")
                 return
@@ -241,6 +266,7 @@ class ButtonsController:
 
         directory = askdirectory(title="Choose Export Folder")
         if not directory:
+            logger.debug("Export canceled at directory selection")
             return
 
         ext = self.model.settings.export_format.lstrip(".")
@@ -277,6 +303,17 @@ class ButtonsController:
                         continue
                     group_ids.append(group_id)
 
+        logger.info(
+            "Starting export: scope=%s items=%d groups=%d histograms=%s stats=%s subdivide=%s directory=%s",
+            scope,
+            len(items),
+            len(group_ids),
+            do_export_histograms,
+            do_export_stats,
+            do_subdivide,
+            directory,
+        )
+
         if not items and not group_ids:
             messagebox.showinfo("Export", "No images or groups to export.")
             return
@@ -298,6 +335,7 @@ class ButtonsController:
                     image.save(out_path)
                     export_count += 1
                 except Exception as e:
+                    logger.exception("Failed exporting image for %s", meta.nickname)
                     errors[meta.nickname] = e
                 finally:
                     progress.step()
@@ -312,6 +350,7 @@ class ButtonsController:
                         histogram.save(out_path)
                         export_count += 1
                     except Exception as e:
+                        logger.exception("Failed exporting histogram for %s", meta.nickname)
                         errors[f"{meta.nickname} (histogram)"] = e
                     finally:
                         progress.step()
@@ -325,6 +364,7 @@ class ButtonsController:
                     group_image.save(out_path)
                     export_count += 1
                 except Exception as e:
+                    logger.exception("Failed exporting group image for group %s", group_id)
                     errors[f"group {group_id}"] = e
                 finally:
                     progress.step()
@@ -338,13 +378,17 @@ class ButtonsController:
                         group_histogram.save(out_path)
                         export_count += 1
                     except Exception as e:
+                        logger.exception("Failed exporting group histogram for group %s", group_id)
                         errors[f"group {group_id} (histogram)"] = e
                     finally:
                         progress.step()
 
         if errors:
+            logger.warning("Export completed with %d failure(s)", len(errors))
             self.view.show_error(errors)
         else:
+            logger.info("Export completed successfully with %d file(s)", export_count)
             messagebox.showinfo("Export", f"Exported {export_count} file(s) to:\n{directory}")
         if do_export_stats:
+            logger.info("Exporting statistics CSV to %s", directory)
             self.model.export_stats(directory=directory)
