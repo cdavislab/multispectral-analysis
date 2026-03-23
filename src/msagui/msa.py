@@ -16,7 +16,7 @@ from msagui.model.logging_utils import configure_logging, get_log_file_path
 from msagui.view.main_view import MultispectralView
 from msagui.controller.main_controller import ControllerDispatcher
 
-def setup_logging():
+def setup_logging() -> None:
     configure_logging(level=logging.INFO)
 
 if __name__ == "__main__":

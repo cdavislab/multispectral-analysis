@@ -1,23 +1,25 @@
 import pytest
 import h5py
 import numpy as np
+from pathlib import Path
 from msagui.model.model import MultiSpectralModel
 
 @pytest.fixture
-def temp_hdf5(tmp_path):
+def temp_hdf5(tmp_path: Path) -> str:
     hdf5_path = tmp_path / "test_model.h5"
     # Create img1 and img2 as csv files
     return str(hdf5_path)
 
 @pytest.fixture
-def temp_img_paths(tmp_path):
+def temp_img_paths(tmp_path: Path) -> list[str]:
     img1_path = tmp_path / "data_img1.csv"
     img2_path = tmp_path / "data_img2.csv"
     np.savetxt(img1_path, np.ones((5, 5)), delimiter=",")
     np.savetxt(img2_path, np.full((5, 5), 2), delimiter=",")
     return [str(img1_path), str(img2_path)]
 
-def test_single_step(temp_hdf5, temp_img_paths):
+def test_single_step(temp_hdf5: str, temp_img_paths: list[str]) -> None:
+    """Verify a single add-step produces expected result dataset in grouped output."""
     model = MultiSpectralModel()
     model.set_hdf5_path(temp_hdf5)
     model.add(temp_img_paths, lambda: None)
@@ -37,7 +39,8 @@ def test_single_step(temp_hdf5, temp_img_paths):
         expected = np.ones((5, 5)) + np.full((5, 5), 2)
         assert np.allclose(result_data, expected)
 
-def test_multistep(temp_hdf5, temp_img_paths):
+def test_multistep(temp_hdf5: str, temp_img_paths: list[str]) -> None:
+    """Verify multi-step pipelines persist intermediate and final computed datasets."""
     model = MultiSpectralModel()
     model.set_hdf5_path(temp_hdf5)
     model.add(temp_img_paths, lambda: None)
@@ -63,7 +66,8 @@ def test_multistep(temp_hdf5, temp_img_paths):
         computed_expected = expected - np.full((5, 5), 2)
         assert np.allclose(computed_data, computed_expected)
 
-def test_double_analyze(temp_hdf5, temp_img_paths):
+def test_double_analyze(temp_hdf5: str, temp_img_paths: list[str]) -> None:
+    """Verify repeated analyze calls keep result datasets consistent."""
     model = MultiSpectralModel()
     model.set_hdf5_path(temp_hdf5)
     model.add(temp_img_paths, lambda: None)
@@ -79,7 +83,8 @@ def test_double_analyze(temp_hdf5, temp_img_paths):
         expected = np.ones((5, 5)) + np.full((5, 5), 2)
         assert np.allclose(result_data, expected)
 
-def test_double_analyze1(temp_hdf5, temp_img_paths):
+def test_double_analyze1(temp_hdf5: str, temp_img_paths: list[str]) -> None:
+    """Verify grouping and metadata state after analyze setup for paired inputs."""
     model = MultiSpectralModel()
     model.set_hdf5_path(temp_hdf5)
     model.add(temp_img_paths, lambda: None)
@@ -90,7 +95,8 @@ def test_double_analyze1(temp_hdf5, temp_img_paths):
     assert model.metadata.groups() == [1]
     assert model.metadata.nicknames() == temp_img_paths
 
-def test_single_keyword_twice(temp_hdf5, temp_img_paths):
+def test_single_keyword_twice(temp_hdf5: str, temp_img_paths: list[str]) -> None:
+    """Verify grouping behavior when a step reuses the same keyword twice."""
     model = MultiSpectralModel()
     model.set_hdf5_path(temp_hdf5)
     model.add(temp_img_paths, lambda: None)
@@ -101,7 +107,8 @@ def test_single_keyword_twice(temp_hdf5, temp_img_paths):
     assert model.metadata.groups() == [1, "default"]
     assert set(model.metadata.nicknames()) == set(temp_img_paths)
 
-def test_addition(temp_hdf5, temp_img_paths):
+def test_addition(temp_hdf5: str, temp_img_paths: list[str]) -> None:
+    """Verify addition operation produces correct numeric output."""
     model = MultiSpectralModel()
     model.set_hdf5_path(temp_hdf5)
     model.add(temp_img_paths, lambda: None)
@@ -121,7 +128,8 @@ def test_addition(temp_hdf5, temp_img_paths):
         expected = np.ones((5, 5)) + np.full((5, 5), 2)
         assert np.allclose(result_data, expected)
 
-def test_subtraction(temp_hdf5, temp_img_paths):
+def test_subtraction(temp_hdf5: str, temp_img_paths: list[str]) -> None:
+    """Verify subtraction operation produces correct numeric output."""
     model = MultiSpectralModel()
     model.set_hdf5_path(temp_hdf5)
     model.add(temp_img_paths, lambda: None)
@@ -141,7 +149,8 @@ def test_subtraction(temp_hdf5, temp_img_paths):
         expected = np.ones((5, 5)) - np.full((5, 5), 2)
         assert np.allclose(result_data, expected)
 
-def test_division(temp_hdf5, temp_img_paths):
+def test_division(temp_hdf5: str, temp_img_paths: list[str]) -> None:
+    """Verify division operation produces correct numeric output."""
     model = MultiSpectralModel()
     model.set_hdf5_path(temp_hdf5)
     model.add(temp_img_paths, lambda: None)
@@ -161,7 +170,8 @@ def test_division(temp_hdf5, temp_img_paths):
         expected = np.ones((5, 5)) / np.full((5, 5), 2)
         assert np.allclose(result_data, expected)
 
-def test_multiplication(temp_hdf5, temp_img_paths):
+def test_multiplication(temp_hdf5: str, temp_img_paths: list[str]) -> None:
+    """Verify multiplication operation produces correct numeric output."""
     model = MultiSpectralModel()
     model.set_hdf5_path(temp_hdf5)
     model.add(temp_img_paths, lambda: None)
@@ -181,7 +191,8 @@ def test_multiplication(temp_hdf5, temp_img_paths):
         expected = np.ones((5, 5)) * np.full((5, 5), 2)
         assert np.allclose(result_data, expected)
 
-def test_multiplication_by_value(temp_hdf5, temp_img_paths):
+def test_multiplication_by_value(temp_hdf5: str, temp_img_paths: list[str]) -> None:
+    """Verify scalar multiplication via value field produces expected output."""
     model = MultiSpectralModel()
     model.set_hdf5_path(temp_hdf5)
     model.add(temp_img_paths, lambda: None)
@@ -201,7 +212,8 @@ def test_multiplication_by_value(temp_hdf5, temp_img_paths):
         expected = np.ones((5, 5)) * 3
         assert np.allclose(result_data, expected)
 
-def test_threshold(temp_hdf5, temp_img_paths):
+def test_threshold(temp_hdf5: str, temp_img_paths: list[str]) -> None:
+    """Verify threshold step writes a mask-like output dataset."""
     model = MultiSpectralModel()
     model.set_hdf5_path(temp_hdf5)
     model.add(temp_img_paths, lambda: None)

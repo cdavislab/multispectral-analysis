@@ -1,8 +1,11 @@
 import tkinter as tk
 from tkinter import ttk
+from typing import Any
+
+
 class MultiCorrectionsDialog(tk.Toplevel):
     """Dialog for entering multiple correction steps with operations and output keys."""
-    def __init__(self, parent, steps):
+    def __init__(self, parent: tk.Widget, steps: list[dict[str, str]]) -> None:
         super().__init__(parent)
         self.title("Analysis Set-Up")
         self.transient(parent)
@@ -10,7 +13,7 @@ class MultiCorrectionsDialog(tk.Toplevel):
         self.minsize(1050, 400)
         self._position_window(parent, width=1050, height=400)
         self.steps = steps
-        self.result = None
+        self.result: dict[str, str] | None = None
 
         # Main frame with two panes
         self.main_frame = tk.Frame(self)
@@ -73,7 +76,7 @@ class MultiCorrectionsDialog(tk.Toplevel):
         self.export_button = tk.Button(self.op_frame, text="Export Steps")
         self.export_button.grid(row=5, column=1, sticky="ew", padx=2, pady=(0, 2))
 
-    def _position_window(self, parent, width: int, height: int):
+    def _position_window(self, parent: tk.Widget, width: int, height: int) -> None:
         """Center dialog over parent and keep it fully on-screen."""
         self.update_idletasks()
 
@@ -93,7 +96,7 @@ class MultiCorrectionsDialog(tk.Toplevel):
 
         self.geometry(f"{width}x{height}+{x}+{y}")
 
-    def add_step_row(self, step=None):
+    def add_step_row(self, step: dict[str, str] | None = None) -> None:
         """Add a row to the steps table. Optionally populate with a step dict."""
         row = self.next_row
         self.next_row += 1
@@ -117,7 +120,7 @@ class MultiCorrectionsDialog(tk.Toplevel):
         self.step_rows.append([step_num, keyword, operation, keyword2, value, output_key, up_btn, down_btn, del_btn])
         self.update_row_numbers()
 
-    def move_step_row(self, idx, direction):
+    def move_step_row(self, idx: int, direction: int) -> None:
         """Move a step row up or down in the list, preventing out-of-bounds moves and refreshing entry text."""
         new_idx = idx + direction
         if 0 <= new_idx < len(self.step_rows):
@@ -126,7 +129,7 @@ class MultiCorrectionsDialog(tk.Toplevel):
             self.update_row_numbers()
             self.refresh_entry_texts()
 
-    def delete_step_row(self, idx):
+    def delete_step_row(self, idx: int) -> None:
         """Delete a step row from the table."""
         row = self.step_rows.pop(idx)
         # Destroy all widgets in the row
@@ -135,7 +138,7 @@ class MultiCorrectionsDialog(tk.Toplevel):
                 widget.destroy()
         self.update_row_numbers()
 
-    def update_row_numbers(self):
+    def update_row_numbers(self) -> None:
         """Update the row numbers, re-grid widgets, and create unique up/down/delete buttons for each row."""
         for idx, row in enumerate(self.step_rows, start=1):
             row[0].config(text=str(idx))
@@ -165,7 +168,7 @@ class MultiCorrectionsDialog(tk.Toplevel):
             else:
                 down_btn.config(state=tk.NORMAL)
 
-    def refresh_entry_texts(self):
+    def refresh_entry_texts(self) -> None:
         """Refresh the text in the entries to reflect the new order in step_rows."""
         # Extract all entry values in order
         entry_values = []
@@ -190,7 +193,7 @@ class MultiCorrectionsDialog(tk.Toplevel):
             row[5].delete(0, tk.END)
             row[5].insert(0, values[4])
 
-    def get_step_data(self):
+    def get_step_data(self) -> list[dict[str, str]]:
         """Return the current entry widget values as a list of step dicts."""
         return [
             {
@@ -203,7 +206,7 @@ class MultiCorrectionsDialog(tk.Toplevel):
             for row in self.step_rows
         ]
 
-    def load_step_data(self, steps):
+    def load_step_data(self, steps: list[dict[str, str]]) -> None:
         """Clear all current rows and repopulate the table from a list of step dicts."""
         for row in list(self.step_rows):
             for widget in row:
@@ -214,7 +217,7 @@ class MultiCorrectionsDialog(tk.Toplevel):
         for step in steps:
             self.add_step_row(step)
 
-    def open_op_dialog(self, op):
+    def open_op_dialog(self, op: str) -> None:
         """Open dialog for arithmetic operation step."""
         dialog = self.OperationDialog(self, op)
         self.wait_window(dialog)
@@ -229,7 +232,7 @@ class MultiCorrectionsDialog(tk.Toplevel):
             }
             self.add_step_row(step)
 
-    def open_threshold_dialog(self):
+    def open_threshold_dialog(self) -> None:
         """Open dialog for threshold operation step."""
         dialog = self.ThresholdDialog(self)
         self.wait_window(dialog)
@@ -245,10 +248,10 @@ class MultiCorrectionsDialog(tk.Toplevel):
 
     class OperationDialog(tk.Toplevel):
         """Dialog for arithmetic operation step."""
-        def __init__(self, parent, op):
+        def __init__(self, parent: tk.Widget, op: str) -> None:
             super().__init__(parent)
             self.title(f"Operation: {op}")
-            self.result = None
+            self.result: dict[str, str] | None = None
             tk.Label(self, text="Keyword (A):").grid(row=0, column=0, padx=5, pady=5, sticky="e")
             self.keyword1 = tk.Entry(self)
             self.keyword1.grid(row=0, column=1, padx=5, pady=5)
@@ -264,7 +267,7 @@ class MultiCorrectionsDialog(tk.Toplevel):
             self.output_key.grid(row=4, column=1, padx=5, pady=5)
             tk.Button(self, text="OK", command=self.on_ok).grid(row=5, column=0, columnspan=2, pady=10)
 
-        def on_ok(self):
+        def on_ok(self) -> None:
             self.result = {
                 "keyword1": self.keyword1.get().strip(),
                 "keyword2": self.keyword2.get().strip(),
@@ -276,10 +279,10 @@ class MultiCorrectionsDialog(tk.Toplevel):
 
     class ThresholdDialog(tk.Toplevel):
         """Dialog for threshold operation step."""
-        def __init__(self, parent):
+        def __init__(self, parent: tk.Widget) -> None:
             super().__init__(parent)
             self.title("Threshold")
-            self.result = None
+            self.result: dict[str, str] | None = None
             tk.Label(self, text="Keyword:").grid(row=0, column=0, padx=5, pady=5, sticky="e")
             self.keyword = tk.Entry(self)
             self.keyword.grid(row=0, column=1, padx=5, pady=5)
@@ -296,7 +299,7 @@ class MultiCorrectionsDialog(tk.Toplevel):
             self.output_key.grid(row=3, column=1, padx=5, pady=5)
             tk.Button(self, text="OK", command=self.on_ok).grid(row=4, column=0, columnspan=2, pady=10)
 
-        def on_ok(self):
+        def on_ok(self) -> None:
             self.result = {
                 "keyword1": self.keyword.get().strip(),
                 "threshold": self.threshold.get().strip(),

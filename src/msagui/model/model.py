@@ -1,7 +1,7 @@
 import os
 import csv
 import tempfile
-from typing import Callable
+from typing import Any, Callable
 import numpy.typing as npt
 import numpy as np
 import msagui.model.msa_utils as utils
@@ -17,7 +17,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class MultiSpectralModel:
-    def __init__(self):
+    def __init__(self) -> None:
         self.metadata = MetadataStore()
         self.settings = ImagingSettings()
         self.histogram_settings = HistogramSettings()
@@ -54,7 +54,12 @@ class MultiSpectralModel:
             fallback_dir = tempfile.mkdtemp(prefix="msaGUI_")
             return os.path.join(fallback_dir, "msa_data.h5")
 
-    def process(self, items, func: Callable, progress_callback: Callable | None) -> dict[str, Exception]:
+    def process(
+        self,
+        items: Any,
+        func: Callable[[Any], None],
+        progress_callback: Callable[[], None] | None,
+    ) -> dict[Any, Exception]:
         if not isinstance(items, list | tuple):
             items = [items]
 
@@ -72,7 +77,7 @@ class MultiSpectralModel:
     ### Adding Files, Deleting Files, Setting Metadata ###
 
     def add(self, file_path: str | list[str], progress_callback: Callable | None = None) -> dict[str, Exception]:
-        def add_single(fpath: str):
+        def add_single(fpath: str) -> None:
             new_key = self.metadata.new_key()
             meta = ImageMeta(key=new_key, nickname=fpath, group="default", kind="input")  # pyright: ignore[reportArgumentType]
             self.metadata.add(meta)
@@ -82,7 +87,7 @@ class MultiSpectralModel:
         return self.process(file_path, func=add_single, progress_callback=progress_callback)
 
     def delete(self, idx: int | list[int], progress_callback: Callable | None = None) -> dict[str, Exception]:
-        def delete_single(idx: int):
+        def delete_single(idx: int) -> None:
             item = self.metadata.items[idx]
             key = item.key
             logger.debug("Deleting file with key: %s", key)
@@ -93,7 +98,7 @@ class MultiSpectralModel:
             idx = sorted(idx, reverse=True)
         return self.process(idx, func=delete_single, progress_callback=progress_callback)
     
-    def set_keywords(self):
+    def set_keywords(self) -> None:
         """
         Sets keywords for images based on filename matching.
         """
@@ -105,7 +110,7 @@ class MultiSpectralModel:
                 key = self.metadata.by_basename(name)[0].key
                 self.metadata.change_keyword(key, keyword)
 
-    def validate_grouping(self, metas: list[ImageMeta], keywords: set) -> bool:
+    def validate_grouping(self, metas: list[ImageMeta], keywords: set[str]) -> bool:
         """ Validates that a group of images contains all keywords once. Returns True if valid, False otherwise."""
         for meta in metas:
             if meta.keyword in keywords:
@@ -116,7 +121,7 @@ class MultiSpectralModel:
             return False
         return True
 
-    def set_groups(self):
+    def set_groups(self) -> None:
         """
         Updates image groups based on name matching after removing keywords.
         Uses pre-existing groups as a starting point to maintain consistency.
@@ -209,13 +214,13 @@ class MultiSpectralModel:
         self.metadata.export_filelist(file_path)
         logger.info(f"File list exported to {file_path}")
 
-    def set_hdf5_path(self, hdf5_path: str):
+    def set_hdf5_path(self, hdf5_path: str) -> None:
         """
         Sets the HDF5 file path for loading images.
         """
         self.hdf5_path = hdf5_path
 
-    def get_steps(self):
+    def get_steps(self) -> list[dict[str, Any]]:
         """
         Retrieves current processing steps from the model.
         """
@@ -223,7 +228,7 @@ class MultiSpectralModel:
 
     ### Image Visualization and Analysis ###
 
-    def get_images(self, keys: str | list[str]) -> npt.NDArray | list[npt.NDArray]:
+    def get_images(self, keys: str | list[str]) -> npt.NDArray[Any] | list[npt.NDArray[Any]]:
         """
         Retrieves image data from HDF5 file for given keys.
         """
@@ -242,7 +247,7 @@ class MultiSpectralModel:
 
         return images if len(images) > 1 else images[0]
     
-    def make_image(self, idx: int) -> tuple[Image, dict]:
+    def make_image(self, idx: int) -> tuple[Image, dict[str, float | int]]:
         """
         Makes processed image for given dataframe index.
         """
@@ -256,7 +261,7 @@ class MultiSpectralModel:
         plt.close()
         return stream, item.statistics
 
-    def make_histogram(self, idx: int) -> tuple[Image, dict]:
+    def make_histogram(self, idx: int) -> tuple[Image, dict[str, float | int]]:
         """
         Makes a histogram image for the item at the given metadata index.
         """
@@ -270,7 +275,7 @@ class MultiSpectralModel:
         plt.close()
         return stream, item.statistics
 
-    def make_group_image(self, group_id) -> tuple[Image, dict]:
+    def make_group_image(self, group_id: str | int) -> tuple[Image, dict[str, Any]]:
         """
         Makes a composite image showing all images in a group.
         Each subplot is titled with the item's keyword.
@@ -290,7 +295,7 @@ class MultiSpectralModel:
         plt.close()
         return stream, {}
 
-    def make_group_histogram(self, group_id) -> tuple[Image, dict]:
+    def make_group_histogram(self, group_id: str | int) -> tuple[Image, dict[str, Any]]:
         """
         Makes a composite histogram figure for all images in a group.
         Each subplot is titled with the item's keyword.
@@ -308,7 +313,7 @@ class MultiSpectralModel:
         plt.close()
         return stream, {}
 
-    def process_step(self, group: dict, step: dict) -> npt.NDArray:
+    def process_step(self, group: dict[str, str], step: dict[str, Any]) -> npt.NDArray[Any]:
         """
         Processes a single step for a given group of images. Decides operation based on step dictionary.
         Determines whether to use one or two input images based on presence of value or keyword_2.
@@ -326,19 +331,24 @@ class MultiSpectralModel:
         data1, data2 = self.get_images([item_1, item_2])
         return utils.operate(data1, data2, step['operation'])
         
-    def add_processed(self, fpath: str, group: str, keyword: str):
+    def add_processed(self, fpath: str, group: str, keyword: str) -> None:
         new_key = self.metadata.new_key()
         self.metadata.add(ImageMeta(key=new_key, nickname=fpath, group=group,
                                     keyword=keyword, kind="processed"))
         parseH5.add_input(self.hdf5_path, new_key, fpath)
 
-    def clear_processed(self):
+    def clear_processed(self) -> None:
         processed_items = [item for item in self.metadata.items if item.kind == "processed"]
         for item in processed_items:
             parseH5.delete(self.hdf5_path, item.key)
             self.metadata.delete(item.key)
 
-    def _analyze(self, group: dict, group_id: str, progress_callback: Callable):
+    def _analyze(
+        self,
+        group: dict[str, str],
+        group_id: str | int,
+        progress_callback: Callable[[], None],
+    ) -> None:
         self.group_cache.clear()
 
         # Pull the last used index for each output keyword across all steps to optimize caching strategy
@@ -371,7 +381,7 @@ class MultiSpectralModel:
                 self.group_cache[output_keyword] = result
                 group[meta.keyword] = meta.hdf5_path  
 
-    def analyze(self, idx: int | list[int], progress_callback: Callable):
+    def analyze(self, idx: int | list[int], progress_callback: Callable[[], None]) -> ValueError | None:
         if self.steps.get_steps() == []:
             logger.warning("Analyze aborted: no processing steps defined")
             return ValueError("No processing steps defined. Please set steps before analyzing.")

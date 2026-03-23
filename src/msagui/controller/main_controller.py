@@ -1,6 +1,7 @@
 
 import logging
 import os
+from typing import Any, Callable
 from msagui.controller.buttons_controller import ButtonsController
 from msagui.controller.dropdown_controller import DropDownController
 from msagui.controller.listbox_controller import FileListController
@@ -13,14 +14,14 @@ logger = logging.getLogger(__name__)
 
 # Controller class to manage the logic between the Model and the View
 class ControllerDispatcher:
-    def __init__(self, model, view):
+    def __init__(self, model: Any, view: Any) -> None:
         # Initialize controller with model and view, set up configs and signals
         self.model = model
         self.view = view
-        self.steps = None
-        self.config =['save_correction_freq1', 'save_correction_freq2', 'save_threshold_freq2','freq1_label',
+        self.steps: Any = None
+        self.config: list[str] = ['save_correction_freq1', 'save_correction_freq2', 'save_threshold_freq2','freq1_label',
                       'freq2_label', 'freq1c_label', 'freq2c_label', 'ratio_label']
-        self.img_config = ['font', 'font_size', 'font_weight', 'cmap', 'vmin', 'vmax', 'cunits', 'ratio_vmin',
+        self.img_config: list[str] = ['font', 'font_size', 'font_weight', 'cmap', 'vmin', 'vmax', 'cunits', 'ratio_vmin',
                            'ratio_vmax', 'ratio_cunits', 'pixel_scale', 'scale_bar_units', 'scale_bar_color','scale_bar_location',
                         'scale_bar_fixed_value','num_ticks']
         self.recruit_controllers()
@@ -28,7 +29,7 @@ class ControllerDispatcher:
         self.dropdown_ctrl.import_default_settings()
         self.view_length = "Full" #Full, Parent, File
     
-    def recruit_controllers(self):
+    def recruit_controllers(self) -> None:
         """Create and return instances of other controllers"""
         self.listbox_ctrl = FileListController(
             self.model,
@@ -45,7 +46,8 @@ class ControllerDispatcher:
         self.steps_ctrl = StepsController(self.model, self.view)
         self.histogram_ctrl = HistogramController(self.model, self.view)
         
-    def connect_signals(self):
+    def connect_signals(self) -> None:
+        """Attach all dispatcher-managed signals and trace callbacks."""
         self.connect_button_signals()
         self.connect_menu_signals()
         self.connect_accelerators()
@@ -58,7 +60,8 @@ class ControllerDispatcher:
         self.view.sort_key.trace_add('write', self._on_sort_change)
         self.view.sort_desc.trace_add('write', self._on_sort_change)
 
-    def connect_button_signals(self):
+    def connect_button_signals(self) -> None:
+        """Bind view buttons to controller commands."""
         button_commands = {
             self.view.buttons.items['Add']: self.up(self.button_ctrl.add),
             self.view.buttons.items['Delete']: self.up(self.button_ctrl.delete),
@@ -70,7 +73,8 @@ class ControllerDispatcher:
         for button, command in button_commands.items():
             button.config(command=command)
 
-    def connect_menu_signals(self):
+    def connect_menu_signals(self) -> None:
+        """Bind menu entries to controller actions."""
         self.view.root.bind('<<MenuToggle>>', self.handle_menu_toggle)
         self.view.config_menu.entryconfig('General', command=self.up(self.image_properties_ctrl.preferences))
         self.view.export_menu.entryconfig('File List',  command=self.up(self.dropdown_ctrl.export_filelist))
@@ -82,15 +86,17 @@ class ControllerDispatcher:
         self.view.config_menu.entryconfig('Image',     command=self.up(self.image_properties_ctrl.image_preferences))
         self.view.config_menu.entryconfig('Histogram', command=self.histogram_ctrl.open)
 
-    def connect_accelerators(self):
+    def connect_accelerators(self) -> None:
+        """Register keyboard accelerators for common actions."""
         self.view.view_menu.entryconfig('Histograms', accelerator='Ctrl+H')
         self.view.root.bind('<Control-h>', self._handle_histogram_shortcut)
 
-    def _handle_histogram_shortcut(self, event):
+    def _handle_histogram_shortcut(self, event: Any) -> None:
+        """Toggle histogram visibility via keyboard shortcut."""
         self.dropdown_ctrl.toggle_checkbox(self.view.show_histograms)
         # trace_add on show_histograms will trigger _on_histogram_toggle automatically
 
-    def _on_histogram_toggle(self, *_):
+    def _on_histogram_toggle(self, *_: Any) -> None:
         """Called whenever show_histograms changes; refreshes the current display."""
         self._apply_visibility_filters()
         idx = self.listbox_ctrl.get_listbox_index()
@@ -98,7 +104,7 @@ class ControllerDispatcher:
             return
         self.image_ctrl.update_display(idx)
 
-    def _on_group_toggle(self, *_):
+    def _on_group_toggle(self, *_: Any) -> None:
         """Called whenever show_groups changes; rebuilds the listbox and refreshes display."""
         self._apply_visibility_filters()
         self.listbox_ctrl.update_listbox()
@@ -107,7 +113,7 @@ class ControllerDispatcher:
             return
         self.image_ctrl.update_display(idx)
 
-    def _on_visibility_toggle(self, *_):
+    def _on_visibility_toggle(self, *_: Any) -> None:
         """Called whenever show_inputs/show_outputs changes; rebuild list and refresh display."""
         self._apply_visibility_filters()
         self.listbox_ctrl.update_listbox()
@@ -116,7 +122,8 @@ class ControllerDispatcher:
             return
         self.image_ctrl.update_display(idx)
 
-    def _on_sort_change(self, *_):
+    def _on_sort_change(self, *_: Any) -> None:
+        """Resort listbox items and refresh current display."""
         self.listbox_ctrl.sort_items()
         self.listbox_ctrl.update_listbox()
         idx = self.listbox_ctrl.get_listbox_index()
@@ -124,7 +131,8 @@ class ControllerDispatcher:
             return
         self.image_ctrl.update_display(idx)
 
-    def _apply_visibility_filters(self):
+    def _apply_visibility_filters(self) -> None:
+        """Apply input/output visibility flags to metadata items."""
         show_inputs = self.view.show_inputs.get()
         show_outputs = self.view.show_outputs.get()
         for item in self.model.metadata.items:
@@ -135,8 +143,10 @@ class ControllerDispatcher:
             else:
                 item.visible = True
 
-    def handle_menu_toggle(self, event):
-        state = {
+    def handle_menu_toggle(self, event: Any) -> None:
+        """Read current menu state when the menu toggle event fires."""
+        _ = event
+        _state = {
             'Group View': self.view.view_menu.entrycget('Group View', 'variable'),
             'Histograms': self.view.view_menu.entrycget('Histograms', 'variable'),
             'Show Inputs': self.view.show_inputs.get(),
@@ -145,7 +155,8 @@ class ControllerDispatcher:
 
         }
 
-    def connect_listbox_signals(self):
+    def connect_listbox_signals(self) -> None:
+        """Bind listbox selection and drag interactions."""
         self.view.listbox.file_list.bind('<<ListboxSelect>>', self._on_file_selection)
         self.view.listbox.file_list.bind('<Button-1>', self.listbox_ctrl.on_click)
         self.view.listbox.file_list.bind('<B1-Motion>', self.listbox_ctrl.on_drag_motion)
@@ -153,7 +164,8 @@ class ControllerDispatcher:
         self.view.listbox.file_list.bind('<Double-Button-1>', self.up(self.listbox_ctrl.rename_item))
         self.view.listbox.file_list.bind('<Control-a>', self.listbox_ctrl.select_all)
 
-    def _on_drag_release(self, event):
+    def _on_drag_release(self, event: Any) -> None:
+        """Handle drag-release reordering and refresh dependent views."""
         moved = self.listbox_ctrl.on_drag_release(event)
         if not moved:
             return
@@ -164,10 +176,13 @@ class ControllerDispatcher:
             return
         self.image_ctrl.update_display(idx)
         
-    def _steps_view_update(self, event):
+    def _steps_view_update(self, event: Any) -> None:
+        """Open steps configuration view."""
+        _ = event
         self.steps_ctrl.open()
 
-    def _on_file_selection(self, event):
+    def _on_file_selection(self, event: Any) -> None:
+        """Update filename widget and preview when selection changes."""
         value = self.listbox_ctrl.on_file_selection(event)
         idx = self.listbox_ctrl.get_listbox_index()
         if idx is None:
@@ -181,9 +196,9 @@ class ControllerDispatcher:
         self.view.get_widget('Filename').update('Filename', display_name)
         self.image_ctrl.update_display(idx)
 
-    def up(self, func):
+    def up(self, func: Callable[..., Any]) -> Callable[..., Any]:
         """Decorator to update view after function call."""
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             result = func(*args, **kwargs)
             self._apply_visibility_filters()
             self.listbox_ctrl.update_listbox()

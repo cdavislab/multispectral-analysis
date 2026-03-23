@@ -1,7 +1,8 @@
 import pytest
 from msagui.model.metadata import ImageMeta, MetadataStore
 
-def test_add_and_keys():
+def test_add_and_keys() -> None:
+    """Verify adding metadata items updates keys in insertion order."""
     store = MetadataStore()
     meta1 = ImageMeta(key="1", group="A", kind="input", nickname="/path/to/image1.tif")
     meta2 = ImageMeta(key="2", group="B", kind="processed", nickname="/path/to/image2.tif")
@@ -9,7 +10,8 @@ def test_add_and_keys():
     store.add(meta2)
     assert store.keys == ["1", "2"]
 
-def test_basenames():
+def test_basenames() -> None:
+    """Verify basename normalization uses parent/stem format."""
     store = MetadataStore()
     meta1 = ImageMeta(key='1',nickname="/path/to/image1.tif", group="A", kind="input")
     meta2 = ImageMeta(key='2',nickname="/another/path/image2.jpg", group="B", kind="processed")
@@ -17,7 +19,8 @@ def test_basenames():
     store.add(meta2)
     assert store.basenames == ["to/image1", "path/image2"]
 
-def test_delete():
+def test_delete() -> None:
+    """Verify deleting metadata entries removes matching keys."""
     store = MetadataStore()
     meta1 = ImageMeta(key="1", group="A", kind="input", nickname="/path/to/image1.tif")
     meta2 = ImageMeta(key="2", group="B", kind="processed", nickname="/path/to/image2.tif")
@@ -28,7 +31,8 @@ def test_delete():
     store.delete("2")
     assert store.keys == []
 
-def test_by_group():
+def test_by_group() -> None:
+    """Verify group filtering returns only members of the requested group."""
     store = MetadataStore()
     meta1 = ImageMeta(key="1", group="A", kind="input", nickname="/path/to/image1.tif")
     meta2 = ImageMeta(key="2", group="B", kind="processed", nickname="/path/to/image2.tif")
@@ -40,7 +44,8 @@ def test_by_group():
     assert len(group_a) == 2
     assert all(m.group == "A" for m in group_a)
 
-def test_new_key():
+def test_new_key() -> None:
+    """Verify new_key returns the first missing positive integer as a string."""
     store = MetadataStore()
     assert store.new_key() == "1"
     store.add(ImageMeta(key="1", group="A", kind="input", nickname="/path/to/image1.tif"))
@@ -49,28 +54,32 @@ def test_new_key():
     store.add(ImageMeta(key="4", group="A", kind="input", nickname="/path/to/image4.tif"))
     assert store.new_key() == "3"
 
-def test_change_keyword():
+def test_change_keyword() -> None:
+    """Verify change_keyword mutates the target item keyword."""
     store = MetadataStore()
     meta = ImageMeta(key="1", group="A", kind="input", keyword="old", nickname="/path/to/image1.tif")
     store.add(meta)
     store.change_keyword("1", "new")
     assert store.items[0].keyword == "new"
 
-def test_change_group():
+def test_change_group() -> None:
+    """Verify change_group mutates the target item group."""
     store = MetadataStore()
     meta = ImageMeta(key="1", group="A", kind="input", nickname="/path/to/image1.tif")
     store.add(meta)
     store.change_group("1", "B")
     assert store.items[0].group == "B"
 
-def test_statistics_optional():
+def test_statistics_optional() -> None:
+    """Verify statistics defaults to None and accepts explicit statistics payloads."""
     meta = ImageMeta(key="1", group="A", kind="input", nickname="/path/to/image1.tif")
     assert meta.statistics is None
     meta2 = ImageMeta(key="2", group="A", kind="input", nickname="/path/to/image2.tif", statistics={"mean": 1.0})
     assert meta2.statistics == {"mean": 1.0}
 
 
-def test_move_items_block_preserves_order():
+def test_move_items_block_preserves_order() -> None:
+    """Verify moving a contiguous block preserves the block's relative ordering."""
     store = MetadataStore()
     for key in ["1", "2", "3", "4", "5"]:
         store.add(ImageMeta(key=key, group="A", kind="input", nickname=f"/p/{key}.tif"))
@@ -80,7 +89,8 @@ def test_move_items_block_preserves_order():
     assert store.keys == ["1", "4", "2", "3", "5"]
 
 
-def test_sort_items_by_basename():
+def test_sort_items_by_basename() -> None:
+    """Verify basename sorting orders items lexicographically by filename."""
     store = MetadataStore()
     store.add(ImageMeta(key="1", group="A", kind="input", nickname="/x/c_file.tif"))
     store.add(ImageMeta(key="2", group="A", kind="input", nickname="/x/a_file.tif"))
@@ -92,7 +102,8 @@ def test_sort_items_by_basename():
     ]
 
 
-def test_sort_items_by_time_imported_descending():
+def test_sort_items_by_time_imported_descending() -> None:
+    """Verify time_imported sorting supports descending order."""
     store = MetadataStore()
     store.add(ImageMeta(key="1", group="A", kind="input", nickname="/x/one.tif"))
     store.add(ImageMeta(key="2", group="A", kind="input", nickname="/x/two.tif"))
@@ -102,7 +113,8 @@ def test_sort_items_by_time_imported_descending():
     assert store.keys == ["3", "2", "1"]
 
 
-def test_sort_items_by_group_descending_mixed_group_ids():
+def test_sort_items_by_group_descending_mixed_group_ids() -> None:
+    """Verify group sorting handles numeric, text, and default groups in descending mode."""
     store = MetadataStore()
     store.add(ImageMeta(key="1", group="2", kind="input", nickname="/x/g2.tif"))
     store.add(ImageMeta(key="2", group="10", kind="input", nickname="/x/g10.tif"))

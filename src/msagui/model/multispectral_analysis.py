@@ -1,14 +1,24 @@
-#multispectral_analysis
+"""Core multispectral analysis helpers."""
 
-#import necessary packages
 import numpy as np
+import numpy.typing as npt
 import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from matplotlib_scalebar.scalebar import ScaleBar
+from typing import Any
 
-#This function bins the multispectral image in a 2x2 fashion, if using it should always be applied before thresholding and ratioing so that thresholded pixels dont get averaged into pixels with non-zero intensity#
-def bin_image(image_data, image_name=""): #variables are the image to bin (a singlewavenumber image save as a csv) and the name you would like to call it#
-    # Binning#
+def bin_image(image_data: npt.NDArray[Any], image_name: str = "") -> tuple[npt.NDArray[np.float64], str]:
+    """Bin an image into 2×2 blocks using mean intensity.
+
+    Args:
+        image_data: Input 2-D image array.
+        image_name: Name prefix used to generate output image name.
+
+    Returns:
+        Tuple of binned image array and generated binned image name.
+    """
     height, width = image_data.shape
     binned_height = height // 2
     binned_width = width // 2
@@ -20,33 +30,68 @@ def bin_image(image_data, image_name=""): #variables are the image to bin (a sin
             block = image_data[i:i+2, j:j+2]
             binned_image[i//2, j//2] = np.mean(block)
 
-    # Construct a unique name for the binned image#
     binned_image_name = f"{image_name}_binned"
 
     return binned_image, binned_image_name 
 
-def correct_spectra(data, reference, correction_factor: float) :
+def correct_spectra(
+    data: npt.NDArray[Any],
+    reference: npt.NDArray[Any],
+    correction_factor: float,
+) -> npt.NDArray[Any]:
+    """Subtract scaled reference spectra and clip negative values to zero.
+
+    Args:
+        data: Input data spectrum or image array.
+        reference: Reference array to be scaled and subtracted.
+        correction_factor: Multiplicative factor applied to the reference.
+
+    Returns:
+        Corrected array with non-negative values.
+    """
     corrected = data - correction_factor * reference
     corrected[corrected < 0] = 0
-    # return data - correction_factor * reference
     return corrected
 
-#Thresholds the image to select for only areas with high enough lipid signal and then ratios two single wavenumber images#
+def threshold(data: npt.NDArray[Any], threshpercent: float = 0.05) -> tuple[npt.NDArray[Any], np.generic]:
+    """Zero values below a percentage of the maximum signal.
 
-def threshold(data,threshpercent=0.05): # the thresholdpercent is automatically set to 5% but can be changed by inputting that variable#
+    Args:
+        data: Input array to threshold. This array is modified in place.
+        threshpercent: Fraction of maximum intensity used as threshold.
+
+    Returns:
+        Tuple of thresholded array and original maximum signal.
+    """
     maxsignal = np.max(data)
     threshval = maxsignal * threshpercent
-    #threshold out low lipid areas
     data[data<threshval] = 0
     return data, maxsignal
     
-def compute_ratio(top, bottom):
-    #ratio two single wavenumber images. this does not do any corrections for water or amide-I, that has to be done beforehand
+def compute_ratio(top: npt.NDArray[Any], bottom: npt.NDArray[Any]) -> npt.NDArray[Any]:
+    """Compute element-wise ratio between two arrays with zero-division protection.
+
+    Args:
+        top: Numerator array.
+        bottom: Denominator array.
+
+    Returns:
+        Ratio array with zeros where denominator is zero.
+    """
     return np.divide(top, bottom, out = np.zeros_like(top), where = bottom != 0)
 
-#analysis function, this simply runs some basic statistics on our images after taking out the threholded pixels (as to not average in a bunch of zeros) This also writes the statistics to a csv file in your  "directroy for saving"
-def summarize(data, header_name: str = ''):#, fname: str = None):
-    data_foravg = data[data != 0] #remove the thresholded pixels that have been set to 0
+def summarize(data: npt.NDArray[Any], header_name: str = "") -> npt.NDArray[Any]:
+    """Summarize non-zero pixels with basic descriptive statistics.
+
+    Args:
+        data: Input data array.
+        header_name: Reserved parameter for compatibility.
+
+    Returns:
+        Two-row array containing statistics and header labels.
+    """
+    _ = header_name
+    data_foravg = data[data != 0]
     mean_value = np.mean(data_foravg)
     median_value = np.median(data_foravg)
     max_signal = np.max(data_foravg)
@@ -57,8 +102,26 @@ def summarize(data, header_name: str = ''):#, fname: str = None):
     return np.array([[mean_value, median_value, max_signal, std_deviation, standard_error, size],\
         ['Average','Median','Max', 'Std','Se','n']])
 
-#histogram function This produces an automatic histogram using seaborn from your data 
-def histogram(data, fname: str = None, ax = None, lower_bound: float = None, upper_bound: float = None):
+def histogram(
+    data: npt.NDArray[Any],
+    fname: str | None = None,
+    ax: Axes | None = None,
+    lower_bound: float | None = None,
+    upper_bound: float | None = None,
+) -> tuple[npt.NDArray[Any], Figure]:
+    """Create a histogram plot from non-zero values.
+
+    Args:
+        data: Input data array.
+        fname: Reserved parameter for compatibility.
+        ax: Optional axis to render into.
+        lower_bound: Optional lower x-axis limit.
+        upper_bound: Optional upper x-axis limit.
+
+    Returns:
+        Flattened non-zero values and the generated figure.
+    """
+    _ = fname
     data = data[data != 0]
     flat = data.flatten()
     sns.set_style('darkgrid')
@@ -67,18 +130,29 @@ def histogram(data, fname: str = None, ax = None, lower_bound: float = None, upp
     g = sns.histplot(data = flat, ax=ax)
     if lower_bound != None or upper_bound != None:
         ax.set_xlim([lower_bound,upper_bound])
-    # ax.set_xlabel("Ratio")
     fig = g.get_figure()
-    #save = np.savetxt(directory+ output_subfolder + general_file_name + '0removed_flattened' + named + '.csv', flat, delimiter=',')
-    #save_fig = fig.savefig(directory+ output_subfolder + general_file_name +  'histogram_thresh' + named + '.png')
     return flat, fig
 
-#plot function
-def ratio_image(data, lower_bound: float = None, upper_bound: float = None, scalebar_size: float = 0, ax = None):
-    # Display the image
+def ratio_image(
+    data: npt.NDArray[Any],
+    lower_bound: float | None = None,
+    upper_bound: float | None = None,
+    scalebar_size: float = 0,
+    ax: Axes | None = None,
+) -> Axes:
+    """Render a ratio image with optional limits and scale bar.
+
+    Args:
+        data: Input ratio image array.
+        lower_bound: Optional lower color limit.
+        upper_bound: Optional upper color limit.
+        scalebar_size: Pixel size in microns for scale bar rendering.
+        ax: Optional axis to render into.
+
+    Returns:
+        Axis containing the rendered image.
+    """
     ax = ax or plt.gca()
-    # if ax == None:
-    #     fig, ax = plt.subplots()
     if lower_bound != None or upper_bound != None:
         im_obj = plt.imshow(data, cmap='CMRmap', vmin=lower_bound, vmax=upper_bound)
         plt.clim([lower_bound, upper_bound],ax=ax)

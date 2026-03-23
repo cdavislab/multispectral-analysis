@@ -8,37 +8,37 @@ from msagui.model.metadata import ImageMeta, MetadataStore
 
 
 class DummyVar:
-    def __init__(self, value):
+    def __init__(self, value: Any) -> None:
         self._value = value
 
-    def get(self):
+    def get(self) -> Any:
         return self._value
 
 
 class DummyTkListbox:
-    def __init__(self):
+    def __init__(self) -> None:
         self.items: list[str] = []
         self._selection: set[int] = set()
         self._active = 0
 
-    def nearest(self, y):
+    def nearest(self, y: Any) -> int:
         if not self.items:
             return 0
         return max(0, min(int(y), len(self.items) - 1))
 
-    def curselection(self):
+    def curselection(self) -> tuple[int, ...]:
         return tuple(sorted(self._selection))
 
-    def selection_includes(self, idx):
+    def selection_includes(self, idx: Any) -> bool:
         return idx in self._selection
 
-    def selection_clear(self, start, end=None):
+    def selection_clear(self, start: Any, end: Any = None) -> None:
         if start == 0 and end == tk.END:
             self._selection.clear()
             return
         self._selection.discard(int(start))
 
-    def selection_set(self, start, end=None):
+    def selection_set(self, start: Any, end: Any = None) -> None:
         if end is None:
             self._selection.add(int(start))
             return
@@ -49,19 +49,19 @@ class DummyTkListbox:
         for i in range(int(start), end_idx + 1):
             self._selection.add(i)
 
-    def size(self):
+    def size(self) -> int:
         return len(self.items)
 
-    def itemconfig(self, idx, cfg):
+    def itemconfig(self, idx: Any, cfg: Any) -> None:
         return
 
-    def activate(self, idx):
+    def activate(self, idx: Any) -> None:
         self._active = int(idx)
 
-    def get(self, idx):
+    def get(self, idx: Any) -> str:
         return self.items[int(idx)]
 
-    def bbox(self, idx):
+    def bbox(self, idx: Any) -> tuple[int, int, int, int] | None:
         i = int(idx)
         if i < 0 or i >= len(self.items):
             return None
@@ -70,23 +70,24 @@ class DummyTkListbox:
 
 
 class DummyListboxView:
-    def __init__(self):
+    def __init__(self) -> None:
         self.file_list = DummyTkListbox()
 
-    def update(self, files):
+    def update(self, files: list[str]) -> None:
         self.file_list.items = list(files)
         self.file_list._selection = {i for i in self.file_list._selection if i < len(files)}
 
-    def get_selected_indices(self):
+    def get_selected_indices(self) -> list[int]:
         return list(self.file_list.curselection())
 
 
 class DummyModel:
-    def __init__(self):
+    def __init__(self) -> None:
         self.metadata = MetadataStore()
 
 
-def test_drag_selected_block_moves_together():
+def test_drag_selected_block_moves_together() -> None:
+    """Verify dragging within a multi-selection moves the selected block as a unit."""
     model = DummyModel()
     for key in ["1", "2", "3", "4", "5"]:
         model.metadata.add(
@@ -117,7 +118,8 @@ def test_drag_selected_block_moves_together():
     assert selected_rows == [2, 3]
 
 
-def test_plain_click_on_selected_row_preserves_multiselect():
+def test_plain_click_on_selected_row_preserves_multiselect() -> None:
+    """Verify plain click on a selected row preserves existing multi-selection."""
     model = DummyModel()
     for key in ["1", "2", "3", "4"]:
         model.metadata.add(
@@ -143,7 +145,8 @@ def test_plain_click_on_selected_row_preserves_multiselect():
     assert listbox_view.get_selected_indices() == [1, 2]
 
 
-def test_drag_hover_row_tracks_motion_and_clears_on_release():
+def test_drag_hover_row_tracks_motion_and_clears_on_release() -> None:
+    """Verify drag hover indicator updates on motion and resets on release."""
     model = DummyModel()
     for key in ["1", "2", "3", "4"]:
         model.metadata.add(
@@ -170,7 +173,8 @@ def test_drag_hover_row_tracks_motion_and_clears_on_release():
     assert controller._drag_hover_list_idx is None
 
 
-def test_drag_to_last_row_appends_item_to_end():
+def test_drag_to_last_row_appends_item_to_end() -> None:
+    """Verify dragging first row past end appends item to list tail."""
     model = DummyModel()
     for key in ["1", "2", "3", "4"]:
         model.metadata.add(

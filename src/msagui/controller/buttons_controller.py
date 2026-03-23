@@ -4,17 +4,19 @@ import tkinter as tk
 import tkinter.messagebox as messagebox
 import os
 import logging
+from typing import Any
 from msagui.view.progress_bar import ProgressBar
 
 logger = logging.getLogger(__name__)
 
 class ButtonsController:
-    def __init__(self, model, view, listbox_ctrl=None):
+    def __init__(self, model: Any, view: Any, listbox_ctrl: Any = None) -> None:
         self.model = model
         self.view = view
         self.listbox_ctrl = listbox_ctrl
 
-    def add(self):
+    def add(self) -> None:
+        """Open file picker and add selected files to the model."""
         files = askopenfilenames(
             filetypes=(("Comma Delimited", "*.csv"), ("All files", "*.*"))
         )
@@ -30,7 +32,8 @@ class ButtonsController:
             logger.warning("Add completed with %d failure(s)", len(results))
             self.view.show_error(results)
         
-    def delete(self):
+    def delete(self) -> None:
+        """Delete currently selected files from model and listbox."""
         # Delete selected files from listbox and model
         if self.listbox_ctrl is not None:
             idx_to_del = self.listbox_ctrl.get_selected_metadata_indices()
@@ -50,7 +53,8 @@ class ButtonsController:
 
 
     #TODO: Troubleshoot addition of dictionaries and swap to freq1 vs lw
-    def validate_entries(self):
+    def validate_entries(self) -> dict[str, Any] | None:
+        """Validate analyze-entry fields and normalize numeric values."""
         # Validate user input fields before analysis
         # Ignore analyze request if no files are loaded
         if self.model.df.empty:
@@ -105,7 +109,8 @@ class ButtonsController:
             args['multiple_factors'] = self.view.multiple_factors
         return args
 
-    def count_unique_types(self, entries):
+    def count_unique_types(self, entries: dict[str, Any]) -> int:
+        """Count unique non-null type labels from entry mapping."""
         # Count unique types among frequency/correction entries
         types = set([entries['freq1'],
                  entries['freq2'],
@@ -115,11 +120,13 @@ class ButtonsController:
             types.remove(None)
         return len(types)
 
-    def group(self):
+    def group(self) -> None:
+        """Recompute keywords and groups from current model state."""
         self.model.set_keywords()
         self.model.set_groups()
 
-    def analyze(self):
+    def analyze(self) -> None:
+        """Run model analysis for selected list entries."""
         if self.listbox_ctrl is not None:
             selected_idx = self.listbox_ctrl.get_selected_metadata_indices()
         else:
@@ -159,7 +166,7 @@ class ButtonsController:
         btn_frame = tk.Frame(win)
         btn_frame.pack(pady=(0, 6))
 
-        def choose(value):
+        def choose(value: str | None) -> None:
             result[0] = value
             win.destroy()
 
@@ -199,7 +206,7 @@ class ButtonsController:
             "subdivide": subdivide_var.get(),
         }
 
-    def export_images(self):
+    def export_images(self) -> None:
         """Prompt for a folder and save every visible image into it."""
         choice = self._ask_export_scope()
         if choice is None:
@@ -272,13 +279,13 @@ class ButtonsController:
         ext = self.model.settings.export_format.lstrip(".")
         ext = "." + ext
 
-        def convert_for_format(image):
+        def convert_for_format(image: Any) -> Any:
             # JPEG/BMP don't support alpha — convert to RGB when needed.
             if ext.lower() in (".jpg", ".jpeg", ".bmp") and image.mode in ("RGBA", "LA", "P"):
                 return image.convert("RGB")
             return image
 
-        def build_subfolder(meta):
+        def build_subfolder(meta: Any) -> str:
             if not do_subdivide:
                 return directory
             parent_folder = os.path.basename(os.path.dirname(meta.nickname))

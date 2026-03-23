@@ -1,19 +1,20 @@
 import tkinter as tk
 import tkinter.font as tkFont
 import tkinter.messagebox as messagebox
+from typing import Any
 
 from msagui.view.display import DisplayView, ListboxView, WidgetsView
 from msagui.view.defaults import ViewDefaults
 
 class MultispectralView():
     """View class to handle the GUI components for multispectral analysis."""
-    def __init__(self, root: tk.Tk):
+    def __init__(self, root: tk.Tk) -> None:
         """Initialize the main window and default styles."""
         self.root = root
         self.default_font = tkFont.nametofont("TkDefaultFont").actual()
         self.setup_ui()
 
-    def setup_ui(self):
+    def setup_ui(self) -> None:
         """Configure window size, layout, and add main UI components"""
         self.root.title("msaGUI")
         width = 800
@@ -40,7 +41,8 @@ class MultispectralView():
         paned_window.grid(row=0, column=0, rowspan=7, columnspan=16, sticky="nsew", padx=2, pady=2)  # Fill the entire window
         return paned_window
 
-    def build_widgets(self):
+    def build_widgets(self) -> None:
+        """Build primary widgets for list, controls, labels, and display."""
         self.paned_window = self.build_paned_window()
         self.listbox = ListboxView(self.paned_window)
         
@@ -60,7 +62,7 @@ class MultispectralView():
 
         self.display = DisplayView(self.paned_window, self.root, self.labels.items['Filename'])
 
-    def build_menubar(self):
+    def build_menubar(self) -> None:
         """Build the menu bar and menus for file/view/path options."""
         self.menubar = tk.Menu(self.root)
         self.root.config(menu=self.menubar)
@@ -122,7 +124,7 @@ class MultispectralView():
                            variable=self.sort_desc)
         return
 
-    def initialize_menu_vars(self):
+    def initialize_menu_vars(self) -> None:
         """Initialize Tkinter variables for menu state."""
         self.show_groups = tk.BooleanVar()
         self.show_histograms = tk.BooleanVar()
@@ -133,7 +135,7 @@ class MultispectralView():
         self.sort_desc = tk.BooleanVar(value=False)
         return
     
-    def show_error(self, errors: dict):
+    def show_error(self, errors: dict[Any, Exception]) -> None:
         """Show error dialog for failed file additions."""
         error_str = "Could not add/delete the following files:\n"
         for error in errors:
@@ -141,7 +143,7 @@ class MultispectralView():
         messagebox.showerror("Error", error_str)
         return
     
-    def get_settings(self) -> dict:
+    def get_settings(self) -> dict[str, Any]:
         """Gather current settings from the UI."""
         settings = {
             'freq1': self.entries['freq1'].get(),
@@ -159,7 +161,7 @@ class MultispectralView():
         }
         return settings
     
-    def get_widget(self, widget_name: str) -> tk.Widget:
+    def get_widget(self, widget_name: str) -> Any:
         """Get a reference to a specific widget by name."""
         for widget in self.widgets:
             if widget_name in widget.items:

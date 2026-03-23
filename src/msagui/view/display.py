@@ -1,15 +1,17 @@
 import tkinter as tk
 from PIL import ImageTk
 import logging
+from typing import Any
+from PIL.Image import Image
 from msagui.view.defaults import ViewDefaults
 
 logger = logging.getLogger(__name__)
 
 class View:
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
-    def decorate(self, widget: tk.Widget):
+    def decorate(self, widget: tk.Widget) -> tk.Widget:
         """Apply default styling to widgets."""
         widget.configure(
             bg=ViewDefaults.bg, # pyright: ignore[reportCallIssue]
@@ -19,26 +21,27 @@ class View:
         )
         return widget
 
-    def build(self, root):
+    def build(self, root: Any) -> None:
         """Build the view components. To be implemented by subclasses."""
         pass
 
-    def update(self, *args, **kwargs):
+    def update(self, *args: Any, **kwargs: Any) -> None:
         """Update the view components. To be implemented by subclasses."""
         pass
 
 class DisplayView(View):
-    def __init__(self, panel, root, widget_below):
+    def __init__(self, panel: tk.PanedWindow, root: tk.Widget, widget_below: tk.Widget) -> None:
         """Initialize the display view within the main application window."""
         self.build(panel)
         self.panel = panel
         self.root = root
         self.widget_below = widget_below
         self.items = {"img_panel": self.img_panel}
-    def build(self, root):
+
+    def build(self, root: tk.PanedWindow) -> None:
         """Build the image display panel."""
         self.img_panel = self.decorate(tk.Label(root, bg='gray'))
-        self.panel_img = ""
+        self.panel_img: ImageTk.PhotoImage | None = None
         root.add(self.img_panel)
         return
     
@@ -49,7 +52,7 @@ class DisplayView(View):
         width, height = geometry.split('x')[0], geometry.split('x')[1].split('+')[0]
         return int(width), int(height)
 
-    def resize(self, img):
+    def resize(self, img: Image) -> Image:
         """Display an image in the image panel, resizing as needed."""
         screen_width, screen_height = self.get_shape(self.root)
         sash_position = self.panel.sash_coord(0)[0]
@@ -72,27 +75,28 @@ class DisplayView(View):
         ))
         return img
 
-    def update(self, img):
+    def update(self, img: Image) -> None:
+        """Render the provided image in the panel after resizing."""
         img = self.resize(img)
         self.panel_img = ImageTk.PhotoImage(img)
         self.img_panel.configure(image=self.panel_img) # pyright: ignore[reportCallIssue]
         return
 
 class ListboxView(View):
-    def __init__(self, root):
+    def __init__(self, root: tk.PanedWindow) -> None:
         """Initialize the file list view within the main application window."""
         self.root = root
         self.build(self.root)
         self.items = {"listbox": self.file_list}
         
-    def update(self, files: list[str]):
+    def update(self, files: list[str]) -> None:
         """Update the listbox with a new list of files."""
         self.file_list.delete(0, tk.END)
         for name in files:
             # logger.info(f"Adding file to listbox: {name}")
             self.file_list.insert(tk.END, name)
             
-    def build(self, paned_window):
+    def build(self, paned_window: tk.PanedWindow) -> None:
         """Build the file list viewer with scrollbar."""
         frm = tk.Frame(paned_window)
         self.scrollbar = tk.Scrollbar(frm, orient="horizontal")
@@ -112,24 +116,31 @@ class ListboxView(View):
         return selected
 
 class WidgetsView(View):
-    def __init__(self, root, widgets: dict, widget_type: tk.Widget):
+    def __init__(self, root: tk.Widget, widgets: dict[str, dict[str, Any]], widget_type: type[tk.Widget]) -> None:
         """Initialize the labels view within the main application window."""
         self.build(root, widgets, widget_type)
 
-    def create_widget(self, root, widget_class, grid, **kwargs):
+    def create_widget(
+        self,
+        root: tk.Widget,
+        widget_class: type[tk.Widget],
+        grid: dict[str, Any],
+        **kwargs: Any,
+    ) -> tk.Widget:
+        """Create, decorate, and grid a widget instance."""
         widget = widget_class(root, **kwargs)
-        """Apply default styling to widgets."""
         widget = self.decorate(widget)
         widget.grid(**grid)
         return widget
     
-    def build(self, root, widgets: dict, widget_type: tk.Widget):
-        self.items = dict()
+    def build(self, root: tk.Widget, widgets: dict[str, dict[str, Any]], widget_type: type[tk.Widget]) -> None:
+        """Build and register labeled widget instances from configuration."""
+        self.items: dict[str, tk.Widget] = dict()
         for text, grid_options in widgets.items():
             self.items[text] = self.create_widget(root, widget_type, grid_options, text=text, relief='groove')
         return
     
-    def update(self, text: str, new_value: str):
+    def update(self, text: str, new_value: str) -> None:
         """Update the text of a specific widget."""
         if text in self.items:
             self.items[text].configure(text=new_value)

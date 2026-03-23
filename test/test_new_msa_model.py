@@ -1,23 +1,27 @@
 import numpy as np
 import h5py
 import pytest
+from pathlib import Path
+from typing import Any, cast
 from msagui.model.model import MultiSpectralModel
 from msagui.model.steps import Steps
 
 @pytest.fixture
-def temp_hdf5(tmp_path):
+def temp_hdf5(tmp_path: Path) -> str:
 	hdf5_path = tmp_path / "test_model.h5"
 	with h5py.File(hdf5_path, "w") as f:
 		f.create_dataset("img1", data=np.ones((5, 5)))
 		f.create_dataset("img2", data=np.full((5, 5), 2))
 	return str(hdf5_path)
 
-def test_set_hdf5_path():
+def test_set_hdf5_path() -> None:
+	"""Verify set_hdf5_path updates the model's active HDF5 file path."""
 	model = MultiSpectralModel()
 	model.set_hdf5_path("abc.h5")
 	assert model.hdf5_path == "abc.h5"
 
-def test_add_and_delete(monkeypatch, tmp_path):
+def test_add_and_delete(monkeypatch: Any, tmp_path: Path) -> None:
+	"""Verify add and delete update metadata count using patched HDF5 operations."""
 	model = MultiSpectralModel()
 	hdf5_path = tmp_path / "test_add.h5"
 	model.set_hdf5_path(str(hdf5_path))
@@ -47,7 +51,8 @@ def test_add_and_delete(monkeypatch, tmp_path):
 # 	model.set_keywords()
 # 	model.set_groups()
 
-def test_get_images(monkeypatch, temp_hdf5):
+def test_get_images(monkeypatch: Any, temp_hdf5: str) -> None:
+	"""Verify get_images returns arrays for requested keys in order."""
 	model = MultiSpectralModel()
 	model.set_hdf5_path(temp_hdf5)
 	# Patch msagui.model.parseH5.get_data
@@ -56,7 +61,8 @@ def test_get_images(monkeypatch, temp_hdf5):
 	assert len(arrs) == 2
 	assert np.allclose(arrs[0], np.ones((5, 5)))
 
-def test_process_step(monkeypatch):
+def test_process_step(monkeypatch: Any) -> None:
+	"""Verify process_step handles binary operations and threshold operations."""
 	model = MultiSpectralModel()
 	# Patch get_images
 	model.get_images = lambda keys: [np.ones((2, 2)), np.full((2, 2), 2)]
@@ -71,9 +77,10 @@ def test_process_step(monkeypatch):
 	result = model.process_step(group, step)
 	assert np.allclose(result, [[0, 0.6], [0.7, 0]])
 
-def test_analyze_group(monkeypatch):
+def test_analyze_group(monkeypatch: Any) -> None:
+	"""Verify _analyze populates group cache and processes configured steps."""
 	class DummyMeta:
-		def __init__(self, common_name):
+		def __init__(self, common_name: list[str]) -> None:
 			self.common_name = common_name
 			
 	model = MultiSpectralModel()
@@ -91,7 +98,8 @@ def test_analyze_group(monkeypatch):
 	model._analyze(group, "A",lambda: None)
 	assert isinstance(model.group_cache, dict)
 
-def test_steps_inputs_and_last_used():
+def test_steps_inputs_and_last_used() -> None:
+	"""Verify Steps.inputs and Steps.last_used compute expected keyword usage."""
 	steps = Steps()
 	steps.set_steps([
 		{"input1": "A", "keyword1": "A", "keyword2": "B"},
@@ -103,17 +111,19 @@ def test_steps_inputs_and_last_used():
 	assert last["A"] == 0
 	assert last["B"] == 1
 
-def test_steps_set_and_get():
+def test_steps_set_and_get() -> None:
+	"""Verify Steps.set_steps persists data retrievable by get_steps."""
 	steps = Steps()
 	s = [{"input1": "A"}]
 	steps.set_steps(s)
 	assert steps.get_steps() == s
 
-def test_validate_groups():
+def test_validate_groups() -> None:
+	"""Verify validate_grouping accepts complete groups and rejects incomplete ones."""
 	model = MultiSpectralModel()
 	# Patch metadata and validate_grouping
 	class DummyMeta:
-		def __init__(self, keyword):
+		def __init__(self, keyword: str) -> None:
 			self.keyword = keyword
 			self.nickname = f"file_{keyword}.tif"
 	meta1 = DummyMeta("A")
@@ -123,12 +133,12 @@ def test_validate_groups():
 	group_items = [meta1, meta2, meta3]
 	keywords = {"A", "B", "C"}
 	# Three items for three keywords
-	assert model.validate_grouping(group_items, keywords) == True
+	assert model.validate_grouping(cast(Any, group_items), keywords) == True
 
 	# Missing one item from keywords
 	group_items = [meta1, meta2]
 	keywords = {"A", "B", "D"}
-	assert model.validate_grouping(group_items, keywords) == False
+	assert model.validate_grouping(cast(Any, group_items), keywords) == False
 
 	# # Too many items for keywords
 	# keywords = {"A", "B"}

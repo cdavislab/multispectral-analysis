@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+from typing import Any
 
 
 HINT_TEXT_COLOR = "#9A9A9A"
@@ -35,7 +36,14 @@ class PropertiesView:
         Missing keys default to ``""`` / ``False``.
     """
 
-    def __init__(self, root, schema, values, max_height: int = 500, min_width: int = 560):
+    def __init__(
+        self,
+        root: tk.Widget,
+        schema: list[dict[str, Any]],
+        values: dict[str, Any],
+        max_height: int = 500,
+        min_width: int = 560,
+    ) -> None:
         self.pref_window = tk.Toplevel(root)
         self._root = root
         self.pref_window.title("Preferences")
@@ -101,7 +109,7 @@ class PropertiesView:
     # Scroll helpers
     # ------------------------------------------------------------------
 
-    def _position_window(self, width: int, height: int):
+    def _position_window(self, width: int, height: int) -> None:
         """Place the dialog centered over the parent and clamp to screen bounds."""
         self.pref_window.update_idletasks()
 
@@ -121,13 +129,13 @@ class PropertiesView:
 
         self.pref_window.geometry(f"{width}x{height}+{x}+{y}")
 
-    def _on_frame_configure(self, _event=None):
+    def _on_frame_configure(self, _event: Any = None) -> None:
         self._canvas.configure(scrollregion=self._canvas.bbox("all"))
 
-    def _on_canvas_configure(self, event):
+    def _on_canvas_configure(self, event: Any) -> None:
         self._canvas.itemconfig(self._canvas_window, width=event.width)
 
-    def _on_mousewheel(self, event):
+    def _on_mousewheel(self, event: Any) -> None:
         # Only scroll if this window is in focus.
         if not self.pref_window.winfo_exists():
             return
@@ -138,7 +146,7 @@ class PropertiesView:
         else:                       # Windows / macOS
             self._canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
-    def _unbind_mousewheel(self):
+    def _unbind_mousewheel(self) -> None:
         try:
             self._canvas.unbind_all("<MouseWheel>")
             self._canvas.unbind_all("<Button-4>")
@@ -150,7 +158,7 @@ class PropertiesView:
     # Schema rendering
     # ------------------------------------------------------------------
 
-    def _create_widgets(self, schema, values):
+    def _create_widgets(self, schema: list[dict[str, Any]], values: dict[str, Any]) -> None:
         """Iterate *schema* and render each field using the helpers below."""
         for item in schema:
             kind = item["kind"]
@@ -191,19 +199,19 @@ class PropertiesView:
     # Widget helpers
     # ------------------------------------------------------------------
 
-    def make_label(self, text):
+    def make_label(self, text: str) -> None:
         """Render a bold section heading."""
         label = tk.Label(self.pref_frame, text=text, font=("Verdana", 10, "bold"))
         label.grid(row=self.row, column=0, columnspan=1, sticky='w', padx=self.padx_label)
         self.row += 1
 
-    def make_separator(self):
+    def make_separator(self) -> None:
         """Render a horizontal separator line."""
         separator = ttk.Separator(self.pref_frame, orient='horizontal')
         separator.grid(row=self.row, column=0, columnspan=5, sticky='ew')
         self.row += 1
 
-    def make_form(self, key, title, hint, type_of_entry, variable):
+    def make_form(self, key: str, title: str, hint: str, type_of_entry: str, variable: Any) -> None:
         """Render a single-row form field and register it under *key*."""
         label = tk.Label(self.pref_frame, text=title)
         label.grid(row=self.row, column=0, sticky='w', padx=self.padx_label)
@@ -220,7 +228,7 @@ class PropertiesView:
         self.properties[key] = {"label": label, "entry": entry, "label_hint": label_hint}
         self.row += 2
 
-    def make_double_form(self, title, hint, type_of_entry, fields):
+    def make_double_form(self, title: str, hint: str, type_of_entry: str, fields: list[tuple[str, str, Any]]) -> None:
         """Render two side-by-side widgets on one row.
 
         Parameters
@@ -252,7 +260,7 @@ class PropertiesView:
     # Value accessors
     # ------------------------------------------------------------------
 
-    def get_settings(self):
+    def get_settings(self) -> dict[str, Any]:
         """Return ``{key: value}`` for every registered field.
 
         Values are plain Python objects: ``str`` for Entry widgets,
@@ -260,11 +268,11 @@ class PropertiesView:
         """
         return {key: props["entry"].get() for key, props in self.properties.items()}
 
-    def get_setting(self, key):
+    def get_setting(self, key: str) -> Any:
         """Return the current value for a single field *key*."""
         return self.properties[key]["entry"].get()
 
-    def get_setting_keys(self):
+    def get_setting_keys(self) -> Any:
         """Return all registered field keys."""
         return self.properties.keys()
 
@@ -272,6 +280,13 @@ class PropertiesView:
 class ImagePropertiesView(PropertiesView):
     """Dialog for editing image preferences (title override only)."""
 
-    def __init__(self, root, schema, values, max_height: int = 500, min_width: int = 560):
+    def __init__(
+        self,
+        root: tk.Widget,
+        schema: list[dict[str, Any]],
+        values: dict[str, Any],
+        max_height: int = 500,
+        min_width: int = 560,
+    ) -> None:
         super().__init__(root, schema, values, max_height=max_height, min_width=min_width)
         self.pref_window.title("Image Preferences")

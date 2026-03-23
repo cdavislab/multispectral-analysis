@@ -1,13 +1,14 @@
 
 from functools import lru_cache
 import logging
+from typing import Any
 import h5py
 import numpy.typing as npt
 import msagui.model.loader as loader
 
 logger = logging.getLogger(__name__)
 
-def _decode_dataset(data_obj) -> npt.NDArray:
+def _decode_dataset(data_obj: h5py.Dataset) -> npt.NDArray[Any]:
     assert isinstance(data_obj, h5py.Dataset), f"Expected h5py.Dataset, got {type(data_obj)}"
     data = data_obj[()]
     if data_obj.attrs.get('type') == 'str':
@@ -23,7 +24,7 @@ def _decode_dataset(data_obj) -> npt.NDArray:
                          f"for key: {data_obj.name}")
 
 @lru_cache(maxsize=8)
-def _load(hdf5_path: str, key: str, f: h5py.File | None = None) -> npt.NDArray:
+def _load(hdf5_path: str, key: str, f: h5py.File | None = None) -> npt.NDArray[Any]:
     """
     Loads a dataset from an HDF5 file. Optimized with LRU caching.
     """
@@ -39,7 +40,7 @@ def _load(hdf5_path: str, key: str, f: h5py.File | None = None) -> npt.NDArray:
         logger.exception("Failed loading dataset '%s' from HDF5 file %s", key, hdf5_path)
         raise
 
-def get_data(hdf5_path: str, keys: str | list[str]) -> list[npt.NDArray]:
+def get_data(hdf5_path: str, keys: str | list[str]) -> list[npt.NDArray[Any]]:
     """
     keys: str or iterable[str]
     """
@@ -54,7 +55,7 @@ def get_data(hdf5_path: str, keys: str | list[str]) -> list[npt.NDArray]:
             data.append(_load(hdf5_path, key, f=f))  # preload into cache
         return data
 
-def move(hdf5_path: str, old_path: str, new_path: str):
+def move(hdf5_path: str, old_path: str, new_path: str) -> None:
     """
     Moves a dataset to a new group in the HDF5 file.
     """
@@ -70,7 +71,7 @@ def move(hdf5_path: str, old_path: str, new_path: str):
         raise
         
 
-def add_processed(hdf5_path: str, key: str, image: npt.NDArray):
+def add_processed(hdf5_path: str, key: str, image: npt.NDArray[Any]) -> None:
     """
     Sets a processed image in the HDF5 file.
     """
@@ -85,7 +86,7 @@ def add_processed(hdf5_path: str, key: str, image: npt.NDArray):
         logger.exception("Failed adding processed dataset '%s' to %s", key, hdf5_path)
         raise
 
-def add_input(hdf5_path: str, key: str, file_path: str):    
+def add_input(hdf5_path: str, key: str, file_path: str) -> None:
     """
     Sets an input image in the HDF5 file.
     """
@@ -100,7 +101,7 @@ def add_input(hdf5_path: str, key: str, file_path: str):
         logger.exception("Failed adding input dataset '%s' to %s", key, hdf5_path)
         raise
 
-def delete(hdf5_path: str, key: str):
+def delete(hdf5_path: str, key: str) -> None:
     """
     Deletes a dataset from the HDF5 file.
     """

@@ -1,6 +1,6 @@
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any
 import csv
 import os
 
@@ -29,11 +29,11 @@ class ImageMeta:
     kind: str                       # "input" or "processed"
     nickname: str                   # User-defined nickname for the UI
     visible: bool = True            # Whether the image is visible in the UI
-    keyword: Optional[str] = None   # Keyword shared amongst files
-    common_name: Optional[list[str]] = None  # Common name for grouping in the UI
-    import_order: Optional[int] = None  # Stable insertion order token
+    keyword: str | None = None   # Keyword shared amongst files
+    common_name: list[str] | None = None  # Common name for grouping in the UI
+    import_order: int | None = None  # Stable insertion order token
 
-    statistics: Optional[dict] = None # Dictionary to hold computed statistics for the image
+    statistics: dict[str, Any] | None = None # Dictionary to hold computed statistics for the image
     
     @property
     def hdf5_path(self) -> str:
@@ -43,26 +43,26 @@ class ImageMeta:
         return f"/{self.group}/{self.keyword}"
 
 class MetadataStore:
-    def __init__(self):
+    def __init__(self) -> None:
         self.items: list[ImageMeta] = []
         self._next_import_order = 1
 
     @property
-    def keys(self):
+    def keys(self) -> list[str]:
         return [m.key for m in self.items]
     
     @keys.setter
-    def keys(self, new_keys: list[str]):
+    def keys(self, new_keys: list[str]) -> None:
         for meta, new_key in zip(self.items, new_keys):
             meta.key = new_key
 
     @property
-    def basenames(self):
+    def basenames(self) -> list[str]:
         return [_folder_basename(m.nickname) for m in self.items]
 
-    def groups(self, visible_only=False):
-        groups = []
-        seen = set()
+    def groups(self, visible_only: bool = False) -> list[int | str]:
+        groups: list[int | str] = []
+        seen: set[int | str] = set()
         for meta in self.items:
             if visible_only and not meta.visible:
                 continue
@@ -72,12 +72,12 @@ class MetadataStore:
             groups.append(meta.group)
         return groups
 
-    def nicknames(self, visible_only=False):
+    def nicknames(self, visible_only: bool = False) -> list[str]:
         if visible_only:
             return [m.nickname for m in self.items if m.visible]
         return [m.nickname for m in self.items]
 
-    def add(self, meta: ImageMeta):
+    def add(self, meta: ImageMeta) -> None:
         for i, m in enumerate(self.items):
             if m.nickname == meta.nickname:
                 if meta.import_order is None:
@@ -139,12 +139,12 @@ class MetadataStore:
         return True
 
     def sort_items(self, sort_key: str, reverse: bool = False) -> None:
-        def text_key(value) -> str:
+        def text_key(value: Any) -> str:
             if value is None:
                 return ""
             return str(value).casefold()
 
-        def group_rank(value) -> tuple[int, str]:
+        def group_rank(value: Any) -> tuple[int, str]:
             if value == "default":
                 return (1, "")
             try:
@@ -152,7 +152,7 @@ class MetadataStore:
             except (TypeError, ValueError):
                 return (0, text_key(value))
 
-        def key_func(meta: ImageMeta):
+        def key_func(meta: ImageMeta) -> tuple[Any, ...]:
             nickname = meta.nickname or ""
             basename = os.path.basename(nickname)
             parent = os.path.basename(os.path.dirname(nickname))
@@ -172,16 +172,16 @@ class MetadataStore:
 
         self.items.sort(key=key_func, reverse=reverse)
 
-    def delete(self, key: str):
+    def delete(self, key: str) -> None:
         self.items = [m for m in self.items if m.key != key]
 
-    def by_group(self, group: int | str):
+    def by_group(self, group: int | str) -> list[ImageMeta]:
         return [m for m in self.items if m.group == group]
     
-    def by_basename(self, basename: str):
+    def by_basename(self, basename: str) -> list[ImageMeta]:
         return [m for m in self.items if _folder_basename(m.nickname) == basename]
 
-    def new_key(self):
+    def new_key(self) -> str:
         existing_keys = {m.key for m in self.items}
         # If existing_keys is empty, start from 1
         i = 1
@@ -198,7 +198,7 @@ class MetadataStore:
             for item in input_items:
                 writer.writerow([item.nickname])
     
-    def change_keyword(self, key: str, new_keyword: str):
+    def change_keyword(self, key: str, new_keyword: str) -> None:
         """
         Changes the keyword of an image metadata entry.
         """
@@ -206,7 +206,7 @@ class MetadataStore:
             if meta.key == key:
                 meta.keyword = new_keyword
     
-    def change_group(self, key: str, new_group: str):
+    def change_group(self, key: str, new_group: str) -> None:
         """
         Changes the group of an image metadata entry.
         """

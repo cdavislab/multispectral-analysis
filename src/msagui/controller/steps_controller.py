@@ -2,6 +2,7 @@ import csv
 import logging
 import tkinter.filedialog as filedialog
 import tkinter.messagebox as messagebox
+from typing import Any
 from msagui.view.steps_view import MultiCorrectionsDialog
 
 _STEP_FIELDS = ["keyword1", "operation", "keyword2", "value", "output_key"]
@@ -9,12 +10,12 @@ _STEP_FIELDS = ["keyword1", "operation", "keyword2", "value", "output_key"]
 logger = logging.getLogger(__name__)
 
 class StepsController:
-    def __init__(self, model, view):
+    def __init__(self, model: Any, view: Any) -> None:
         self.model = model
         self.view = view
-        self.dialog = None
+        self.dialog: MultiCorrectionsDialog | None = None
         
-    def open(self):
+    def open(self) -> None:
         """Open dialog to input multiple corrections and factors."""
         logger.debug("Opening steps dialog")
         if self.dialog is not None:
@@ -34,7 +35,8 @@ class StepsController:
         self.dialog.import_button.config(command=self.import_steps)
         self.dialog.export_button.config(command=self.export_steps)
 
-    def _on_dialog_destroyed(self, _event=None):
+    def _on_dialog_destroyed(self, _event: Any = None) -> None:
+        """Clear cached dialog reference when the dialog is destroyed."""
         if self.dialog is None:
             return
         if _event is not None and _event.widget is not self.dialog:
@@ -62,7 +64,7 @@ class StepsController:
             steps.append(cleaned)
         return steps
 
-    def import_steps(self):
+    def import_steps(self) -> None:
         """Load steps from a CSV file and populate the dialog view."""
         if self.dialog is None:
             return
@@ -91,7 +93,7 @@ class StepsController:
         logger.info("Imported %d step(s) from %s", len(steps), file_path)
         dialog.load_step_data(steps)
 
-    def export_steps(self):
+    def export_steps(self) -> None:
         """Write the current dialog step entries to a CSV file."""
         if self.dialog is None:
             return
@@ -117,7 +119,7 @@ class StepsController:
             logger.exception("Failed to export steps to %s", file_path)
             messagebox.showerror("Export Error", f"Failed to write file:\n{e}", parent=dialog)
         
-    def close(self):
+    def close(self) -> None:
         """Collect all steps and close dialog."""
         logger.debug("Saving steps and closing dialog")
         if self.dialog is None:

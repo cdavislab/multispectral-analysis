@@ -2,6 +2,8 @@ import io
 import logging
 from math import ceil, sqrt
 from PIL import Image
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from msagui.model.imaging_settings import ImagingSettings
 from msagui.model.histogram_settings import HistogramSettings
 from typing import Any
@@ -17,7 +19,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 logger = logging.getLogger(__name__)
 
-def shape_to_square(size) -> tuple:
+def shape_to_square(size: int) -> tuple[int, int, int]:
     """
     Outputs the number of rows, columns, and remainder
     needed to shape a given number into a nearly square format.
@@ -27,13 +29,13 @@ def shape_to_square(size) -> tuple:
     remainder = rows * cols - size
     return rows, cols, remainder
 
-def save_image(filename: str, image: npt.NDArray, settings: ImagingSettings):
+def save_image(filename: str, image: npt.NDArray[Any], settings: ImagingSettings) -> None:
     """
     Save image with optional imshow kwargs.
     """
     imsave(filename, image, **settings.imsave_kwargs())
 
-def _apply_font_and_ticks(ax, settings: ImagingSettings):
+def _apply_font_and_ticks(ax: Axes, settings: ImagingSettings) -> dict[str, str | int]:
     """Apply font and tick settings from ImagingSettings to an axis."""
     font_props = {"fontfamily": settings.font,
                   "fontsize":   settings.font_size,
@@ -51,7 +53,7 @@ def _apply_font_and_ticks(ax, settings: ImagingSettings):
     return font_props
 
 
-def _add_scale_bar(image: npt.NDArray, ax, settings: ImagingSettings):
+def _add_scale_bar(image: npt.NDArray[Any], ax: Axes, settings: ImagingSettings) -> None:
     """Overlay a scale bar on *ax* using pixel_scale / scale_bar_* settings.
 
     The scale bar is suppressed when ``scale_bar_fixed_value == 0`` or
@@ -85,7 +87,7 @@ def _add_scale_bar(image: npt.NDArray, ax, settings: ImagingSettings):
     ax.add_artist(scalebar)
 
 
-def decorate_image(image: npt.NDArray, ax, settings: ImagingSettings):
+def decorate_image(image: npt.NDArray[Any], ax: Axes, settings: ImagingSettings) -> Any:
     """
     Add an image to the provided axis and apply all ImagingSettings display
     options: colormap/scale, font, tick count, and scale bar.
@@ -98,7 +100,7 @@ def decorate_image(image: npt.NDArray, ax, settings: ImagingSettings):
     return im
 
 
-def construct_image(images: list, settings: ImagingSettings):
+def construct_image(images: list[npt.NDArray[Any]], settings: ImagingSettings) -> tuple[Figure, Any]:
     """
     Constructs a grid of images with optional colorbars labelled by ``cunits``.
 
@@ -130,7 +132,7 @@ def construct_image(images: list, settings: ImagingSettings):
     tight_layout()
     return fig, axs
 
-def construct_histogram(images: list, settings: HistogramSettings):
+def construct_histogram(images: list[npt.NDArray[Any]], settings: HistogramSettings) -> Figure:
     """Build a matplotlib Figure containing one histogram per image in *images*.
 
     Parameters
@@ -225,13 +227,13 @@ def construct_histogram(images: list, settings: HistogramSettings):
     return fig
 
 
-def find_substring(self, l: list, substr: str) -> list:
+def find_substring(self: Any, l: list[str], substr: str) -> list[int]:
     """
     Returns a list of idx from `l` that contain `substr`.
     """
     return [i for i, s in enumerate(l) if substr in s]
 
-def replace_item(arr: npt.NDArray, old_value, new_value) -> npt.NDArray:
+def replace_item(arr: npt.NDArray[Any], old_value: Any, new_value: Any) -> npt.NDArray[Any]:
     """
     Replaces all occurrences of old_value with new_value in arr.
     Adds a temporary marker to avoid conflict when new value already in old value
@@ -241,7 +243,7 @@ def replace_item(arr: npt.NDArray, old_value, new_value) -> npt.NDArray:
     arr = np.where(arr == -1, old_value, arr)
     return arr
 
-def find_unique(arr: npt.NDArray) -> npt.NDArray:
+def find_unique(arr: npt.NDArray[Any]) -> npt.NDArray[Any]:
     """
     Returns values that appear only once
     """
@@ -323,7 +325,20 @@ def match_substr(substr: list[str], strings: list[str]) -> dict[str, list[str]]:
                 break  # stop at first (longest) match
     return substr_match
 
-def operate(a, b, operation: str) -> npt.NDArray:
+def operate(a: npt.NDArray[Any], b: npt.NDArray[Any] | float, operation: str) -> npt.NDArray[Any]:
+    """Apply an element-wise operation between arrays or array and scalar.
+
+    Args:
+        a: Left-hand array operand.
+        b: Right-hand operand (array or scalar for unary-threshold mode).
+        operation: One of ``+``, ``-``, ``*``, ``/``, or ``threshold``.
+
+    Returns:
+        Result array for the requested operation.
+
+    Raises:
+        ValueError: If ``operation`` is unsupported.
+    """
     if operation == '+':
         return a + b
     elif operation == '-':
@@ -337,14 +352,15 @@ def operate(a, b, operation: str) -> npt.NDArray:
     else:
         raise ValueError(f"Unsupported operation: {operation}")
 
-def is_number(s):
+def is_number(s: Any) -> bool:
+    """Return True when input can be parsed as a float."""
     try:
         float(s)
         return True
     except ValueError:
         return False
     
-def compute_statistics(image: npt.NDArray) -> dict:
+def compute_statistics(image: npt.NDArray[Any]) -> dict[str, float | int]:
     """
     Computes basic statistics for a given image array.
     """
@@ -358,7 +374,7 @@ def compute_statistics(image: npt.NDArray) -> dict:
     }
     return stats
 
-def fig_to_img(fig, **kwargs):
+def fig_to_img(fig: Figure, **kwargs: Any) -> Image.Image:
     """Convert a Matplotlib figure to a PIL Image."""
     buf = io.BytesIO()
     fig.savefig(buf, **kwargs)  # Save the figure in the buffer

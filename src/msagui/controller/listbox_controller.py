@@ -2,15 +2,16 @@ import logging
 import tkinter as tk
 import os
 from tkinter.simpledialog import askstring
+from typing import Any
 from msagui.view.display import ListboxView, ViewDefaults
 
 logger = logging.getLogger(__name__)
 
 class FileListController:
-    def __init__(self, model, listbox: ListboxView, view_mode: tk.StringVar | None = None,
+    def __init__(self, model: Any, listbox: ListboxView, view_mode: tk.StringVar | None = None,
                  show_groups: tk.BooleanVar | None = None,
                  sort_key: tk.StringVar | None = None,
-                 sort_desc: tk.BooleanVar | None = None):
+                 sort_desc: tk.BooleanVar | None = None) -> None:
         self.model = model
         self.listbox = listbox
         self.view_mode = view_mode
@@ -37,7 +38,7 @@ class FileListController:
         else:
             logger.debug("Listbox does not support event_generate; skipping synthetic <<ListboxSelect>>")
 
-    def _group_display_name(self, group_id) -> str:
+    def _group_display_name(self, group_id: Any) -> str:
         """Return a display name for the group, respecting the current view mode."""
         items = self.model.metadata.by_group(group_id)
         if not items or not items[0].common_name:
@@ -60,7 +61,8 @@ class FileListController:
             return os.path.basename(nickname)
         return nickname  # "full"
 
-    def on_click(self, event):
+    def on_click(self, event: Any) -> str:
+        """Handle click selection semantics including ctrl/shift behavior."""
         index = self.listbox.file_list.nearest(event.y)
         ctrl_pressed = (event.state & 0x0004) != 0  # Check for Control key
         shift_pressed = (event.state & 0x0001) != 0  # Check for Shift key
@@ -102,7 +104,8 @@ class FileListController:
         self._emit_listbox_select_event()
         return 'break'
 
-    def update_selection(self):
+    def update_selection(self) -> None:
+        """Refresh listbox item highlighting for selection and drag targets."""
         selected_indices = self.listbox.file_list.curselection()
         for i in range(self.listbox.file_list.size()):
             if i in selected_indices:
@@ -142,12 +145,15 @@ class FileListController:
             return min(size, nearest_row + 1)
         return nearest_row
 
-    def select_all(self, event=None):
+    def select_all(self, event: Any = None) -> str:
+        """Select all visible rows in the listbox."""
+        _ = event
         self.listbox.file_list.selection_set(0, tk.END)
         self.update_selection()
         return 'break'
 
-    def _remember_selection(self):
+    def _remember_selection(self) -> None:
+        """Persist current selection keys/group before list refresh."""
         if self._pending_selected_keys is not None:
             self._selected_keys = self._pending_selected_keys[:]
             self._selected_key = self._selected_keys[0] if self._selected_keys else None
@@ -184,7 +190,8 @@ class FileListController:
         self._selected_keys = selected_keys
         self._selected_key = selected_keys[0] if selected_keys else None
 
-    def _reselect_saved_selection(self):
+    def _reselect_saved_selection(self) -> None:
+        """Restore selection after list refresh using saved keys/group."""
         self.listbox.file_list.selection_clear(0, tk.END)
 
         if self.show_groups is not None and self.show_groups.get():
@@ -219,7 +226,8 @@ class FileListController:
             self.index = first_row
         self.update_selection()
 
-    def update_listbox(self):
+    def update_listbox(self) -> None:
+        """Rebuild listbox display from visible metadata or grouped view."""
         self._remember_selection()
 
         if self.show_groups is not None and self.show_groups.get():
@@ -245,7 +253,8 @@ class FileListController:
         self._reselect_saved_selection()
         return
 
-    def get_listbox_index(self):
+    def get_listbox_index(self) -> int | str | None:
+        """Return selected metadata index or group id based on current mode."""
         idx = self.listbox.get_selected_indices()
         if len(idx) == 0:
             return
@@ -266,7 +275,8 @@ class FileListController:
                 indices.append(self._visible_indices[row])
         return indices
 
-    def get_selected_group_ids(self) -> list:
+    def get_selected_group_ids(self) -> list[Any]:
+        """Return selected group ids when in group-view mode."""
         if self.show_groups is None or not self.show_groups.get():
             return []
         rows = self.listbox.get_selected_indices()
@@ -276,7 +286,8 @@ class FileListController:
                 group_ids.append(self._group_ids[row])
         return group_ids
     
-    def on_file_selection(self, evt) -> str:
+    def on_file_selection(self, evt: Any) -> str:
+        """Handle list selection event and return selected display value."""
         w = evt.widget
         idx = self.listbox.get_selected_indices()
         logger.debug("Selected indices: %s", idx)
@@ -301,7 +312,8 @@ class FileListController:
         value = w.get(self.index)
         return value
 
-    def on_drag_release(self, event):
+    def on_drag_release(self, event: Any) -> bool:
+        """Apply drag-and-drop reorder and preserve moved selection."""
         if self.show_groups is not None and self.show_groups.get():
             self._drag_start_list_idx = None
             self._drag_hover_list_idx = None
@@ -364,7 +376,8 @@ class FileListController:
         self.update_selection()
         return True
 
-    def on_drag_motion(self, event):
+    def on_drag_motion(self, event: Any) -> None:
+        """Update hover highlight while dragging list rows."""
         if self.show_groups is not None and self.show_groups.get():
             return
         if self._drag_start_list_idx is None:
@@ -388,14 +401,17 @@ class FileListController:
             self._drag_hover_after = hover_after
             self.update_selection()
 
-    def sort_items(self):
+    def sort_items(self) -> None:
+        """Sort metadata items using current view sort state."""
         sort_key = self.sort_key.get() if self.sort_key is not None else "time_imported"
         reverse = bool(self.sort_desc.get()) if self.sort_desc is not None else False
 
         self._remember_selection()
         self.model.metadata.sort_items(sort_key=sort_key, reverse=reverse)
 
-    def rename_item(self, event):
+    def rename_item(self, event: Any) -> None:
+        """Rename selected group when in group-view mode."""
+        _ = event
         if self.show_groups is None or not self.show_groups.get():
             return
 

@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 from msagui.model.msa_utils import is_number
 from msagui.view.image_properties_view import PropertiesView, ImagePropertiesView
@@ -92,7 +93,7 @@ _COERCE_MAP: dict[str, str] = {
 }
 
 
-def _coerce(key: str, value):
+def _coerce(key: str, value: Any) -> Any:
     """Apply the coercion rule for *key* to *value*."""
     rule = _COERCE_MAP.get(key)
     if rule is None:
@@ -109,38 +110,40 @@ def _coerce(key: str, value):
 
 
 class ImagePropertiesController:
-    def __init__(self, model, view):
+    def __init__(self, model: Any, view: Any) -> None:
         self.model = model
         self.view = view
 
-    def preferences(self):
+    def preferences(self) -> None:
         """Open the general (export) preferences dialog."""
         values = self.model.settings.to_dict()
         self.properties = PropertiesView(self.view.root, PREFS_SCHEMA, values)
         self.properties.save_button.config(command=self.pref_save_and_quit)
 
-    def pref_save_and_quit(self):
+    def pref_save_and_quit(self) -> None:
         """Write general preferences back to ImagingSettings and close the dialog."""
         coerced = {k: _coerce(k, v) for k, v in self.properties.get_settings().items()}
         self.model.settings.update_from_dict(coerced)
         self.properties.pref_window.destroy()
 
-    def image_preferences(self):
+    def image_preferences(self) -> None:
         """Open the image display preferences dialog."""
         values = self.model.settings.to_dict()
         self.image_properties = ImagePropertiesView(self.view.root, IMG_PREFS_SCHEMA, values)
         self.image_properties.save_button.config(command=self.image_pref_save_and_quit)
 
-    def image_pref_save_and_quit(self):
+    def image_pref_save_and_quit(self) -> None:
         """Write image preferences back to ImagingSettings and close the dialog."""
         coerced = {k: _coerce(k, v) for k, v in self.image_properties.get_settings().items()}
         self.model.settings.update_from_dict(coerced)
         self.image_properties.pref_window.destroy()
 
-    def save_string_pref(self, key, value):
+    def save_string_pref(self, key: str, value: Any) -> None:
+        """Persist a string-like preference value on the model settings."""
         self.model.settings.update_from_dict({key: value})
 
-    def save_float_pref(self, key, value):
+    def save_float_pref(self, key: str, value: Any) -> None:
+        """Persist numeric preference value after validating parseability."""
         if is_number(value):
             self.model.settings.update_from_dict({key: float(value)})
         else:

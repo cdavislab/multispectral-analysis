@@ -8,13 +8,14 @@ import logging
 import tkinter as tk
 import tkinter.messagebox as messagebox
 from datetime import datetime
+from typing import Any
 from msagui.view.progress_bar import ProgressBar
 from msagui.model.logging_utils import export_logs_bundle
 
 logger = logging.getLogger(__name__)
 
 class DropDownController:
-    def __init__(self, model, view):
+    def __init__(self, model: Any, view: Any) -> None:
         self.model = model
         self.view = view
         self.default_settings_path = self._resolve_default_settings_path()
@@ -38,11 +39,11 @@ class DropDownController:
         except OSError:
             return os.path.join(tempfile.gettempdir(), "msaGUI_msa_options.json")
 
-    def export_stats(self):
+    def export_stats(self) -> None:
         # Export statistics using the model
         self.model.export_stats()
 
-    def export_filelist(self):
+    def export_filelist(self) -> None:
         # Export current file list to a CSV file
         file_path = asksaveasfilename(
             defaultextension=".csv",  # Default file extension
@@ -54,7 +55,7 @@ class DropDownController:
         
         self.model.export_filelist(file_path)
 
-    def import_filelist(self):
+    def import_filelist(self) -> None:
         # Import a list of files from a CSV produced by export_filelist and add them
         file_of_files = askopenfilenames(filetypes=(("CSV files", "*.csv"), ("All files", "*.*"),))
         if len(file_of_files) == 0:
@@ -66,7 +67,7 @@ class DropDownController:
             self.model.add(filelist, progress_callback=progress.step)
         return
     
-    def import_settings(self, file_path=None):
+    def import_settings(self, file_path: str | None = None) -> None:
         """Import settings from a JSON file and apply them to the model and view."""
         if file_path is None:
             file_path = askopenfilename(
@@ -101,7 +102,7 @@ class DropDownController:
         if "show_outputs" not in view_settings and "show_ratio" in view_settings:
             self.view.show_outputs.set(bool(view_settings["show_ratio"]))
 
-    def import_default_settings(self):
+    def import_default_settings(self) -> None:
         """Import default settings from user config location, with legacy fallback."""
         if os.path.exists(self.default_settings_path):
             self.import_settings(self.default_settings_path)
@@ -111,7 +112,7 @@ class DropDownController:
         if os.path.exists(legacy_path):
             self.import_settings(legacy_path)
 
-    def toggle_checkbox(self, checkbox):
+    def toggle_checkbox(self, checkbox: tk.BooleanVar) -> None:
         # Toggle a Tkinter BooleanVar checkbox
         if checkbox.get():
             checkbox.set(False)
@@ -119,7 +120,7 @@ class DropDownController:
             checkbox.set(True)
         return
 
-    def _build_settings_dict(self) -> dict:
+    def _build_settings_dict(self) -> dict[str, Any]:
         """Build the settings dict from current model and view state."""
         return {
             "imaging": self.model.settings.to_dict(),
@@ -131,7 +132,7 @@ class DropDownController:
             },
         }
 
-    def export_settings(self):
+    def export_settings(self) -> None:
         """Export ImagingSettings and view state to a JSON file chosen by the user."""
         file_path = asksaveasfilename(
             defaultextension=".json",
@@ -144,7 +145,7 @@ class DropDownController:
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(self._build_settings_dict(), f, indent=2)
 
-    def export_default_settings(self):
+    def export_default_settings(self) -> None:
         """Save current settings as the default in the per-user config location."""
         parent_dir = os.path.dirname(self.default_settings_path)
         os.makedirs(parent_dir, exist_ok=True)
@@ -152,7 +153,7 @@ class DropDownController:
             json.dump(self._build_settings_dict(), f, indent=2)
         messagebox.showinfo("Default Settings", f"Settings saved as default:\n{self.default_settings_path}")
 
-    def export_logs(self):
+    def export_logs(self) -> None:
         """Export current logs and metadata as a ZIP bundle for bug reporting."""
         default_name = f"msa_logs_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
         destination = asksaveasfilename(

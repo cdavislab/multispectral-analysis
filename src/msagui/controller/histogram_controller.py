@@ -1,5 +1,7 @@
 """Controller and schema for the Histogram Settings dialog."""
 
+from typing import Any
+
 from msagui.view.image_properties_view import PropertiesView
 
 # ---------------------------------------------------------------------------
@@ -59,7 +61,8 @@ _COERCE_MAP: dict[str, str] = {
 }
 
 
-def _coerce(key: str, value):
+def _coerce(key: str, value: Any) -> Any:
+    """Apply key-specific value coercion for histogram settings."""
     rule = _COERCE_MAP.get(key)
     if rule is None:
         return value  # bool from BooleanVar or plain str
@@ -81,19 +84,19 @@ def _coerce(key: str, value):
 class HistogramController:
     """Manages the Histogram Settings dialog."""
 
-    def __init__(self, model, view):
+    def __init__(self, model: Any, view: Any) -> None:
         self.model = model
         self.view = view
         self._dialog: PropertiesView | None = None
 
-    def open(self):
+    def open(self) -> None:
         """Open the histogram settings dialog, pre-populated from the model."""
         values = self.model.histogram_settings.to_dict()
         self._dialog = PropertiesView(self.view.root, HIST_SCHEMA, values)
         self._dialog.pref_window.title("Histogram Settings")
         self._dialog.save_button.config(command=self._save_and_close)
 
-    def _save_and_close(self):
+    def _save_and_close(self) -> None:
         """Write validated values back to HistogramSettings and close the dialog."""
         if self._dialog is None:
             return

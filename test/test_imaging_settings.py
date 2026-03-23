@@ -1,7 +1,8 @@
 import pytest
 from msagui.model.imaging_settings import ImagingSettings
 
-def test_default_imshow_kwargs():
+def test_default_imshow_kwargs() -> None:
+    """Verify default imaging settings produce expected imshow kwargs."""
     settings = ImagingSettings()
     kwargs = settings.imshow_kwargs()
     assert kwargs == {
@@ -10,7 +11,8 @@ def test_default_imshow_kwargs():
         "origin": "lower"
     }
 
-def test_default_imsave_kwargs():
+def test_default_imsave_kwargs() -> None:
+    """Verify default imaging settings produce expected imsave kwargs."""
     settings = ImagingSettings()
     kwargs = settings.imsave_kwargs()
     assert kwargs == {
@@ -23,7 +25,8 @@ def test_default_imsave_kwargs():
     }
 
 
-def test_custom_imshow_kwargs():
+def test_custom_imshow_kwargs() -> None:
+    """Verify custom color and range values are propagated to imshow kwargs."""
     settings = ImagingSettings(cmap="gray", interpolation="bilinear", vmin=0.0, vmax=1.0)
     kwargs = settings.imshow_kwargs()
     assert kwargs == {
@@ -34,7 +37,8 @@ def test_custom_imshow_kwargs():
         "origin": "lower"
     }
 
-def test_custom_imsave_kwargs():
+def test_custom_imsave_kwargs() -> None:
+    """Verify custom export settings are propagated to imsave kwargs."""
     settings = ImagingSettings(dpi=150, cmap="plasma", vmin=0.1, vmax=0.9, metadata={"author": "test"})
     kwargs = settings.imsave_kwargs()
     assert kwargs == {
@@ -47,20 +51,23 @@ def test_custom_imsave_kwargs():
         "edgecolor": 'auto',
     }
 
-def test_none_values_not_in_imshow_kwargs():
+def test_none_values_not_in_imshow_kwargs() -> None:
+    """Verify None-valued range settings are omitted from imshow kwargs."""
     settings = ImagingSettings(vmin=None, vmax=None)
     kwargs = settings.imshow_kwargs()
     assert "vmin" not in kwargs
     assert "vmax" not in kwargs
 
-def test_asdict_consistency():
+def test_asdict_consistency() -> None:
+    """Verify keys emitted by imshow kwargs exist in the dataclass fields."""
     settings = ImagingSettings()
     d = settings.__dict__
     asd = settings.imshow_kwargs()
     for k in asd:
         assert k in d
 
-def test_edge_cases():
+def test_edge_cases() -> None:
+    """Verify optional string fields are excluded when explicitly set to None."""
     settings = ImagingSettings(cmap=None, interpolation=None)
     kwargs = settings.imshow_kwargs()
     assert "cmap" not in kwargs

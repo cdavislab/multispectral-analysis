@@ -57,7 +57,11 @@ def get_log_file_path() -> str:
 def _install_exception_logging() -> None:
     previous_excepthook = sys.excepthook
 
-    def _handle_uncaught_exception(exc_type, exc_value, exc_traceback):
+    def _handle_uncaught_exception(
+        exc_type: type[BaseException],
+        exc_value: BaseException,
+        exc_traceback,
+    ) -> None:
         if issubclass(exc_type, KeyboardInterrupt):
             previous_excepthook(exc_type, exc_value, exc_traceback)
             return
@@ -72,7 +76,7 @@ def _install_exception_logging() -> None:
     if hasattr(threading, "excepthook"):
         previous_threading_hook = threading.excepthook
 
-        def _handle_thread_exception(args: threading.ExceptHookArgs):
+        def _handle_thread_exception(args: threading.ExceptHookArgs) -> None:
             if args.exc_value is not None:
                 logging.getLogger("msagui.crash").critical(
                     "Unhandled thread exception",
