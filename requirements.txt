@@ -1,6 +1,9 @@
-numpy==1.26.4
-pandas==2.2.2
-matplotlib==3.9.2
-matplotlib-scalebar==0.8.1
-pillow==10.4.0
-seaborn==0.13.2
+numpy
+pandas
+matplotlib
+matplotlib-scalebar
+pillow
+seaborn
+scipy
+h5py
+pytest
