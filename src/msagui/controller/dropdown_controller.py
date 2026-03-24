@@ -55,6 +55,73 @@ class DropDownController:
         
         self.model.export_filelist(file_path)
 
+    def save_session_as(self) -> None:
+        """Export the current working session to an HDF5 file."""
+        file_path = asksaveasfilename(
+            defaultextension=".h5",
+            filetypes=[("HDF5 files", "*.h5"), ("All files", "*.*")],
+            title="Save Session As",
+            initialfile="msa_session.h5",
+        )
+        if not file_path:
+            return
+
+        view_state = {
+            "show_groups": self.view.show_groups.get(),
+            "show_histograms": self.view.show_histograms.get(),
+            "show_inputs": self.view.show_inputs.get(),
+            "show_outputs": self.view.show_outputs.get(),
+            "view_mode": self.view.view_mode.get(),
+            "sort_key": self.view.sort_key.get(),
+            "sort_desc": self.view.sort_desc.get(),
+        }
+
+        try:
+            saved_path = self.model.save_session(file_path, view_state=view_state)
+            messagebox.showinfo("Session Saved", f"Session exported to:\n{saved_path}")
+        except Exception:
+            logger.exception("Failed to export session")
+            messagebox.showerror(
+                "Session Export Failed",
+                "Could not export session. Please try a different location and try again.",
+            )
+
+    def load_session(self) -> None:
+        """Load a previously exported session from an HDF5 file."""
+        file_path = askopenfilename(
+            defaultextension=".h5",
+            filetypes=[("HDF5 files", "*.h5"), ("All files", "*.*")],
+            title="Load Session",
+        )
+        if not file_path:
+            return
+
+        try:
+            view_state = self.model.load_session(file_path)
+
+            if "show_groups" in view_state:
+                self.view.show_groups.set(bool(view_state["show_groups"]))
+            if "show_histograms" in view_state:
+                self.view.show_histograms.set(bool(view_state["show_histograms"]))
+            if "show_inputs" in view_state:
+                self.view.show_inputs.set(bool(view_state["show_inputs"]))
+            if "show_outputs" in view_state:
+                self.view.show_outputs.set(bool(view_state["show_outputs"]))
+            if "view_mode" in view_state:
+                self.view.view_mode.set(str(view_state["view_mode"]))
+            if "sort_key" in view_state:
+                self.view.sort_key.set(str(view_state["sort_key"]))
+            if "sort_desc" in view_state:
+                self.view.sort_desc.set(bool(view_state["sort_desc"]))
+
+            messagebox.showinfo("Session Loaded", f"Session loaded from:\n{file_path}")
+        except Exception:
+            logger.exception("Failed to load session")
+            messagebox.showerror(
+                "Session Load Failed",
+                "Could not load session. Please verify the file and try again.",
+            )
+
     def import_filelist(self) -> None:
         # Import a list of files from a CSV produced by export_filelist and add them
         file_of_files = askopenfilenames(filetypes=(("CSV files", "*.csv"), ("All files", "*.*"),))

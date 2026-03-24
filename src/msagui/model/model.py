@@ -1,9 +1,14 @@
+import atexit
+import json
 import os
+import shutil
 import csv
 import tempfile
+from dataclasses import asdict
 from typing import Any, Callable
 import numpy.typing as npt
 import numpy as np
+import h5py
 import msagui.model.msa_utils as utils
 import msagui.model.parseH5 as parseH5
 from msagui.model.metadata import ImageMeta, MetadataStore
@@ -22,37 +27,108 @@ class MultiSpectralModel:
         self.settings = ImagingSettings()
         self.histogram_settings = HistogramSettings()
         self.steps = Steps()
-        self.hdf5_path: str = self._default_hdf5_path()
+        self._temp_hdf5_path: str = self._new_temp_hdf5_path()
+        self.hdf5_path: str = self._temp_hdf5_path
         self.group_cache = dict()
         logger.info(f"Using HDF5 workspace file: {self.hdf5_path}")
-        if os.path.exists(self.hdf5_path):
-            try:
-                os.remove(self.hdf5_path)
-            except OSError as e:
-                logger.warning(f"Could not remove existing HDF5 file {self.hdf5_path}: {e}")
+        atexit.register(self._cleanup_temp_hdf5)
 
-    def _default_hdf5_path(self) -> str:
-        import platform
-        
-        home = os.path.expanduser("~")
-        system = platform.system()
-        
-        if system == "Windows":
-            base_dir = os.environ.get("APPDATA") or os.environ.get("LOCALAPPDATA") or home
-            app_dir = os.path.join(base_dir, "msaGUI")
-        elif system == "Darwin":  # macOS
-            app_dir = os.path.join(home, "Library", "Application Support", "msaGUI")
-        else:  # Linux and other POSIX
-            base_dir = os.environ.get("XDG_DATA_HOME") or os.path.join(home, ".local", "share")
-            app_dir = os.path.join(base_dir, "msaGUI")
+    def _new_temp_hdf5_path(self) -> str:
+        fd, path = tempfile.mkstemp(prefix="msaGUI_", suffix=".h5")
+        os.close(fd)
+        return path
 
+    def _cleanup_temp_hdf5(self) -> None:
+        if self.hdf5_path != self._temp_hdf5_path:
+            return
+        if not os.path.exists(self._temp_hdf5_path):
+            return
         try:
-            os.makedirs(app_dir, exist_ok=True)
-            return os.path.join(app_dir, "msa_data.h5")
+            os.remove(self._temp_hdf5_path)
+            logger.debug("Removed temporary HDF5 workspace file: %s", self._temp_hdf5_path)
         except OSError as e:
-            logger.warning(f"Could not create app data directory {app_dir}: {e}")
-            fallback_dir = tempfile.mkdtemp(prefix="msaGUI_")
-            return os.path.join(fallback_dir, "msa_data.h5")
+            logger.warning("Could not remove temporary HDF5 file %s: %s", self._temp_hdf5_path, e)
+
+    def _json_default(self, value: Any) -> Any:
+        if isinstance(value, np.integer | np.floating | np.bool_):
+            return value.item()
+        if isinstance(value, np.ndarray):
+            return value.tolist()
+        raise TypeError(f"Object of type {type(value)} is not JSON serializable")
+
+    def _write_session_metadata(self, view_state: dict[str, Any] | None = None) -> None:
+        session_payload: dict[str, Any] = {
+            "imaging": self.settings.to_dict(),
+            "histogram": self.histogram_settings.to_dict(),
+            "steps": self.steps.get_steps(),
+            "metadata": [asdict(item) for item in self.metadata.items],
+        }
+        if view_state is not None:
+            session_payload["view"] = view_state
+
+        with h5py.File(self.hdf5_path, "a") as f:
+            settings_group = f.require_group("settings")
+            for key, value in session_payload.items():
+                json_text = json.dumps(value, default=self._json_default)
+                if key in settings_group:
+                    del settings_group[key]
+                dset = settings_group.create_dataset(key, data=json_text)
+                dset.attrs["type"] = "json"
+
+    def _read_session_metadata(self, file_path: str) -> dict[str, Any]:
+        payload: dict[str, Any] = {}
+        with h5py.File(file_path, "r") as f:
+            if "settings" not in f:
+                return payload
+            settings_group = f["settings"]
+            if not isinstance(settings_group, h5py.Group):
+                return payload
+            for key in settings_group.keys():
+                raw_value = settings_group[key][()]
+                if isinstance(raw_value, bytes):
+                    json_text = raw_value.decode("utf-8")
+                else:
+                    json_text = str(raw_value)
+                payload[key] = json.loads(json_text)
+        return payload
+
+    def save_session(self, target_path: str, view_state: dict[str, Any] | None = None) -> str:
+        self._write_session_metadata(view_state=view_state)
+        shutil.copy(self.hdf5_path, target_path)
+        logger.info("Session exported to %s", target_path)
+        return target_path
+
+    def load_session(self, source_path: str) -> dict[str, Any]:
+        session_payload = self._read_session_metadata(source_path)
+
+        temp_path = self._new_temp_hdf5_path()
+        shutil.copy(source_path, temp_path)
+
+        if self.hdf5_path == self._temp_hdf5_path and os.path.exists(self._temp_hdf5_path):
+            try:
+                os.remove(self._temp_hdf5_path)
+            except OSError as e:
+                logger.warning("Could not remove temporary HDF5 file %s: %s", self._temp_hdf5_path, e)
+
+        self._temp_hdf5_path = temp_path
+        self.hdf5_path = temp_path
+        self.group_cache = {}
+
+        if "imaging" in session_payload:
+            self.settings.update_from_dict(session_payload["imaging"])
+        if "histogram" in session_payload:
+            self.histogram_settings.update_from_dict(session_payload["histogram"])
+        if "steps" in session_payload:
+            self.steps.set_steps(session_payload["steps"])
+
+        metadata_items = session_payload.get("metadata", [])
+        restored_metadata = MetadataStore()
+        for item in metadata_items:
+            restored_metadata.add(ImageMeta(**item))
+        self.metadata = restored_metadata
+
+        logger.info("Session loaded from %s", source_path)
+        return session_payload.get("view", {})
 
     def process(
         self,
@@ -91,7 +167,8 @@ class MultiSpectralModel:
             item = self.metadata.items[idx]
             key = item.key
             logger.debug("Deleting file with key: %s", key)
-            parseH5.delete(self.hdf5_path, key)
+            parseH5.delete(self.hdf5_path, item.hdf5_path)
+            self.group_cache.clear()
             self.metadata.delete(key)
         
         if isinstance(idx, list):
@@ -218,6 +295,11 @@ class MultiSpectralModel:
         """
         Sets the HDF5 file path for loading images.
         """
+        if self.hdf5_path == self._temp_hdf5_path and os.path.exists(self._temp_hdf5_path):
+            try:
+                os.remove(self._temp_hdf5_path)
+            except OSError as e:
+                logger.warning("Could not remove temporary HDF5 file %s: %s", self._temp_hdf5_path, e)
         self.hdf5_path = hdf5_path
 
     def get_steps(self) -> list[dict[str, Any]]:
@@ -333,14 +415,20 @@ class MultiSpectralModel:
         
     def add_processed(self, fpath: str, group: str, keyword: str) -> None:
         new_key = self.metadata.new_key()
-        self.metadata.add(ImageMeta(key=new_key, nickname=fpath, group=group,
-                                    keyword=keyword, kind="processed"))
-        parseH5.add_input(self.hdf5_path, new_key, fpath)
+        meta = ImageMeta(
+            key=new_key,
+            nickname=fpath,
+            group=group,
+            keyword=keyword,
+            kind="processed",
+        )
+        self.metadata.add(meta)
+        parseH5.add_input(self.hdf5_path, meta.hdf5_path, fpath)
 
     def clear_processed(self) -> None:
         processed_items = [item for item in self.metadata.items if item.kind == "processed"]
         for item in processed_items:
-            parseH5.delete(self.hdf5_path, item.key)
+            parseH5.delete(self.hdf5_path, item.hdf5_path)
             self.metadata.delete(item.key)
 
     def _analyze(

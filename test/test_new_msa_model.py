@@ -143,3 +143,76 @@ def test_validate_groups() -> None:
 	# # Too many items for keywords
 	# keywords = {"A", "B"}
 	# assert model.validate_grouping(group_items, keywords) == False
+
+def test_save_and_load_session_roundtrip(tmp_path: Path) -> None:
+	"""Verify save_session/load_session preserves settings, steps, metadata, and view state."""
+	model = MultiSpectralModel()
+
+	model.settings.pixel_scale = 2.5
+	model.histogram_settings.bins = 99
+	model.steps.set_steps([
+		{"keyword1": "A", "keyword2": "B", "operation": "+", "output_key": "C"}
+	])
+
+	model.add("/tmp/sample_a.csv", progress_callback=None)
+	assert len(model.metadata.items) == 1
+	model.metadata.items[0].keyword = "A"
+	model.metadata.items[0].group = 1
+
+	view_state = {
+		"show_groups": True,
+		"show_histograms": True,
+		"show_inputs": True,
+		"show_outputs": False,
+		"view_mode": "parent",
+		"sort_key": "group",
+		"sort_desc": True,
+	}
+
+	session_path = tmp_path / "roundtrip_session.h5"
+	model.save_session(str(session_path), view_state=view_state)
+
+	new_model = MultiSpectralModel()
+	loaded_view_state = new_model.load_session(str(session_path))
+
+	assert new_model.settings.pixel_scale == 2.5
+	assert new_model.histogram_settings.bins == 99
+	assert new_model.steps.get_steps() == model.steps.get_steps()
+	assert len(new_model.metadata.items) == 1
+	assert new_model.metadata.items[0].nickname == "/tmp/sample_a.csv"
+	assert new_model.metadata.items[0].keyword == "A"
+	assert loaded_view_state == view_state
+
+def test_delete_uses_hdf5_path(monkeypatch: Any) -> None:
+	"""Verify deleting an item targets its dataset path, not only its metadata key."""
+	model = MultiSpectralModel()
+	called: dict[str, str] = {}
+
+	def fake_delete(hdf5_path: str, key: str) -> None:
+		called["key"] = key
+
+	monkeypatch.setattr("msagui.model.parseH5.delete", fake_delete)
+	monkeypatch.setattr("msagui.model.parseH5.add_input", lambda hdf5, key, path: None)
+
+	model.add("/tmp/groupA_file.csv", progress_callback=None)
+	model.metadata.items[0].group = 5
+	model.metadata.items[0].keyword = "kw"
+
+	model.delete(0, progress_callback=None)
+	assert called["key"] == "/5/kw"
+
+def test_clear_processed_uses_hdf5_path(monkeypatch: Any) -> None:
+	"""Verify clear_processed deletes processed datasets using their full HDF5 paths."""
+	model = MultiSpectralModel()
+	deleted_keys: list[str] = []
+
+	def fake_delete(hdf5_path: str, key: str) -> None:
+		deleted_keys.append(key)
+
+	monkeypatch.setattr("msagui.model.parseH5.delete", fake_delete)
+
+	from msagui.model.metadata import ImageMeta
+	model.metadata.add(ImageMeta(key="10", nickname="/tmp/out.csv", group=2, keyword="ratio", kind="processed"))
+
+	model.clear_processed()
+	assert deleted_keys == ["/2/ratio"]

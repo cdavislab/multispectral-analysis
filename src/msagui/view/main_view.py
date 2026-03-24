@@ -70,6 +70,8 @@ class MultispectralView():
 
         self.file_menu = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="File", menu=self.file_menu)
+        self.file_menu.add_command(label="Load Session...")
+        self.file_menu.add_command(label="Save Session As...")
         self.file_menu.add_separator()
 
         self.export_menu = tk.Menu(self.file_menu, tearoff=0)

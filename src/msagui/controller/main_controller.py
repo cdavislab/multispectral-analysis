@@ -76,6 +76,8 @@ class ControllerDispatcher:
     def connect_menu_signals(self) -> None:
         """Bind menu entries to controller actions."""
         self.view.root.bind('<<MenuToggle>>', self.handle_menu_toggle)
+        self.view.file_menu.entryconfig('Load Session...', command=self.up(self.dropdown_ctrl.load_session))
+        self.view.file_menu.entryconfig('Save Session As...', command=self.dropdown_ctrl.save_session_as)
         self.view.config_menu.entryconfig('General', command=self.up(self.image_properties_ctrl.preferences))
         self.view.export_menu.entryconfig('File List',  command=self.up(self.dropdown_ctrl.export_filelist))
         self.view.export_menu.entryconfig('Settings',   command=self.up(self.dropdown_ctrl.export_settings))
