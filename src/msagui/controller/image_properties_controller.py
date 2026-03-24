@@ -1,8 +1,13 @@
 import logging
 from typing import Any
+import tkinter.messagebox as messagebox
 
 from msagui.model.msa_utils import is_number
 from msagui.view.image_properties_view import PropertiesView, ImagePropertiesView
+from msagui.controller.settings_validation import (
+    coerce_with_validation,
+    format_invalid_values_message,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -92,23 +97,6 @@ _COERCE_MAP: dict[str, str] = {
     "edgecolor":             "str_or_none",
 }
 
-
-def _coerce(key: str, value: Any) -> Any:
-    """Apply the coercion rule for *key* to *value*."""
-    rule = _COERCE_MAP.get(key)
-    if rule is None:
-        return value  # bool from BooleanVar or plain str — no conversion needed
-    if rule == "int":
-        return int(value) if value != "" else 0
-    if rule == "float":
-        return float(value) if value != "" else 0.0
-    if rule == "float_or_none":
-        return None if value == "" else float(value)
-    if rule == "str_or_none":
-        return None if value == "" else str(value)
-    return value
-
-
 class ImagePropertiesController:
     def __init__(self, model: Any, view: Any) -> None:
         self.model = model
@@ -122,7 +110,15 @@ class ImagePropertiesController:
 
     def pref_save_and_quit(self) -> None:
         """Write general preferences back to ImagingSettings and close the dialog."""
-        coerced = {k: _coerce(k, v) for k, v in self.properties.get_settings().items()}
+        raw_settings = self.properties.get_settings()
+        coerced, invalid = coerce_with_validation(raw_settings, _COERCE_MAP)
+        if invalid:
+            messagebox.showerror(
+                "Invalid Settings",
+                format_invalid_values_message(PREFS_SCHEMA, invalid),
+                parent=self.properties.pref_window,
+            )
+            return
         self.model.settings.update_from_dict(coerced)
         self.properties.pref_window.destroy()
 
@@ -134,7 +130,15 @@ class ImagePropertiesController:
 
     def image_pref_save_and_quit(self) -> None:
         """Write image preferences back to ImagingSettings and close the dialog."""
-        coerced = {k: _coerce(k, v) for k, v in self.image_properties.get_settings().items()}
+        raw_settings = self.image_properties.get_settings()
+        coerced, invalid = coerce_with_validation(raw_settings, _COERCE_MAP)
+        if invalid:
+            messagebox.showerror(
+                "Invalid Image Properties",
+                format_invalid_values_message(IMG_PREFS_SCHEMA, invalid),
+                parent=self.image_properties.pref_window,
+            )
+            return
         self.model.settings.update_from_dict(coerced)
         self.image_properties.pref_window.destroy()
 

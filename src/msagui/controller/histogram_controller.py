@@ -1,8 +1,13 @@
 """Controller and schema for the Histogram Settings dialog."""
 
 from typing import Any
+import tkinter.messagebox as messagebox
 
 from msagui.view.image_properties_view import PropertiesView
+from msagui.controller.settings_validation import (
+    coerce_with_validation,
+    format_invalid_values_message,
+)
 
 # ---------------------------------------------------------------------------
 # Schema
@@ -60,23 +65,6 @@ _COERCE_MAP: dict[str, str] = {
     "vmax":       "float_or_none",
 }
 
-
-def _coerce(key: str, value: Any) -> Any:
-    """Apply key-specific value coercion for histogram settings."""
-    rule = _COERCE_MAP.get(key)
-    if rule is None:
-        return value  # bool from BooleanVar or plain str
-    if rule == "int":
-        return int(value) if str(value).strip() != "" else 0
-    if rule == "float":
-        return float(value) if str(value).strip() != "" else 0.0
-    if rule == "float_or_none":
-        return None if str(value).strip() == "" else float(value)
-    if rule == "str_or_none":
-        return None if str(value).strip() == "" else str(value)
-    return value
-
-
 # ---------------------------------------------------------------------------
 # Controller
 # ---------------------------------------------------------------------------
@@ -100,7 +88,15 @@ class HistogramController:
         """Write validated values back to HistogramSettings and close the dialog."""
         if self._dialog is None:
             return
-        coerced = {k: _coerce(k, v) for k, v in self._dialog.get_settings().items()}
+        raw_settings = self._dialog.get_settings()
+        coerced, invalid = coerce_with_validation(raw_settings, _COERCE_MAP)
+        if invalid:
+            messagebox.showerror(
+                "Invalid Histogram Settings",
+                format_invalid_values_message(HIST_SCHEMA, invalid),
+                parent=self._dialog.pref_window,
+            )
+            return
         self.model.histogram_settings.update_from_dict(coerced)
         self._dialog.pref_window.destroy()
         self._dialog = None
