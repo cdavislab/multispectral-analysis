@@ -273,3 +273,35 @@ def test_analyze_surfaces_step_operation_error() -> None:
 
 	with pytest.raises(RuntimeError, match="Failed processing step 1"):
 		model._analyze({"A": "img1", "B": "img2"}, "G1", lambda: None)
+
+def test_analyze_returns_error_for_group_shape_mismatch(monkeypatch: Any) -> None:
+	"""Verify analyze reports shape mismatch details before processing steps."""
+	from msagui.model.metadata import ImageMeta
+
+	model = MultiSpectralModel()
+	monkeypatch.setattr("msagui.model.parseH5.add_input", lambda hdf5, key, path: None)
+	monkeypatch.setattr("msagui.model.parseH5.move", lambda hdf5, old, new: None)
+
+	model.add([
+		"/tmp/cell1_OPTIR_1655.csv",
+		"/tmp/cell1_OPTIR_1703.csv",
+	], progress_callback=None)
+	model.metadata.items[0].common_name = ["cell1_OPTIR_", ""]
+	model.metadata.items[1].common_name = ["cell1_OPTIR_", ""]
+
+	model.steps.set_steps([
+		{"keyword1": "1655", "operation": "+", "keyword2": "1703", "value": "", "output_key": "out"}
+	])
+
+	def _fake_get_images(key: Any) -> Any:
+		if "1655" in str(key):
+			return np.zeros((212, 221))
+		return np.zeros((197, 212))
+
+	model.get_images = _fake_get_images  # type: ignore
+
+	error = model.analyze([0, 1], lambda: None)
+	assert isinstance(error, ValueError)
+	assert "Input image sizes do not match" in str(error)
+	assert "1655" in str(error)
+	assert "1703" in str(error)

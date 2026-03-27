@@ -59,12 +59,20 @@ class DropDownController:
         """Export the current working session to an HDF5 file."""
         file_path = asksaveasfilename(
             defaultextension=".h5",
-            filetypes=[("HDF5 files", "*.h5"), ("All files", "*.*")],
+            filetypes=[
+                ("HDF5 files (*.h5)", "*.h5"),
+                ("HDF5 files (*.hdf5)", "*.hdf5"),
+                ("All files", "*.*"),
+            ],
             title="Save Session As",
             initialfile="msa_session.h5",
         )
         if not file_path:
             return
+
+        root, ext = os.path.splitext(file_path)
+        if ext == "":
+            file_path = f"{root}.h5"
 
         view_state = {
             "show_groups": self.view.show_groups.get(),
@@ -90,7 +98,11 @@ class DropDownController:
         """Load a previously exported session from an HDF5 file."""
         file_path = askopenfilename(
             defaultextension=".h5",
-            filetypes=[("HDF5 files", "*.h5"), ("All files", "*.*")],
+            filetypes=[
+                ("HDF5 files (*.h5)", "*.h5"),
+                ("HDF5 files (*.hdf5)", "*.hdf5"),
+                ("All files", "*.*"),
+            ],
             title="Load Session",
         )
         if not file_path:

@@ -487,6 +487,65 @@ class MultiSpectralModel:
             parseH5.delete(self.hdf5_path, item.hdf5_path)
             self.metadata.delete(item.key)
 
+    def _find_group_shape_mismatches(self) -> list[str]:
+        """Return human-readable shape mismatch descriptions for grouped input images."""
+        def _short_path(path: str, max_parts: int = 4) -> str:
+            norm = os.path.normpath(path)
+            parts = norm.split(os.sep)
+            if len(parts) <= max_parts:
+                return norm
+            return os.path.join("...", *parts[-max_parts:])
+
+        required_keywords = set(self.steps.inputs(include_computed=False))
+        if not required_keywords:
+            return []
+
+        mismatches: list[str] = []
+        groups = set(self.metadata.groups(visible_only=True))
+        if "default" in groups:
+            groups.discard("default")
+
+        for group_id in groups:
+            items = [
+                item
+                for item in self.metadata.by_group(group_id)
+                if item.kind == "input" and item.keyword in required_keywords
+            ]
+            if len(items) < 2:
+                continue
+
+            shape_by_keyword: dict[str, tuple[int, ...]] = {}
+            path_by_keyword: dict[str, str] = {}
+            for item in items:
+                image = self.get_images(item.hdf5_path)
+                shape = tuple(image.shape)
+                if item.keyword is None:
+                    continue
+                shape_by_keyword[item.keyword] = shape
+                path_by_keyword[item.keyword] = item.nickname
+
+            if len(shape_by_keyword) < 2:
+                continue
+
+            unique_shapes = set(shape_by_keyword.values())
+            if len(unique_shapes) <= 1:
+                continue
+
+            common_name = items[0].common_name
+            group_label = "".join(common_name).strip() if common_name else str(group_id)
+            keyword_lines: list[str] = []
+            for keyword in sorted(shape_by_keyword):
+                path = path_by_keyword[keyword]
+                keyword_lines.append(
+                    f"    {keyword}: shape={shape_by_keyword[keyword]}\n"
+                    f"      file: {os.path.basename(path)}\n"
+                    f"      path: {_short_path(path)}"
+                )
+            details = "\n".join(keyword_lines)
+            mismatches.append(f"- Group: {group_label}\n{details}")
+
+        return mismatches
+
     def _analyze(
         self,
         group: dict[str, str],
@@ -554,6 +613,23 @@ class MultiSpectralModel:
         
         self.set_keywords()
         self.set_groups()
+
+        shape_mismatches = self._find_group_shape_mismatches()
+        if shape_mismatches:
+            max_rows = 10
+            shown = shape_mismatches[:max_rows]
+            suffix = ""
+            if len(shape_mismatches) > max_rows:
+                suffix = f"\n... and {len(shape_mismatches) - max_rows} more group(s)."
+            message = (
+                "Input image sizes do not match within one or more groups. "
+                "Please align/crop those files before analyzing.\n\n"
+                + "\n".join(shown)
+                + suffix
+            )
+            logger.warning("Analyze aborted due to shape mismatch: %s", message)
+            return ValueError(message)
+
         # groups = set(self.metadata.get_group(idx))
         self.clear_processed()
         groups = set(self.metadata.groups(visible_only=True))
