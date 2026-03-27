@@ -32,30 +32,58 @@ class View:
 class DisplayView(View):
     def __init__(self, panel: tk.PanedWindow, root: tk.Widget, widget_below: tk.Widget) -> None:
         """Initialize the display view within the main application window."""
-        self.build(panel)
         self.panel = panel
         self.root = root
         self.widget_below = widget_below
+        self.panel_img: ImageTk.PhotoImage | None = None
+        self.current_img: Image | None = None
+        self._resize_job: str | None = None
+        self.build(panel)
         self.items = {"img_panel": self.img_panel}
+        self.root.bind("<Configure>", self._on_resize, add=True)
+        self.panel.bind("<Configure>", self._on_resize, add=True)
+        self.img_panel.bind("<Configure>", self._on_resize, add=True)
 
     def build(self, root: tk.PanedWindow) -> None:
         """Build the image display panel."""
         self.img_panel = self.decorate(tk.Label(root, bg='gray'))
-        self.panel_img: ImageTk.PhotoImage | None = None
         root.add(self.img_panel)
         return
     
     def get_shape(self, widget: tk.Widget) -> tuple[int, int]:
         """Utility: get widget width and height."""
-        geometry = widget.winfo_geometry()  # Get the geometry string
-        # Split the string to extract the width and height
-        width, height = geometry.split('x')[0], geometry.split('x')[1].split('+')[0]
+        width = widget.winfo_width()
+        height = widget.winfo_height()
+        if width <= 1:
+            width = widget.winfo_reqwidth()
+        if height <= 1:
+            height = widget.winfo_reqheight()
         return int(width), int(height)
+
+    def _on_resize(self, _event: Any) -> None:
+        """Schedule a redraw of the current image on resize events."""
+        if self.current_img is None:
+            return
+        if self._resize_job is not None:
+            self.root.after_cancel(self._resize_job)
+        self._resize_job = self.root.after(50, self._render_current_image)
+
+    def _render_current_image(self) -> None:
+        """Render the cached image using current panel dimensions."""
+        self._resize_job = None
+        if self.current_img is None:
+            return
+        resized = self.resize(self.current_img)
+        self.panel_img = ImageTk.PhotoImage(resized)
+        self.img_panel.configure(image=self.panel_img) # pyright: ignore[reportCallIssue]
 
     def resize(self, img: Image) -> Image:
         """Display an image in the image panel, resizing as needed."""
         screen_width, screen_height = self.get_shape(self.root)
-        sash_position = self.panel.sash_coord(0)[0]
+        try:
+            sash_position = self.panel.sash_coord(0)[0]
+        except Exception:
+            sash_position = max(0, screen_width // 3)
         img_width = screen_width - sash_position
 
         bottom_menu_height = self.widget_below.winfo_height()*7
@@ -77,9 +105,8 @@ class DisplayView(View):
 
     def update(self, img: Image) -> None:
         """Render the provided image in the panel after resizing."""
-        img = self.resize(img)
-        self.panel_img = ImageTk.PhotoImage(img)
-        self.img_panel.configure(image=self.panel_img) # pyright: ignore[reportCallIssue]
+        self.current_img = img
+        self._render_current_image()
         return
 
 class ListboxView(View):
