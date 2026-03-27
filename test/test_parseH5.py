@@ -78,6 +78,19 @@ def test_overwrite_dataset(temp_h5_file: str) -> None:
     with h5py.File(temp_h5_file, "r") as f:
         assert np.allclose(f["overwrite_img"][:], img2)  # pyright: ignore[reportArgumentType, reportIndexIssue]
 
+def test_get_data_refreshes_after_overwrite(temp_h5_file: str) -> None:
+    """Verify get_data returns updated values after a dataset is overwritten."""
+    img1 = np.zeros((2, 2))
+    img2 = np.ones((2, 2))
+
+    parseH5.add_processed(temp_h5_file, "cached_img", img1)
+    first = parseH5.get_data(temp_h5_file, "cached_img")
+    assert np.allclose(first[0], img1)
+
+    parseH5.add_processed(temp_h5_file, "cached_img", img2)
+    second = parseH5.get_data(temp_h5_file, "cached_img")
+    assert np.allclose(second[0], img2)
+
 def test_decode_dataset_with_bytes(temp_h5_file: str) -> None:
     """Verify string-typed datasets are decoded and loaded via the loader path."""
     fake_path = "/tmp/fake_image.csv"

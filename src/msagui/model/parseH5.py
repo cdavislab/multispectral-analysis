@@ -8,6 +8,11 @@ import msagui.model.loader as loader
 
 logger = logging.getLogger(__name__)
 
+
+def _invalidate_cache() -> None:
+    """Clear cached dataset reads after any write/delete/move operation."""
+    _load.cache_clear()
+
 def _decode_dataset(data_obj: h5py.Dataset) -> npt.NDArray[Any]:
     assert isinstance(data_obj, h5py.Dataset), f"Expected h5py.Dataset, got {type(data_obj)}"
     data = data_obj[()]
@@ -65,6 +70,7 @@ def move(hdf5_path: str, old_path: str, new_path: str) -> None:
             if new_path in f:
                 del f[new_path]
             f.move(old_path, new_path)
+        _invalidate_cache()
         logger.debug("Moved dataset in %s: %s -> %s", hdf5_path, old_path, new_path)
     except Exception:
         logger.exception("Failed moving dataset in %s: %s -> %s", hdf5_path, old_path, new_path)
@@ -81,6 +87,7 @@ def add_processed(hdf5_path: str, key: str, image: npt.NDArray[Any]) -> None:
                 del f[key]
             dset = f.create_dataset(key, data=image)
             dset.attrs['type'] = 'array'
+        _invalidate_cache()
         logger.debug("Added processed dataset '%s' to %s", key, hdf5_path)
     except Exception:
         logger.exception("Failed adding processed dataset '%s' to %s", key, hdf5_path)
@@ -96,6 +103,7 @@ def add_input(hdf5_path: str, key: str, file_path: str) -> None:
                 del f[key]
             dset = f.create_dataset(key, data=file_path)
             dset.attrs['type'] = 'str'
+        _invalidate_cache()
         logger.debug("Added input dataset '%s' to %s", key, hdf5_path)
     except Exception:
         logger.exception("Failed adding input dataset '%s' to %s", key, hdf5_path)
@@ -109,6 +117,7 @@ def delete(hdf5_path: str, key: str) -> None:
         with h5py.File(hdf5_path, "a") as f:
             if key in f:
                 del f[key]
+        _invalidate_cache()
         logger.debug("Deleted dataset '%s' from %s", key, hdf5_path)
     except Exception:
         logger.exception("Failed deleting dataset '%s' from %s", key, hdf5_path)
