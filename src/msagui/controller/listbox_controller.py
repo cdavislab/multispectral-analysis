@@ -63,6 +63,7 @@ class FileListController:
 
     def on_click(self, event: Any) -> str:
         """Handle click selection semantics including ctrl/shift behavior."""
+        self.listbox.file_list.focus_set()
         index = self.listbox.file_list.nearest(event.y)
         ctrl_pressed = (event.state & 0x0004) != 0  # Check for Control key
         shift_pressed = (event.state & 0x0001) != 0  # Check for Shift key
@@ -100,6 +101,33 @@ class FileListController:
             else:
                 self.listbox.file_list.selection_set(index)
 
+        self.update_selection()
+        self._emit_listbox_select_event()
+        return 'break'
+
+    def on_arrow_navigation(self, event: Any) -> str:
+        """Move single selection with Up/Down keys and refresh dependent display."""
+        size = self.listbox.file_list.size()
+        if size == 0:
+            return 'break'
+
+        selected = self.listbox.file_list.curselection()
+        if selected:
+            current = int(selected[0])
+        else:
+            current = 0
+
+        if event.keysym == 'Up':
+            next_idx = max(0, current - 1)
+        elif event.keysym == 'Down':
+            next_idx = min(size - 1, current + 1)
+        else:
+            return 'break'
+
+        self.listbox.file_list.selection_clear(0, tk.END)
+        self.listbox.file_list.selection_set(next_idx)
+        self.listbox.file_list.activate(next_idx)
+        self.listbox.file_list.see(next_idx)
         self.update_selection()
         self._emit_listbox_select_event()
         return 'break'

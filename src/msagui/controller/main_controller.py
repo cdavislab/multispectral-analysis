@@ -171,6 +171,8 @@ class ControllerDispatcher:
         """Bind listbox selection and drag interactions."""
         self.view.listbox.file_list.bind('<<ListboxSelect>>', self._on_file_selection)
         self.view.listbox.file_list.bind('<Button-1>', self.listbox_ctrl.on_click)
+        self.view.listbox.file_list.bind('<Up>', self.listbox_ctrl.on_arrow_navigation)
+        self.view.listbox.file_list.bind('<Down>', self.listbox_ctrl.on_arrow_navigation)
         self.view.listbox.file_list.bind('<B1-Motion>', self.listbox_ctrl.on_drag_motion)
         self.view.listbox.file_list.bind('<ButtonRelease-1>', self._on_drag_release)
         self.view.listbox.file_list.bind('<Double-Button-1>', self.up(self.listbox_ctrl.rename_item))
