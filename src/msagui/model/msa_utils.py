@@ -331,7 +331,7 @@ def operate(a: npt.NDArray[Any], b: npt.NDArray[Any] | float, operation: str) ->
     Args:
         a: Left-hand array operand.
         b: Right-hand operand (array or scalar for unary-threshold mode).
-        operation: One of ``+``, ``-``, ``*``, ``/``, or ``threshold``.
+        operation: One of ``+``, ``-``, ``*``, ``/``, ``threshold``, or ``maxthresh``.
 
     Returns:
         Result array for the requested operation.
@@ -348,6 +348,8 @@ def operate(a: npt.NDArray[Any], b: npt.NDArray[Any] | float, operation: str) ->
     elif operation == '/':
         return np.divide(a, b, out=np.zeros(a.shape), where=b!=0)
     elif operation == 'threshold':
+        return np.where(a >= b, a, 0)
+    elif operation == 'maxthresh':
         return np.where(a >= b*np.max(a), a, 0)
     else:
         raise ValueError(f"Unsupported operation: {operation}")

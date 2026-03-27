@@ -213,14 +213,14 @@ def test_multiplication_by_value(temp_hdf5: str, temp_img_paths: list[str]) -> N
         assert np.allclose(result_data, expected)
 
 def test_threshold(temp_hdf5: str, temp_img_paths: list[str]) -> None:
-    """Verify threshold step writes a mask-like output dataset."""
+    """Verify proportion-of-max threshold step writes expected output dataset."""
     model = MultiSpectralModel()
     model.set_hdf5_path(temp_hdf5)
     model.add(temp_img_paths, lambda: None)
     with h5py.File(temp_hdf5, "r") as f:
         assert "default/1" in f
         assert "default/2" in f
-    model.steps.set_steps([{"keyword1": "img1", "operation": "threshold", 'keyword2': "", "value": "0.5", "output_key": "result"}])
+    model.steps.set_steps([{"keyword1": "img1", "operation": "maxthresh", 'keyword2': "", "value": "0.5", "output_key": "result"}])
     model.set_keywords()
     model.set_groups()
     with h5py.File(temp_hdf5, "r") as f:

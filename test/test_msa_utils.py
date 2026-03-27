@@ -108,6 +108,23 @@ def test_match_substr() -> None:
     assert set(result["cat"]) == {"cat1", "catdog"}
     assert set(result["dog"]) == {"dog2"}
 
+def test_operate_threshold_with_scalar_and_image() -> None:
+    """Verify threshold keeps values above scalar/array threshold and zeros others."""
+    image = np.array([[0.2, 0.6], [0.7, 0.1]])
+
+    scalar_result = msa_utils.operate(image, 0.5, "threshold")
+    assert np.allclose(scalar_result, [[0, 0.6], [0.7, 0]])
+
+    threshold_image = np.array([[0.1, 0.7], [0.6, 0.1]])
+    image_result = msa_utils.operate(image, threshold_image, "threshold")
+    assert np.allclose(image_result, [[0.2, 0], [0.7, 0.1]])
+
+def test_operate_maxthresh_uses_proportion_of_max() -> None:
+    """Verify maxthresh interprets operand as proportion of max(image)."""
+    image = np.array([[0.2, 0.6], [0.7, 0.1]])
+    result = msa_utils.operate(image, 0.5, "maxthresh")
+    assert np.allclose(result, [[0, 0.6], [0.7, 0]])
+
 def test_construct_image(monkeypatch: Any) -> None:
     """Verify construct_image hides unused subplot slots in non-square grids."""
     # Patch subplots and tight_layout to avoid GUI

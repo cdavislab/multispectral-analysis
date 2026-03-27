@@ -241,9 +241,9 @@ class MultiCorrectionsDialog(tk.Toplevel):
         if dialog.result:
             step = {
                 "keyword1": dialog.result["keyword1"],
-                "operation": "threshold",
-                "keyword2": "",
-                "value": dialog.result["threshold"],
+                "operation": "maxthresh" if dialog.result["mode"] == "proportion" else "threshold",
+                "keyword2": dialog.result["keyword2"] if dialog.result["mode"] == "image" else "",
+                "value": dialog.result["value"] if dialog.result["mode"] in {"proportion", "constant"} else "",
                 "output_key": dialog.result["output_key"]
             }
             self.add_step_row(step)
@@ -285,26 +285,35 @@ class MultiCorrectionsDialog(tk.Toplevel):
             super().__init__(parent)
             self.title("Threshold")
             self.result: dict[str, str] | None = None
-            tk.Label(self, text="Keyword:").grid(row=0, column=0, padx=5, pady=5, sticky="e")
-            self.keyword = tk.Entry(self)
-            self.keyword.grid(row=0, column=1, padx=5, pady=5)
+            tk.Label(self, text="Keyword (A):").grid(row=0, column=0, padx=5, pady=5, sticky="e")
+            self.keyword1 = tk.Entry(self)
+            self.keyword1.grid(row=0, column=1, padx=5, pady=5)
 
-            tk.Label(self, text="Threshold proportion:").grid(row=1, column=0, padx=5, pady=(5,0), sticky="e")
-            self.threshold = tk.Entry(self)
-            self.threshold.grid(row=1, column=1, padx=5, pady=5)
-            
-            hint = "Proportion of max value in image (e.g. 0.10)"
-            tk.Label(self, text=hint, fg='gray').grid(row=2, column=0, columnspan=2, padx=5, pady=(0,5), sticky="w")
+            tk.Label(self, text="Threshold Source:").grid(row=1, column=0, padx=5, pady=5, sticky="e")
+            self.mode = tk.StringVar(value="proportion")
+            tk.Radiobutton(self, text="proportion of max", variable=self.mode, value="proportion").grid(row=1, column=1, padx=5, pady=2, sticky="w")
+            tk.Radiobutton(self, text="constant", variable=self.mode, value="constant").grid(row=2, column=1, padx=5, pady=2, sticky="w")
+            tk.Radiobutton(self, text="image", variable=self.mode, value="image").grid(row=3, column=1, padx=5, pady=2, sticky="w")
 
-            tk.Label(self, text="Output key:").grid(row=3, column=0, padx=5, pady=5, sticky="e")
+            tk.Label(self, text="Keyword/Value (B):").grid(row=4, column=0, padx=5, pady=(5,0), sticky="e")
+            self.keyword2 = tk.Entry(self)
+            self.keyword2.grid(row=4, column=1, padx=5, pady=5)
+
+            hint = "Use image key for image mode, numeric value for proportion/constant modes"
+            tk.Label(self, text=hint, fg='gray').grid(row=5, column=0, columnspan=2, padx=5, pady=(0,5), sticky="w")
+
+            tk.Label(self, text="Output key:").grid(row=6, column=0, padx=5, pady=5, sticky="e")
             self.output_key = tk.Entry(self)
-            self.output_key.grid(row=3, column=1, padx=5, pady=5)
-            tk.Button(self, text="OK", command=self.on_ok).grid(row=4, column=0, columnspan=2, pady=10)
+            self.output_key.grid(row=6, column=1, padx=5, pady=5)
+            tk.Button(self, text="OK", command=self.on_ok).grid(row=7, column=0, columnspan=2, pady=10)
 
         def on_ok(self) -> None:
+            mode = self.mode.get()
             self.result = {
-                "keyword1": self.keyword.get().strip(),
-                "threshold": self.threshold.get().strip(),
+                "keyword1": self.keyword1.get().strip(),
+                "keyword2": self.keyword2.get().strip(),
+                "mode": mode,
+                "value": self.keyword2.get().strip() if mode in {"proportion", "constant"} else "",
                 "output_key": self.output_key.get().strip()
             }
             self.destroy()

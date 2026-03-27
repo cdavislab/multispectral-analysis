@@ -71,11 +71,26 @@ def test_process_step(monkeypatch: Any) -> None:
 	# Monkeypatch 
 	result = model.process_step(group, step)
 	assert np.allclose(result, 3)
-	# Test threshold
+	# Test proportion-of-max threshold
+	step = {"keyword1": "A", "keyword2": "", "operation": "maxthresh", "output_key": "C", "value": 0.5}
+	model.get_images = lambda key: np.array([[0.2, 0.6], [0.7, 0.1]]) # type: ignore
+	result = model.process_step(group, step)
+	assert np.allclose(result, [[0, 0.6], [0.7, 0]])
+
+	# Test constant threshold
 	step = {"keyword1": "A", "keyword2": "", "operation": "threshold", "output_key": "C", "value": 0.5}
 	model.get_images = lambda key: np.array([[0.2, 0.6], [0.7, 0.1]]) # type: ignore
 	result = model.process_step(group, step)
 	assert np.allclose(result, [[0, 0.6], [0.7, 0]])
+
+	# Test image threshold
+	step = {"keyword1": "A", "keyword2": "B", "operation": "threshold", "output_key": "C", "value": ""}
+	model.get_images = lambda keys: [ # type: ignore
+		np.array([[0.2, 0.6], [0.7, 0.1]]),
+		np.array([[0.1, 0.7], [0.6, 0.1]]),
+	]
+	result = model.process_step(group, step)
+	assert np.allclose(result, [[0.2, 0], [0.7, 0.1]])
 
 def test_analyze_group(monkeypatch: Any) -> None:
 	"""Verify _analyze populates group cache and processes configured steps."""
