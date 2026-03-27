@@ -119,8 +119,51 @@ class MultiCorrectionsDialog(tk.Toplevel):
             keyword2.insert(0, step.get("keyword2", ""))
             value.insert(0, step.get("value", ""))
             output_key.insert(0, step.get("output_key", ""))
+
+        keyword2.bind("<KeyRelease>", lambda _e, k=keyword2, v=value: self._on_operand_field_change(k, v, preferred="keyword2"))
+        value.bind("<KeyRelease>", lambda _e, k=keyword2, v=value: self._on_operand_field_change(k, v, preferred="value"))
+        keyword2.bind("<FocusOut>", lambda _e, k=keyword2, v=value: self._on_operand_field_change(k, v, preferred=None))
+        value.bind("<FocusOut>", lambda _e, k=keyword2, v=value: self._on_operand_field_change(k, v, preferred=None))
+
         self.step_rows.append([step_num, keyword, operation, keyword2, value, output_key, up_btn, down_btn, del_btn])
+        self._update_operand_field_states(keyword2, value, preferred=None)
         self.update_row_numbers()
+
+    def _on_operand_field_change(
+        self,
+        keyword2_entry: tk.Entry,
+        value_entry: tk.Entry,
+        preferred: str | None,
+    ) -> None:
+        """Keep keyword2 and value mutually exclusive with immediate visual feedback."""
+        self._update_operand_field_states(keyword2_entry, value_entry, preferred=preferred)
+
+    def _update_operand_field_states(
+        self,
+        keyword2_entry: tk.Entry,
+        value_entry: tk.Entry,
+        preferred: str | None,
+    ) -> None:
+        """Disable one operand field when the other contains content."""
+        keyword2_text = keyword2_entry.get().strip()
+        value_text = value_entry.get().strip()
+
+        if keyword2_text and value_text and preferred == "keyword2":
+            value_entry.delete(0, tk.END)
+            value_text = ""
+        elif keyword2_text and value_text and preferred == "value":
+            keyword2_entry.delete(0, tk.END)
+            keyword2_text = ""
+
+        if keyword2_text and not value_text:
+            keyword2_entry.config(state=tk.NORMAL)
+            value_entry.config(state=tk.DISABLED)
+        elif value_text and not keyword2_text:
+            keyword2_entry.config(state=tk.DISABLED)
+            value_entry.config(state=tk.NORMAL)
+        else:
+            keyword2_entry.config(state=tk.NORMAL)
+            value_entry.config(state=tk.NORMAL)
 
     def move_step_row(self, idx: int, direction: int) -> None:
         """Move a step row up or down in the list, preventing out-of-bounds moves and refreshing entry text."""
@@ -184,6 +227,8 @@ class MultiCorrectionsDialog(tk.Toplevel):
             ])
         # After reordering, set the text in each entry to match the new order
         for row, values in zip(self.step_rows, entry_values):
+            row[3].config(state=tk.NORMAL)
+            row[4].config(state=tk.NORMAL)
             row[1].delete(0, tk.END)
             row[1].insert(0, values[0])
             row[2].delete(0, tk.END)
@@ -194,6 +239,7 @@ class MultiCorrectionsDialog(tk.Toplevel):
             row[4].insert(0, values[3])
             row[5].delete(0, tk.END)
             row[5].insert(0, values[4])
+            self._update_operand_field_states(row[3], row[4], preferred=None)
 
     def get_step_data(self) -> list[dict[str, str]]:
         """Return the current entry widget values as a list of step dicts."""
