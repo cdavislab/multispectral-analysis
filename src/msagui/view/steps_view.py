@@ -48,33 +48,35 @@ class MultiCorrectionsDialog(tk.Toplevel):
 
         # Right pane: operation buttons (2x2 grid)
         self.op_frame = tk.Frame(self.right_pane)
-        self.op_frame.pack(pady=10)
+        self.op_frame.pack(anchor="n", pady=0)
+        self.operations_title = tk.Label(self.op_frame, text="Operations", font=("Verdana", 10, "bold"))
+        self.operations_title.grid(row=0, column=0, columnspan=2, sticky="w", padx=2, pady=(0, 6))
         self.op_frame.grid_columnconfigure(0, weight=1)
         self.op_frame.grid_columnconfigure(1, weight=1)
         self.op_buttons = []
         ops = [("A + B", "+"), ("A * B", "*"), ("A - B", "-"), ("A / B", "/")]
         for i, (label, op) in enumerate(ops):
             btn = tk.Button(self.op_frame, text=label, width=10, command=lambda o=op: self.open_op_dialog(o))
-            btn.grid(row=i//2, column=i%2, sticky="ew", padx=2, pady=2)
+            btn.grid(row=(i // 2) + 1, column=i % 2, sticky="ew", padx=2, pady=2)
             self.op_buttons.append(btn)
 
         # Threshold button
         self.threshold_button = tk.Button(self.op_frame, text="Threshold", command=self.open_threshold_dialog)
-        self.threshold_button.grid(row=2, column=0, columnspan=2, sticky="ew", padx=2, pady=2)
+        self.threshold_button.grid(row=3, column=0, columnspan=2, sticky="ew", padx=2, pady=2)
 
         # Visual divider between operation controls and file/save controls
         self.controls_separator = ttk.Separator(self.op_frame, orient="horizontal")
-        self.controls_separator.grid(row=3, column=0, columnspan=2, sticky="ew", padx=2, pady=(10, 10))
+        self.controls_separator.grid(row=4, column=0, columnspan=2, sticky="ew", padx=2, pady=(10, 10))
 
         # Save button
         self.save_button = tk.Button(self.op_frame, text="Save")
-        self.save_button.grid(row=4, column=0, columnspan=2, sticky="ew", padx=2, pady=(0, 8))
+        self.save_button.grid(row=5, column=0, columnspan=2, sticky="ew", padx=2, pady=(0, 8))
 
         # Import/Export buttons
         self.import_button = tk.Button(self.op_frame, text="Import Steps")
-        self.import_button.grid(row=5, column=0, sticky="ew", padx=2, pady=(0, 2))
+        self.import_button.grid(row=6, column=0, sticky="ew", padx=2, pady=(0, 2))
         self.export_button = tk.Button(self.op_frame, text="Export Steps")
-        self.export_button.grid(row=5, column=1, sticky="ew", padx=2, pady=(0, 2))
+        self.export_button.grid(row=6, column=1, sticky="ew", padx=2, pady=(0, 2))
 
     def _position_window(self, parent: tk.Widget, width: int, height: int) -> None:
         """Center dialog over parent and keep it fully on-screen."""
