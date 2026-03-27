@@ -252,3 +252,24 @@ def test_set_groups_uses_fullpath_signature(monkeypatch: Any) -> None:
 
 	groups = [item.group for item in model.metadata.items if item.kind == "input"]
 	assert groups[0] != groups[1]
+
+def test_analyze_surfaces_step_operation_error() -> None:
+	"""Verify _analyze raises contextual RuntimeError when a step operation fails."""
+	class DummyMeta:
+		def __init__(self) -> None:
+			self.common_name = ["prefix_", "_suffix"]
+
+	model = MultiSpectralModel()
+	model.steps.set_steps([
+		{"keyword1": "A", "keyword2": "B", "operation": "+", "output_key": "C", "value": ""}
+	])
+	model.steps.last_used = lambda: {"C": 0}
+	model.metadata.by_group = lambda group_id: [DummyMeta()]  # type: ignore
+
+	def _raise(_group: Any, _step: Any) -> Any:
+		raise ValueError("operands could not be broadcast")
+
+	model.process_step = _raise  # type: ignore
+
+	with pytest.raises(RuntimeError, match="Failed processing step 1"):
+		model._analyze({"A": "img1", "B": "img2"}, "G1", lambda: None)

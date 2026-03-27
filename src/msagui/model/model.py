@@ -501,12 +501,21 @@ class MultiSpectralModel:
         # Get the common name for the group to construct output nicknames.
         common_name = self.metadata.by_group(group_id)[0].common_name
         assert common_name is not None, f"Expected common_name to be set for group {group_id}"
+        group_label = "".join(common_name).strip() or str(group_id)
 
         for i, step in enumerate(self.steps.get_steps()):
             progress_callback()
             # Perform single operation
             output_keyword = step['output_key']
-            result = self.process_step(group, step)
+            try:
+                result = self.process_step(group, step)
+            except Exception as e:
+                msg = (
+                    f"Failed processing step {i + 1} for group '{group_label}' "
+                    f"(operation={step.get('operation')}, output_key={output_keyword}): {e}"
+                )
+                logger.exception(msg)
+                raise RuntimeError(msg) from e
 
             # Save result before continuing
             output_nickname = common_name[0] + output_keyword + common_name[1]
@@ -519,7 +528,15 @@ class MultiSpectralModel:
                 kind="processed"
             )
             self.metadata.add(meta)
-            parseH5.add_processed(self.hdf5_path, meta.hdf5_path, result)
+            try:
+                parseH5.add_processed(self.hdf5_path, meta.hdf5_path, result)
+            except Exception as e:
+                msg = (
+                    f"Failed saving processed output for step {i + 1} in group '{group_label}' "
+                    f"(output_key={output_keyword}): {e}"
+                )
+                logger.exception(msg)
+                raise RuntimeError(msg) from e
             
             # Cache the result if this step's output is used in a future step
             if i < last_used[output_keyword]:

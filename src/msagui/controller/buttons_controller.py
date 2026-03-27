@@ -136,13 +136,17 @@ class ButtonsController:
             messagebox.showerror("No Selection", "Please select at least one file to analyze.")
             return
         logger.info("Starting analyze for %d selected item(s)", len(selected_idx))
-        with ProgressBar(title="Analyzing", total=len(selected_idx)) as progress:
-            error = self.model.analyze(selected_idx, progress_callback=progress.step)
-            if error:
-                logger.error("Analyze failed: %s", error)
-                messagebox.showerror("Analysis Error", error)
-            else:
-                logger.info("Analyze completed successfully")
+        try:
+            with ProgressBar(title="Analyzing", total=len(selected_idx)) as progress:
+                error = self.model.analyze(selected_idx, progress_callback=progress.step)
+                if error:
+                    logger.error("Analyze failed: %s", error)
+                    messagebox.showerror("Analysis Error", str(error))
+                else:
+                    logger.info("Analyze completed successfully")
+        except Exception as e:
+            logger.exception("Analyze failed with unexpected exception")
+            messagebox.showerror("Analysis Error", str(e))
 
     def _ask_export_scope(self) -> dict | None:
         """Show a dialog asking whether to export all or selected images,
