@@ -231,3 +231,24 @@ def test_clear_processed_uses_hdf5_path(monkeypatch: Any) -> None:
 
 	model.clear_processed()
 	assert deleted_keys == ["/2/ratio"]
+
+def test_set_groups_uses_fullpath_signature(monkeypatch: Any) -> None:
+	"""Verify grouping distinguishes files that share parent/stem but differ in full path."""
+	from msagui.model.metadata import ImageMeta
+
+	model = MultiSpectralModel()
+	monkeypatch.setattr("msagui.model.parseH5.move", lambda hdf5_path, old_path, new_path: None)
+
+	# Same immediate parent folder and same stem, but different higher-level paths.
+	model.metadata.add(ImageMeta(key="1", nickname="/rootA/condition/sample_img.csv", group="default", kind="input"))
+	model.metadata.add(ImageMeta(key="2", nickname="/rootB/condition/sample_img.csv", group="default", kind="input"))
+
+	model.steps.set_steps([
+		{"keyword1": "img", "operation": "*", "keyword2": "", "value": "2", "output_key": "out"}
+	])
+
+	model.set_keywords()
+	model.set_groups()
+
+	groups = [item.group for item in model.metadata.items if item.kind == "input"]
+	assert groups[0] != groups[1]

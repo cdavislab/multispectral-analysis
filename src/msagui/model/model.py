@@ -205,9 +205,12 @@ class MultiSpectralModel:
         Moves datasets in HDF5 file to new group paths accordingly.
         """
         all_input_keywords = self.steps.inputs(include_computed=True)
-        basenames_trimmed = [utils.remove_substr(all_input_keywords, basename) for basename in self.metadata.basenames]
+        fullpaths_trimmed = [
+            utils.remove_substr(all_input_keywords, nickname)
+            for nickname in self.metadata.nicknames()
+        ]
         existing_groups = [meta.group if meta.group != "default" else -1 for meta in self.metadata.items]
-        groups_idx = utils.group_strlist(basenames_trimmed, pregroup=existing_groups)
+        groups_idx = utils.group_strlist(fullpaths_trimmed, pregroup=existing_groups)
 
         # Mark any groups that do not have all keywords represented as ungrouped
         user_input_keywords = self.steps.inputs(include_computed=False)
