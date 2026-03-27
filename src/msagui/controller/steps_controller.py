@@ -62,29 +62,24 @@ class StepsController:
                 raise ValueError(f"Invalid row format at line {row_idx}.")
             cleaned = {k: (row.get(k, "") or "").strip() for k in _STEP_FIELDS}
             steps.append(cleaned)
-
-        validation_errors = self._validate_steps(steps)
-        if validation_errors:
-            raise ValueError(
-                "Invalid step definitions in imported file:\n\n" + "\n".join(validation_errors)
-            )
         return steps
 
     def _validate_steps(self, steps: list[dict[str, str]]) -> list[str]:
         """Return human-readable validation errors for a full step list."""
         validation_errors: list[str] = []
 
-        all_input_keywords: set[str] = set()
-        for step in steps:
+        input_use_indices: dict[str, list[int]] = {}
+        for idx, step in enumerate(steps):
             keyword1 = step.get("keyword1", "").strip()
             keyword2 = step.get("keyword2", "").strip()
             if keyword1:
-                all_input_keywords.add(keyword1)
+                input_use_indices.setdefault(keyword1, []).append(idx)
             if keyword2:
-                all_input_keywords.add(keyword2)
+                input_use_indices.setdefault(keyword2, []).append(idx)
 
         seen_output_keys: set[str] = set()
         for row_num, step in enumerate(steps, start=1):
+            step_idx = row_num - 1
             keyword1 = step.get("keyword1", "").strip()
             keyword2 = step.get("keyword2", "").strip()
             output_key = step.get("output_key", "").strip()
@@ -101,10 +96,12 @@ class StepsController:
                     f"Step {row_num}: output key cannot match keyword2 ('{output_key}')."
                 )
 
-            if output_key in all_input_keywords:
-                validation_errors.append(
-                    f"Step {row_num}: output key '{output_key}' cannot match any input keyword used in steps."
-                )
+            if output_key in input_use_indices:
+                first_use_idx = min(input_use_indices[output_key])
+                if first_use_idx < step_idx:
+                    validation_errors.append(
+                        f"Step {row_num}: output key '{output_key}' is previously used as aninput key. "
+                    )
 
             if output_key in seen_output_keys:
                 validation_errors.append(

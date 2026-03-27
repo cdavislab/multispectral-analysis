@@ -285,14 +285,15 @@ class ButtonsController:
                 return image.convert("RGB")
             return image
 
-        def build_subfolder(meta: Any) -> str:
+        def build_subfolder(meta: Any, create: bool = True) -> str:
             if not do_subdivide:
                 return directory
             parent_folder = os.path.basename(os.path.dirname(meta.nickname))
             if not parent_folder:
                 return directory
             subfolder = os.path.join(directory, parent_folder)
-            os.makedirs(subfolder, exist_ok=True)
+            if create:
+                os.makedirs(subfolder, exist_ok=True)
             return subfolder
 
         grouped_item_indices = {}
@@ -310,6 +311,88 @@ class ButtonsController:
                         continue
                     group_ids.append(group_id)
 
+        if not items and not group_ids:
+            messagebox.showinfo("Export", "No images or groups to export.")
+            return
+
+        export_tasks: list[dict[str, Any]] = []
+        for idx, meta in items:
+            stem = os.path.splitext(os.path.basename(meta.nickname))[0]
+            subfolder = build_subfolder(meta, create=False)
+            export_tasks.append({
+                "kind": "item_image",
+                "idx": idx,
+                "label": meta.nickname,
+                "path": os.path.join(subfolder, stem + ext),
+            })
+            if do_export_histograms:
+                export_tasks.append({
+                    "kind": "item_histogram",
+                    "idx": idx,
+                    "label": f"{meta.nickname} (histogram)",
+                    "path": os.path.join(subfolder, f"{stem}_histogram{ext}"),
+                })
+
+        for group_id in group_ids:
+            safe_group_id = str(group_id).replace(os.sep, "_")
+            export_tasks.append({
+                "kind": "group_image",
+                "group_id": group_id,
+                "label": f"group {group_id}",
+                "path": os.path.join(directory, f"group_{safe_group_id}{ext}"),
+            })
+            if do_export_histograms:
+                export_tasks.append({
+                    "kind": "group_histogram",
+                    "group_id": group_id,
+                    "label": f"group {group_id} (histogram)",
+                    "path": os.path.join(directory, f"group_{safe_group_id}_histogram{ext}"),
+                })
+
+        stats_path = os.path.join(directory, "statistics.csv") if do_export_stats else None
+
+        planned_path_map: dict[str, list[str]] = {}
+        for task in export_tasks:
+            path = str(task["path"])
+            planned_path_map.setdefault(path, []).append(str(task["label"]))
+        if stats_path is not None:
+            planned_path_map.setdefault(stats_path, []).append("statistics.csv")
+
+        same_run_collisions = [
+            path for path, labels in planned_path_map.items()
+            if len(labels) > 1
+        ]
+        existing_paths = [path for path in sorted(planned_path_map.keys()) if os.path.exists(path)]
+
+        if same_run_collisions or existing_paths:
+            preview_limit = 8
+            sections: list[str] = []
+
+            if same_run_collisions:
+                collision_lines = []
+                for path in same_run_collisions[:preview_limit]:
+                    labels = ", ".join(planned_path_map[path])
+                    collision_lines.append(f"{path}  <-  {labels}")
+                remaining_collisions = len(same_run_collisions) - preview_limit
+                collision_msg = "Multiple exports in this run target the same path:\n\n" + "\n".join(collision_lines)
+                if remaining_collisions > 0:
+                    collision_msg += f"\n... and {remaining_collisions} more"
+                sections.append(collision_msg)
+
+            if existing_paths:
+                existing_preview = "\n".join(existing_paths[:preview_limit])
+                remaining_existing = len(existing_paths) - preview_limit
+                existing_msg = "Existing files will be overwritten:\n\n" + existing_preview
+                if remaining_existing > 0:
+                    existing_msg += f"\n... and {remaining_existing} more"
+                sections.append(existing_msg)
+
+            overwrite_msg = "\n\n".join(sections) + "\n\nDo you want to continue?"
+            should_continue = messagebox.askyesno("Overwrite Warning", overwrite_msg)
+            if not should_continue:
+                logger.info("Export canceled by user after overwrite warning")
+                return
+
         logger.info(
             "Starting export: scope=%s items=%d groups=%d histograms=%s stats=%s subdivide=%s directory=%s",
             scope,
@@ -321,74 +404,36 @@ class ButtonsController:
             directory,
         )
 
-        if not items and not group_ids:
-            messagebox.showinfo("Export", "No images or groups to export.")
-            return
-
-        total_exports = len(items) + len(group_ids)
-        if do_export_histograms:
-            total_exports += len(items) + len(group_ids)
+        total_exports = len(export_tasks)
 
         errors = {}
         export_count = 0
         with ProgressBar(title="Exporting Images", total=total_exports) as progress:
-            for idx, meta in items:
+            for task in export_tasks:
+                label = str(task["label"])
+                out_path = str(task["path"])
                 try:
-                    image, _stats = self.model.make_image(idx)
+                    kind = str(task["kind"])
+                    if kind == "item_image":
+                        image, _stats = self.model.make_image(int(task["idx"]))
+                    elif kind == "item_histogram":
+                        image, _stats = self.model.make_histogram(int(task["idx"]))
+                    elif kind == "group_image":
+                        image, _stats = self.model.make_group_image(task["group_id"])
+                    elif kind == "group_histogram":
+                        image, _stats = self.model.make_group_histogram(task["group_id"])
+                    else:
+                        raise ValueError(f"Unknown export task kind: {kind}")
+
                     image = convert_for_format(image)
-                    stem = os.path.splitext(os.path.basename(meta.nickname))[0]
-                    subfolder = build_subfolder(meta)
-                    out_path = os.path.join(subfolder, stem + ext)
+                    os.makedirs(os.path.dirname(out_path), exist_ok=True)
                     image.save(out_path)
                     export_count += 1
                 except Exception as e:
-                    logger.exception("Failed exporting image for %s", meta.nickname)
-                    errors[meta.nickname] = e
+                    logger.exception("Failed exporting %s", label)
+                    errors[label] = e
                 finally:
                     progress.step()
-
-                if do_export_histograms:
-                    try:
-                        histogram, _stats = self.model.make_histogram(idx)
-                        histogram = convert_for_format(histogram)
-                        stem = os.path.splitext(os.path.basename(meta.nickname))[0]
-                        subfolder = build_subfolder(meta)
-                        out_path = os.path.join(subfolder, f"{stem}_histogram{ext}")
-                        histogram.save(out_path)
-                        export_count += 1
-                    except Exception as e:
-                        logger.exception("Failed exporting histogram for %s", meta.nickname)
-                        errors[f"{meta.nickname} (histogram)"] = e
-                    finally:
-                        progress.step()
-
-            for group_id in group_ids:
-                try:
-                    group_image, _stats = self.model.make_group_image(group_id)
-                    group_image = convert_for_format(group_image)
-                    safe_group_id = str(group_id).replace(os.sep, "_")
-                    out_path = os.path.join(directory, f"group_{safe_group_id}{ext}")
-                    group_image.save(out_path)
-                    export_count += 1
-                except Exception as e:
-                    logger.exception("Failed exporting group image for group %s", group_id)
-                    errors[f"group {group_id}"] = e
-                finally:
-                    progress.step()
-
-                if do_export_histograms:
-                    try:
-                        group_histogram, _stats = self.model.make_group_histogram(group_id)
-                        group_histogram = convert_for_format(group_histogram)
-                        safe_group_id = str(group_id).replace(os.sep, "_")
-                        out_path = os.path.join(directory, f"group_{safe_group_id}_histogram{ext}")
-                        group_histogram.save(out_path)
-                        export_count += 1
-                    except Exception as e:
-                        logger.exception("Failed exporting group histogram for group %s", group_id)
-                        errors[f"group {group_id} (histogram)"] = e
-                    finally:
-                        progress.step()
 
         if errors:
             logger.warning("Export completed with %d failure(s)", len(errors))
