@@ -91,12 +91,22 @@ class ControllerDispatcher:
     def connect_accelerators(self) -> None:
         """Register keyboard accelerators for common actions."""
         self.view.view_menu.entryconfig('Histograms', accelerator='Ctrl+H')
-        self.view.root.bind('<Control-h>', self._handle_histogram_shortcut)
+        sequences = (
+            '<Control-h>',
+            '<Control-H>',
+            '<Control-KeyPress-h>',
+            '<Control-KeyPress-H>',
+            '<Control-BackSpace>',
+        )
+        for sequence in sequences:
+            self.view.root.bind_all(sequence, self._handle_histogram_shortcut, add=True)
 
     def _handle_histogram_shortcut(self, event: Any) -> None:
         """Toggle histogram visibility via keyboard shortcut."""
+        _ = event
         self.dropdown_ctrl.toggle_checkbox(self.view.show_histograms)
         # trace_add on show_histograms will trigger _on_histogram_toggle automatically
+        return 'break'
 
     def _on_histogram_toggle(self, *_: Any) -> None:
         """Called whenever show_histograms changes; refreshes the current display."""
