@@ -137,7 +137,7 @@ class ButtonsController:
             return
         logger.info("Starting analyze for %d selected item(s)", len(selected_idx))
         with ProgressBar(title="Analyzing", total=len(selected_idx)) as progress:
-            error = self.model.analyze(selected_idx, progress_callback=progress)
+            error = self.model.analyze(selected_idx, progress_callback=progress.step)
             if error:
                 logger.error("Analyze failed: %s", error)
                 messagebox.showerror("Analysis Error", error)

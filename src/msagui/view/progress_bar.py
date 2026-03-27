@@ -9,7 +9,7 @@ class ProgressBar(tk.Toplevel):
         self.geometry("400x150")
         self.canvas = tk.Canvas(self, width=300, height=30, bg='white', highlightthickness=1, highlightbackground='black')
         self.canvas.pack(pady=40)
-        self.progress = 1
+        self.progress = 0.0
         self.step_size = self.get_step_size(total)
         self.canvas.delete("progress")
 
@@ -18,19 +18,23 @@ class ProgressBar(tk.Toplevel):
         self.canvas.delete("progress")
         fill_width = (self.progress / 100) * 300
         self.canvas.create_rectangle(0, 0, fill_width, 30, fill="green", tags="progress")
-        self.update()
+        self.update_idletasks()
 
     def step(self) -> None:
         """Increment the progress bar by one step."""
         
         self.progress += self.step_size
         self.progress = min(100, self.progress)
+        self.draw_progress()
 
     def get_step_size(self, total: int) -> float:
         """Calculate the step size for progress updates."""
+        if total <= 0:
+            return 100.0
         return 100 / total
     
     def __enter__(self) -> "ProgressBar":
+        self.draw_progress()
         return self
 
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:

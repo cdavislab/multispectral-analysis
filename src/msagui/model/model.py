@@ -329,43 +329,80 @@ class MultiSpectralModel:
 
         return images if len(images) > 1 else images[0]
     
-    def make_image(self, idx: int) -> tuple[Image, dict[str, float | int]]:
+    def make_image(
+        self,
+        idx: int,
+        progress_callback: Callable[[], None] | None = None,
+    ) -> tuple[Image, dict[str, float | int]]:
         """
         Makes processed image for given dataframe index.
         """
+        if progress_callback:
+            progress_callback()
         item = self.metadata.items[idx]
         data = parseH5.get_data(self.hdf5_path, item.hdf5_path)  # Ensure image is loaded
+        if progress_callback:
+            progress_callback()
         fig, axs = utils.construct_image(data, self.settings)
+        _ = axs
+        if progress_callback:
+            progress_callback()
         if item.statistics is None:
             stats = utils.compute_statistics(data[0])
             item.statistics = stats
+        if progress_callback:
+            progress_callback()
         stream = utils.fig_to_img(fig, **self.settings.imsave_kwargs())
         plt.close()
+        if progress_callback:
+            progress_callback()
         return stream, item.statistics
 
-    def make_histogram(self, idx: int) -> tuple[Image, dict[str, float | int]]:
+    def make_histogram(
+        self,
+        idx: int,
+        progress_callback: Callable[[], None] | None = None,
+    ) -> tuple[Image, dict[str, float | int]]:
         """
         Makes a histogram image for the item at the given metadata index.
         """
+        if progress_callback:
+            progress_callback()
         item = self.metadata.items[idx]
         data = parseH5.get_data(self.hdf5_path, item.hdf5_path)
+        if progress_callback:
+            progress_callback()
         fig = utils.construct_histogram(data, self.histogram_settings)
+        if progress_callback:
+            progress_callback()
         if item.statistics is None:
             stats = utils.compute_statistics(data[0])
             item.statistics = stats
+        if progress_callback:
+            progress_callback()
         stream = utils.fig_to_img(fig, **self.settings.imsave_kwargs())
         plt.close()
+        if progress_callback:
+            progress_callback()
         return stream, item.statistics
 
-    def make_group_image(self, group_id: str | int) -> tuple[Image, dict[str, Any]]:
+    def make_group_image(
+        self,
+        group_id: str | int,
+        progress_callback: Callable[[], None] | None = None,
+    ) -> tuple[Image, dict[str, Any]]:
         """
         Makes a composite image showing all images in a group.
         Each subplot is titled with the item's keyword.
         Returns a blank statistics dict.
         """
+        if progress_callback:
+            progress_callback()
         items = [item for item in self.metadata.by_group(group_id)]
         paths = [item.hdf5_path for item in items]
         data_list = parseH5.get_data(self.hdf5_path, paths)
+        if progress_callback:
+            progress_callback()
         fig, axs = utils.construct_image(data_list, self.settings)
         axs_flat = np.atleast_1d(axs).flatten()
         for i, item in enumerate(items):
@@ -373,26 +410,42 @@ class MultiSpectralModel:
                                    fontfamily=self.settings.font,
                                    fontweight=self.settings.font_weight)
         fig.tight_layout()
+        if progress_callback:
+            progress_callback()
         stream = utils.fig_to_img(fig, **self.settings.imsave_kwargs())
         plt.close()
+        if progress_callback:
+            progress_callback()
         return stream, {}
 
-    def make_group_histogram(self, group_id: str | int) -> tuple[Image, dict[str, Any]]:
+    def make_group_histogram(
+        self,
+        group_id: str | int,
+        progress_callback: Callable[[], None] | None = None,
+    ) -> tuple[Image, dict[str, Any]]:
         """
         Makes a composite histogram figure for all images in a group.
         Each subplot is titled with the item's keyword.
         Returns a blank statistics dict.
         """
+        if progress_callback:
+            progress_callback()
         items = [item for item in self.metadata.by_group(group_id)]
         paths = [item.hdf5_path for item in items]
         data_list = parseH5.get_data(self.hdf5_path, paths)
+        if progress_callback:
+            progress_callback()
         fig = utils.construct_histogram(data_list, self.histogram_settings)
         axs_flat = np.atleast_1d(fig.axes).flatten()
         for i, item in enumerate(items):
             axs_flat[i].set_title(item.keyword)
         fig.tight_layout()
+        if progress_callback:
+            progress_callback()
         stream = utils.fig_to_img(fig, **self.settings.imsave_kwargs())
         plt.close()
+        if progress_callback:
+            progress_callback()
         return stream, {}
 
     def process_step(self, group: dict[str, str], step: dict[str, Any]) -> npt.NDArray[Any]:
@@ -447,6 +500,7 @@ class MultiSpectralModel:
         assert common_name is not None, f"Expected common_name to be set for group {group_id}"
 
         for i, step in enumerate(self.steps.get_steps()):
+            progress_callback()
             # Perform single operation
             output_keyword = step['output_key']
             result = self.process_step(group, step)
