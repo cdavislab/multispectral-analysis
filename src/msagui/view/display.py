@@ -130,7 +130,7 @@ class ListboxView(View):
         self.scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
         self.file_list: tk.Listbox = self.decorate(
             tk.Listbox(frm, xscrollcommand=self.scrollbar.set, selectmode=tk.MULTIPLE)) # pyright: ignore[reportAttributeAccessIssue]
-        self.file_list.configure(fg="#121212", borderwidth="1px")
+        self.file_list.configure(fg="#121212", borderwidth="1px", justify="left")
         self.file_list.pack(expand=True, fill=tk.BOTH)
         self.scrollbar.config(command=self.file_list.xview)
         paned_window.add(frm)
