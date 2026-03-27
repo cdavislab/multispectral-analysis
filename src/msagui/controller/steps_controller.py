@@ -62,7 +62,57 @@ class StepsController:
                 raise ValueError(f"Invalid row format at line {row_idx}.")
             cleaned = {k: (row.get(k, "") or "").strip() for k in _STEP_FIELDS}
             steps.append(cleaned)
+
+        validation_errors = self._validate_steps(steps)
+        if validation_errors:
+            raise ValueError(
+                "Invalid step definitions in imported file:\n\n" + "\n".join(validation_errors)
+            )
         return steps
+
+    def _validate_steps(self, steps: list[dict[str, str]]) -> list[str]:
+        """Return human-readable validation errors for a full step list."""
+        validation_errors: list[str] = []
+
+        all_input_keywords: set[str] = set()
+        for step in steps:
+            keyword1 = step.get("keyword1", "").strip()
+            keyword2 = step.get("keyword2", "").strip()
+            if keyword1:
+                all_input_keywords.add(keyword1)
+            if keyword2:
+                all_input_keywords.add(keyword2)
+
+        seen_output_keys: set[str] = set()
+        for row_num, step in enumerate(steps, start=1):
+            keyword1 = step.get("keyword1", "").strip()
+            keyword2 = step.get("keyword2", "").strip()
+            output_key = step.get("output_key", "").strip()
+
+            if not (keyword1 and step.get("operation", "").strip() and output_key):
+                continue
+
+            if output_key == keyword1:
+                validation_errors.append(
+                    f"Step {row_num}: output key cannot match keyword1 ('{output_key}')."
+                )
+            if keyword2 and output_key == keyword2:
+                validation_errors.append(
+                    f"Step {row_num}: output key cannot match keyword2 ('{output_key}')."
+                )
+
+            if output_key in all_input_keywords:
+                validation_errors.append(
+                    f"Step {row_num}: output key '{output_key}' cannot match any input keyword used in steps."
+                )
+
+            if output_key in seen_output_keys:
+                validation_errors.append(
+                    f"Step {row_num}: output key '{output_key}' is duplicated across steps."
+                )
+            seen_output_keys.add(output_key)
+
+        return validation_errors
 
     def import_steps(self) -> None:
         """Load steps from a CSV file and populate the dialog view."""
@@ -126,7 +176,7 @@ class StepsController:
             return
 
         steps = []
-        for row in self.dialog.step_rows:
+        for row_num, row in enumerate(self.dialog.step_rows, start=1):
             _, keyword, operation, keyword2, value, output_key, _, _, _ = row
             step = {
                 "keyword1": keyword.get().strip(),
@@ -137,6 +187,18 @@ class StepsController:
             }
             if step["keyword1"] and step["operation"] and step["output_key"]:
                 steps.append(step)
+
+        validation_errors = self._validate_steps(steps)
+
+        if validation_errors:
+            messagebox.showerror(
+                "Invalid Step Configuration",
+                "Please fix the following before saving:\n\n" + "\n".join(validation_errors),
+                parent=self.dialog,
+            )
+            logger.warning("Step validation failed: %s", validation_errors)
+            return
+
         self.dialog.destroy()
         logger.debug("Collected steps: %s", steps)
         self.model.steps.set_steps(steps)
