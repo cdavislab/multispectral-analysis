@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+import tkinter.font as tkfont
 from typing import Any
 
 
@@ -29,6 +30,7 @@ class MultiCorrectionsDialog(tk.Toplevel):
 
         # Table headers
         headers = ["#", "keyword1", "operation", "keyword2", "value", "output key", "", ""]
+        self.headers = headers
         for col, header in enumerate(headers):
             tk.Label(self.left_pane, text=header, font=("Verdana", 9, "bold")).grid(row=0, column=col, padx=2, pady=2)
 
@@ -41,6 +43,8 @@ class MultiCorrectionsDialog(tk.Toplevel):
                 self.add_step_row(step)
         else:
             self.add_step_row()  # Optionally start with one empty row if no steps
+
+        self._auto_size_step_columns()
 
         # Add step button at the bottom of left pane
         self.add_step_button = tk.Button(self.left_pane, text="Add step", command=self.add_step_row)
@@ -124,6 +128,8 @@ class MultiCorrectionsDialog(tk.Toplevel):
         value.bind("<KeyRelease>", lambda _e, k=keyword2, v=value: self._on_operand_field_change(k, v, preferred="value"))
         keyword2.bind("<FocusOut>", lambda _e, k=keyword2, v=value: self._on_operand_field_change(k, v, preferred=None))
         value.bind("<FocusOut>", lambda _e, k=keyword2, v=value: self._on_operand_field_change(k, v, preferred=None))
+        for entry in (keyword, operation, keyword2, value, output_key):
+            entry.bind("<KeyRelease>", lambda _e: self._auto_size_step_columns(), add="+")
 
         self.step_rows.append([step_num, keyword, operation, keyword2, value, output_key, up_btn, down_btn, del_btn])
         self._update_operand_field_states(keyword2, value, preferred=None)
@@ -165,6 +171,31 @@ class MultiCorrectionsDialog(tk.Toplevel):
             keyword2_entry.config(state=tk.NORMAL)
             value_entry.config(state=tk.NORMAL)
 
+        self._auto_size_step_columns()
+
+    def _auto_size_step_columns(self) -> None:
+        """Adjust step entry widths to fit the longest header/value in each editable column."""
+        ui_font = tkfont.nametofont("TkDefaultFont")
+        avg_char_px = max(1, ui_font.measure("0"))
+        padding_px = 18
+        min_chars = {1: 10, 2: 7, 3: 10, 4: 7, 5: 10}
+        max_chars = {1: 40, 2: 20, 3: 40, 4: 24, 5: 40}
+
+        for col in (1, 2, 3, 4, 5):
+            header_text = self.headers[col]
+            max_px = ui_font.measure(header_text)
+            for row in self.step_rows:
+                entry = row[col]
+                if isinstance(entry, tk.Entry):
+                    max_px = max(max_px, ui_font.measure(entry.get()))
+
+            width_chars = int((max_px + padding_px) / avg_char_px)
+            width_chars = max(min_chars[col], min(width_chars, max_chars[col]))
+            for row in self.step_rows:
+                entry = row[col]
+                if isinstance(entry, tk.Entry):
+                    entry.config(width=width_chars)
+
     def move_step_row(self, idx: int, direction: int) -> None:
         """Move a step row up or down in the list, preventing out-of-bounds moves and refreshing entry text."""
         new_idx = idx + direction
@@ -173,6 +204,7 @@ class MultiCorrectionsDialog(tk.Toplevel):
             self.step_rows[idx], self.step_rows[new_idx] = self.step_rows[new_idx], self.step_rows[idx]
             self.update_row_numbers()
             self.refresh_entry_texts()
+            self._auto_size_step_columns()
 
     def delete_step_row(self, idx: int) -> None:
         """Delete a step row from the table."""
@@ -182,6 +214,7 @@ class MultiCorrectionsDialog(tk.Toplevel):
             if widget is not None:
                 widget.destroy()
         self.update_row_numbers()
+        self._auto_size_step_columns()
 
     def update_row_numbers(self) -> None:
         """Update the row numbers, re-grid widgets, and create unique up/down/delete buttons for each row."""
@@ -212,6 +245,7 @@ class MultiCorrectionsDialog(tk.Toplevel):
                 down_btn.config(state=tk.DISABLED)
             else:
                 down_btn.config(state=tk.NORMAL)
+        self._auto_size_step_columns()
 
     def refresh_entry_texts(self) -> None:
         """Refresh the text in the entries to reflect the new order in step_rows."""
@@ -240,6 +274,7 @@ class MultiCorrectionsDialog(tk.Toplevel):
             row[5].delete(0, tk.END)
             row[5].insert(0, values[4])
             self._update_operand_field_states(row[3], row[4], preferred=None)
+        self._auto_size_step_columns()
 
     def get_step_data(self) -> list[dict[str, str]]:
         """Return the current entry widget values as a list of step dicts."""
@@ -264,6 +299,7 @@ class MultiCorrectionsDialog(tk.Toplevel):
         self.next_row = 1
         for step in steps:
             self.add_step_row(step)
+        self._auto_size_step_columns()
 
     def open_op_dialog(self, op: str) -> None:
         """Open dialog for arithmetic operation step."""
