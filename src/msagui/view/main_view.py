@@ -139,10 +139,10 @@ class MultispectralView():
     
     def show_error(self, errors: dict[Any, Exception]) -> None:
         """Show error dialog for failed file additions."""
-        error_str = "Could not add/delete the following files:\n"
-        for error in errors:
-            error_str += str(error) + "\n"
-        messagebox.showerror("Error", error_str)
+        lines = ["Some files could not be processed:", ""]
+        for item, error in errors.items():
+            lines.append(f"- {item}: {error}")
+        messagebox.showerror("Input Data Error", "\n".join(lines))
         return
     
     def get_settings(self) -> dict[str, Any]:

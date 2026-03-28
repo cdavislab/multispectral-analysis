@@ -26,6 +26,7 @@ def test_add_and_delete(monkeypatch: Any, tmp_path: Path) -> None:
 	hdf5_path = tmp_path / "test_add.h5"
 	model.set_hdf5_path(str(hdf5_path))
 	# Patch parseH5.add_input and parseH5.delete
+	monkeypatch.setattr("msagui.model.loader.load", lambda path: np.ones((2, 2)))
 	monkeypatch.setattr("msagui.model.parseH5.add_input", lambda hdf5, key, path: None)
 	monkeypatch.setattr("msagui.model.parseH5.delete", lambda hdf5, key: None)
 	# Patch progress_callback to a no-op
@@ -34,6 +35,25 @@ def test_add_and_delete(monkeypatch: Any, tmp_path: Path) -> None:
 	assert len(model.metadata.items) == 1
 	model.delete(0, progress_callback)
 	assert len(model.metadata.items) == 0
+
+def test_add_skips_invalid_files_and_reports_friendly_error(monkeypatch: Any) -> None:
+	"""Verify add validates input content and only adds files that can be read."""
+	model = MultiSpectralModel()
+	monkeypatch.setattr("msagui.model.parseH5.add_input", lambda hdf5, key, path: None)
+
+	def fake_load(path: str) -> Any:
+		if "invalid" in path:
+			raise ValueError("Could not read '/tmp/invalid.csv': file contains non-numeric text.")
+		return np.ones((2, 2))
+
+	monkeypatch.setattr("msagui.model.loader.load", fake_load)
+
+	errors = model.add(["/tmp/valid.csv", "/tmp/invalid.csv"], progress_callback=None)
+
+	assert len(model.metadata.items) == 1
+	assert model.metadata.items[0].nickname == "/tmp/valid.csv"
+	assert "/tmp/invalid.csv" in errors
+	assert "non-numeric text" in str(errors["/tmp/invalid.csv"])
 
 # def test_set_keywords_and_groups(monkeypatch):
 # 	model = MultiSpectralModel()
@@ -159,9 +179,10 @@ def test_validate_groups() -> None:
 	# keywords = {"A", "B"}
 	# assert model.validate_grouping(group_items, keywords) == False
 
-def test_save_and_load_session_roundtrip(tmp_path: Path) -> None:
+def test_save_and_load_session_roundtrip(tmp_path: Path, monkeypatch: Any) -> None:
 	"""Verify save_session/load_session preserves settings, steps, metadata, and view state."""
 	model = MultiSpectralModel()
+	monkeypatch.setattr("msagui.model.loader.load", lambda path: np.ones((2, 2)))
 
 	model.settings.pixel_scale = 2.5
 	model.histogram_settings.bins = 99
@@ -208,6 +229,7 @@ def test_delete_uses_hdf5_path(monkeypatch: Any) -> None:
 
 	monkeypatch.setattr("msagui.model.parseH5.delete", fake_delete)
 	monkeypatch.setattr("msagui.model.parseH5.add_input", lambda hdf5, key, path: None)
+	monkeypatch.setattr("msagui.model.loader.load", lambda path: np.ones((2, 2)))
 
 	model.add("/tmp/groupA_file.csv", progress_callback=None)
 	model.metadata.items[0].group = 5
@@ -279,6 +301,7 @@ def test_analyze_returns_error_for_group_shape_mismatch(monkeypatch: Any) -> Non
 	from msagui.model.metadata import ImageMeta
 
 	model = MultiSpectralModel()
+	monkeypatch.setattr("msagui.model.loader.load", lambda path: np.ones((2, 2)))
 	monkeypatch.setattr("msagui.model.parseH5.add_input", lambda hdf5, key, path: None)
 	monkeypatch.setattr("msagui.model.parseH5.move", lambda hdf5, old, new: None)
 

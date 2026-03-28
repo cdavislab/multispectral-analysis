@@ -11,6 +11,7 @@ import numpy as np
 import h5py
 import msagui.model.msa_utils as utils
 import msagui.model.parseH5 as parseH5
+import msagui.model.loader as loader
 from msagui.model.metadata import ImageMeta, MetadataStore
 from msagui.model.imaging_settings import ImagingSettings
 from msagui.model.histogram_settings import HistogramSettings
@@ -154,6 +155,7 @@ class MultiSpectralModel:
 
     def add(self, file_path: str | list[str], progress_callback: Callable | None = None) -> dict[str, Exception]:
         def add_single(fpath: str) -> None:
+            loader.load(fpath)
             new_key = self.metadata.new_key()
             meta = ImageMeta(key=new_key, nickname=fpath, group="default", kind="input")  # pyright: ignore[reportArgumentType]
             self.metadata.add(meta)

@@ -31,6 +31,23 @@ def test_multispectral_view_get_widget(tk_root: tk.Tk) -> None:
     # with pytest.raises(ValueError):
     #     view.get_widget("NonExistentWidget")
 
+def test_show_error_formats_file_specific_messages(tk_root: tk.Tk, monkeypatch: Any) -> None:
+    """Verify show_error popup includes per-file reason details."""
+    view = MultispectralView(tk_root)
+    called: dict[str, str] = {}
+
+    def fake_showerror(title: str, message: str) -> None:
+        called["title"] = title
+        called["message"] = message
+
+    monkeypatch.setattr("msagui.view.main_view.messagebox.showerror", fake_showerror)
+
+    view.show_error({"/tmp/bad.csv": ValueError("contains non-numeric text")})
+
+    assert called["title"] == "Input Data Error"
+    assert "/tmp/bad.csv" in called["message"]
+    assert "non-numeric text" in called["message"]
+
 def test_listbox_view_update_and_selection(tk_root: tk.Tk) -> None:
     """Verify listbox updates entries and returns selected indices."""
     view = MultispectralView(tk_root)
