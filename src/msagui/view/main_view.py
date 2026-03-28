@@ -74,17 +74,17 @@ class MultispectralView():
         self.file_menu.add_command(label="Save Session As...")
         self.file_menu.add_separator()
 
+        self.import_menu = tk.Menu(self.file_menu, tearoff=0)
+        self.file_menu.add_cascade(label="Import", menu=self.import_menu)
+        self.import_menu.add_command(label="File List")
+        self.import_menu.add_command(label="Settings")
+
         self.export_menu = tk.Menu(self.file_menu, tearoff=0)
         self.file_menu.add_cascade(label="Export", menu=self.export_menu)
         self.export_menu.add_command(label="File List")
         self.export_menu.add_command(label="Settings")
         self.export_menu.add_command(label="Default Settings")
         self.export_menu.add_command(label="Logs")
-
-        self.import_menu = tk.Menu(self.file_menu, tearoff=0)
-        self.file_menu.add_cascade(label="Import", menu=self.import_menu)
-        self.import_menu.add_command(label="File List")
-        self.import_menu.add_command(label="Settings")
 
         self.config_menu = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="Config", menu=self.config_menu)
