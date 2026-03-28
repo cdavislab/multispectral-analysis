@@ -109,21 +109,51 @@ def test_match_substr() -> None:
     assert set(result["dog"]) == {"dog2"}
 
 def test_operate_threshold_with_scalar_and_image() -> None:
-    """Verify threshold keeps values above scalar/array threshold and zeros others."""
+    """Verify threshold keeps values above scalar/array threshold and masks others with NaN."""
     image = np.array([[0.2, 0.6], [0.7, 0.1]])
 
     scalar_result = msa_utils.operate(image, 0.5, "threshold")
-    assert np.allclose(scalar_result, [[0, 0.6], [0.7, 0]])
+    assert np.allclose(scalar_result, [[np.nan, 0.6], [0.7, np.nan]], equal_nan=True)
 
     threshold_image = np.array([[0.1, 0.7], [0.6, 0.1]])
     image_result = msa_utils.operate(image, threshold_image, "threshold")
-    assert np.allclose(image_result, [[0.2, 0], [0.7, 0.1]])
+    assert np.allclose(image_result, [[0.2, np.nan], [0.7, 0.1]], equal_nan=True)
 
 def test_operate_maxthresh_uses_proportion_of_max() -> None:
-    """Verify maxthresh interprets operand as proportion of max(image)."""
+    """Verify maxthresh interprets operand as proportion of max(image) and masks others with NaN."""
     image = np.array([[0.2, 0.6], [0.7, 0.1]])
     result = msa_utils.operate(image, 0.5, "maxthresh")
-    assert np.allclose(result, [[0, 0.6], [0.7, 0]])
+    assert np.allclose(result, [[np.nan, 0.6], [0.7, np.nan]], equal_nan=True)
+
+def test_operate_division_by_zero_returns_nan() -> None:
+    """Verify division writes NaN when denominator is zero."""
+    numerator = np.array([[2, 4], [6, 8]])
+    denominator = np.array([[1, 0], [3, 0]])
+
+    result = msa_utils.operate(numerator, denominator, "/")
+    assert np.allclose(result, [[2.0, np.nan], [2.0, np.nan]], equal_nan=True)
+
+def test_compute_statistics_ignores_nan_and_counts_valid_pixels() -> None:
+    """Verify statistics use NaN-safe reducers and count only valid values."""
+    image = np.array([[1.0, np.nan], [3.0, 5.0]])
+
+    stats = msa_utils.compute_statistics(image)
+    assert stats["count"] == 3
+    assert stats["mean"] == pytest.approx(3.0)
+    assert stats["median"] == pytest.approx(3.0)
+    assert stats["max_signal"] == pytest.approx(5.0)
+
+def test_compute_statistics_all_nan_returns_nan_fields_and_zero_count() -> None:
+    """Verify fully masked arrays produce stable NaN stats and count zero."""
+    image = np.array([[np.nan, np.nan], [np.nan, np.nan]])
+
+    stats = msa_utils.compute_statistics(image)
+    assert stats["count"] == 0
+    assert np.isnan(stats["mean"])
+    assert np.isnan(stats["median"])
+    assert np.isnan(stats["max_signal"])
+    assert np.isnan(stats["standard_deviation"])
+    assert np.isnan(stats["standard_error"])
 
 def test_construct_image(monkeypatch: Any) -> None:
     """Verify construct_image hides unused subplot slots in non-square grids."""

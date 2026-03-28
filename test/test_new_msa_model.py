@@ -62,7 +62,7 @@ def test_get_images(monkeypatch: Any, temp_hdf5: str) -> None:
 	assert np.allclose(arrs[0], np.ones((5, 5)))
 
 def test_process_step(monkeypatch: Any) -> None:
-	"""Verify process_step handles binary operations and threshold operations."""
+	"""Verify process_step handles binary operations and NaN-masking threshold operations."""
 	model = MultiSpectralModel()
 	# Patch get_images
 	model.get_images = lambda keys: [np.ones((2, 2)), np.full((2, 2), 2)]
@@ -75,13 +75,13 @@ def test_process_step(monkeypatch: Any) -> None:
 	step = {"keyword1": "A", "keyword2": "", "operation": "maxthresh", "output_key": "C", "value": 0.5}
 	model.get_images = lambda key: np.array([[0.2, 0.6], [0.7, 0.1]]) # type: ignore
 	result = model.process_step(group, step)
-	assert np.allclose(result, [[0, 0.6], [0.7, 0]])
+	assert np.allclose(result, [[np.nan, 0.6], [0.7, np.nan]], equal_nan=True)
 
 	# Test constant threshold
 	step = {"keyword1": "A", "keyword2": "", "operation": "threshold", "output_key": "C", "value": 0.5}
 	model.get_images = lambda key: np.array([[0.2, 0.6], [0.7, 0.1]]) # type: ignore
 	result = model.process_step(group, step)
-	assert np.allclose(result, [[0, 0.6], [0.7, 0]])
+	assert np.allclose(result, [[np.nan, 0.6], [0.7, np.nan]], equal_nan=True)
 
 	# Test image threshold
 	step = {"keyword1": "A", "keyword2": "B", "operation": "threshold", "output_key": "C", "value": ""}
@@ -90,7 +90,7 @@ def test_process_step(monkeypatch: Any) -> None:
 		np.array([[0.1, 0.7], [0.6, 0.1]]),
 	]
 	result = model.process_step(group, step)
-	assert np.allclose(result, [[0.2, 0], [0.7, 0.1]])
+	assert np.allclose(result, [[0.2, np.nan], [0.7, 0.1]], equal_nan=True)
 
 def test_analyze_group(monkeypatch: Any) -> None:
 	"""Verify _analyze populates group cache and processes configured steps."""

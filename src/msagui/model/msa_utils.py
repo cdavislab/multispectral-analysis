@@ -346,11 +346,17 @@ def operate(a: npt.NDArray[Any], b: npt.NDArray[Any] | float, operation: str) ->
     elif operation == '*':
         return a * b
     elif operation == '/':
-        return np.divide(a, b, out=np.zeros(a.shape), where=b!=0)
+        a_float = np.asarray(a, dtype=float)
+        b_arr = np.asarray(b)
+        result = np.full(a_float.shape, np.nan, dtype=float)
+        np.divide(a_float, b_arr, out=result, where=b_arr != 0)
+        return result
     elif operation == 'threshold':
-        return np.where(a >= b, a, 0)
+        a_float = np.asarray(a, dtype=float)
+        return np.where(a_float >= b, a_float, np.nan)
     elif operation == 'maxthresh':
-        return np.where(a >= b*np.max(a), a, 0)
+        a_float = np.asarray(a, dtype=float)
+        return np.where(a_float >= b * np.max(a_float), a_float, np.nan)
     else:
         raise ValueError(f"Unsupported operation: {operation}")
 
@@ -366,13 +372,28 @@ def compute_statistics(image: npt.NDArray[Any]) -> dict[str, float | int]:
     """
     Computes basic statistics for a given image array.
     """
+    valid_pixels = np.asarray(image, dtype=float)
+    valid_pixels = valid_pixels[~np.isnan(valid_pixels)]
+    count = int(valid_pixels.size)
+
+    if count == 0:
+        return {
+            'mean': float(np.nan),
+            'median': float(np.nan),
+            'max_signal': float(np.nan),
+            'standard_deviation': float(np.nan),
+            'standard_error': float(np.nan),
+            'count': 0
+        }
+
+    std_deviation = np.nanstd(valid_pixels)
     stats = {
-        'mean': float(np.mean(image)),
-        'median': float(np.median(image)),
-        'max_signal': float(np.max(image)),
-        'standard_deviation': float(np.std(image)),
-        'standard_error': float(np.std(image) / np.sqrt(image.size)),
-        'count': int(image.size)
+        'mean': float(np.nanmean(valid_pixels)),
+        'median': float(np.nanmedian(valid_pixels)),
+        'max_signal': float(np.nanmax(valid_pixels)),
+        'standard_deviation': float(std_deviation),
+        'standard_error': float(std_deviation / np.sqrt(count)),
+        'count': count
     }
     return stats
 

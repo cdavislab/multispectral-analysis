@@ -1,4 +1,5 @@
 import time
+import math
 from typing import Any
 from msagui.view.progress_bar import ProgressBar
 
@@ -90,7 +91,10 @@ class ImageController:
         count = get_value("count")
 
         def fmt_float(value: Any) -> str:
-            return "—" if value is None else f"{float(value):.3f}"
+            if value is None:
+                return "—"
+            val = float(value)
+            return "—" if not math.isfinite(val) else f"{val:.3f}"
 
         def fmt_count(value: Any) -> str:
             return "—" if value is None else f"{int(value):,}"
