@@ -172,6 +172,7 @@ def construct_histogram(images: list[npt.NDArray[Any]], settings: HistogramSetti
     for i, image in enumerate(images):
         ax = axs_flat[i]
         flat = image.flatten().astype(float)
+        flat = flat[np.isfinite(flat)]
         if settings.exclude_zeros:
             flat = flat[flat != 0]
 

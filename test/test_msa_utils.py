@@ -210,3 +210,13 @@ def test_construct_image(monkeypatch: Any) -> None:
     msa_utils.construct_image(images, DummySettings()) # type: ignore
     # Should call axis('off') for empty slots
     assert 'off' in called
+
+def test_construct_histogram_ignores_nan_values() -> None:
+    """Verify histogram creation succeeds when image contains NaN values."""
+    from msagui.model.histogram_settings import HistogramSettings
+
+    settings = HistogramSettings()
+    image = np.array([[1.0, np.nan], [2.0, 0.0]])
+
+    fig = msa_utils.construct_histogram([image], settings)
+    assert fig is not None
