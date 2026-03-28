@@ -31,6 +31,13 @@ def test_multispectral_view_get_widget(tk_root: tk.Tk) -> None:
     # with pytest.raises(ValueError):
     #     view.get_widget("NonExistentWidget")
 
+def test_show_menu_no_longer_has_inputs_outputs_labels(tk_root: tk.Tk) -> None:
+    """Verify the Show submenu no longer exposes static Inputs/Outputs toggles."""
+    view = MultispectralView(tk_root)
+    labels = [view.show_menu.entrycget(i, "label") for i in range(view.show_menu.index("end") + 1)]
+    assert "Inputs" not in labels
+    assert "Outputs" not in labels
+
 def test_show_error_formats_file_specific_messages(tk_root: tk.Tk, monkeypatch: Any) -> None:
     """Verify show_error popup includes per-file reason details."""
     view = MultispectralView(tk_root)

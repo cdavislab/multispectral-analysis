@@ -199,8 +199,7 @@ def test_save_and_load_session_roundtrip(tmp_path: Path, monkeypatch: Any) -> No
 	view_state = {
 		"show_groups": True,
 		"show_histograms": True,
-		"show_inputs": True,
-		"show_outputs": False,
+		"keyword_visibility": {"A": True, "C": False},
 		"view_mode": "parent",
 		"sort_key": "group",
 		"sort_desc": True,

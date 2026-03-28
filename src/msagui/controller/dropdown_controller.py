@@ -77,12 +77,13 @@ class DropDownController:
         view_state = {
             "show_groups": self.view.show_groups.get(),
             "show_histograms": self.view.show_histograms.get(),
-            "show_inputs": self.view.show_inputs.get(),
-            "show_outputs": self.view.show_outputs.get(),
             "view_mode": self.view.view_mode.get(),
             "sort_key": self.view.sort_key.get(),
             "sort_desc": self.view.sort_desc.get(),
         }
+        dispatcher = getattr(self.view, "dispatcher", None)
+        if dispatcher is not None and hasattr(dispatcher, "get_keyword_visibility_state"):
+            view_state["keyword_visibility"] = dispatcher.get_keyword_visibility_state()
 
         try:
             saved_path = self.model.save_session(file_path, view_state=view_state)
@@ -115,16 +116,39 @@ class DropDownController:
                 self.view.show_groups.set(bool(view_state["show_groups"]))
             if "show_histograms" in view_state:
                 self.view.show_histograms.set(bool(view_state["show_histograms"]))
-            if "show_inputs" in view_state:
-                self.view.show_inputs.set(bool(view_state["show_inputs"]))
-            if "show_outputs" in view_state:
-                self.view.show_outputs.set(bool(view_state["show_outputs"]))
             if "view_mode" in view_state:
                 self.view.view_mode.set(str(view_state["view_mode"]))
             if "sort_key" in view_state:
                 self.view.sort_key.set(str(view_state["sort_key"]))
             if "sort_desc" in view_state:
                 self.view.sort_desc.set(bool(view_state["sort_desc"]))
+
+            dispatcher = getattr(self.view, "dispatcher", None)
+            if dispatcher is not None and hasattr(dispatcher, "_refresh_keyword_filter_menu"):
+                dispatcher._refresh_keyword_filter_menu()
+
+                if "keyword_visibility" in view_state and hasattr(dispatcher, "set_keyword_visibility_state"):
+                    dispatcher.set_keyword_visibility_state(view_state["keyword_visibility"])
+                else:
+                    # Backward compatibility for sessions saved with old input/output toggles.
+                    show_inputs = bool(view_state.get("show_inputs", True))
+                    show_outputs = bool(view_state.get("show_outputs", True))
+                    for keyword, var in dispatcher.keyword_visibility_vars.items():
+                        has_matching_input = any(
+                            item.keyword == keyword and item.kind == "input"
+                            for item in self.model.metadata.items
+                        )
+                        has_matching_output = any(
+                            item.keyword == keyword and item.kind == "processed"
+                            for item in self.model.metadata.items
+                        )
+                        if has_matching_input and not has_matching_output:
+                            var.set(show_inputs)
+                        elif has_matching_output and not has_matching_input:
+                            var.set(show_outputs)
+                        else:
+                            var.set(show_inputs or show_outputs)
+                    dispatcher._on_keyword_visibility_toggle()
 
             messagebox.showinfo("Session Loaded", f"Session loaded from:\n{file_path}")
         except Exception:
@@ -206,8 +230,7 @@ class DropDownController:
             "view": {
                 "show_groups":     self.view.show_groups.get(),
                 "show_histograms": self.view.show_histograms.get(),
-                "show_inputs":     self.view.show_inputs.get(),
-                "show_outputs":    self.view.show_outputs.get(),
+                "keyword_visibility": getattr(getattr(self.view, "dispatcher", None), "get_keyword_visibility_state", lambda: {})(),
             },
         }
 

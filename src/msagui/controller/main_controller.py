@@ -1,6 +1,7 @@
 
 import logging
 import os
+import tkinter as tk
 from typing import Any, Callable
 from msagui.controller.buttons_controller import ButtonsController
 from msagui.controller.dropdown_controller import DropDownController
@@ -18,7 +19,9 @@ class ControllerDispatcher:
         # Initialize controller with model and view, set up configs and signals
         self.model = model
         self.view = view
+        self.view.dispatcher = self
         self.steps: Any = None
+        self.keyword_visibility_vars: dict[str, tk.BooleanVar] = {}
         self.config: list[str] = ['save_correction_freq1', 'save_correction_freq2', 'save_threshold_freq2','freq1_label',
                       'freq2_label', 'freq1c_label', 'freq2c_label', 'ratio_label']
         self.img_config: list[str] = ['font', 'font_size', 'font_weight', 'cmap', 'vmin', 'vmax', 'cunits', 'ratio_vmin',
@@ -28,6 +31,7 @@ class ControllerDispatcher:
         self.connect_signals()
         self.dropdown_ctrl.import_default_settings()
         self.view_length = "Full" #Full, Parent, File
+        self._refresh_keyword_filter_menu()
     
     def recruit_controllers(self) -> None:
         """Create and return instances of other controllers"""
@@ -55,8 +59,6 @@ class ControllerDispatcher:
         self.view.view_mode.trace_add('write', lambda *_: self.listbox_ctrl.update_listbox())
         self.view.show_histograms.trace_add('write', self._on_histogram_toggle)
         self.view.show_groups.trace_add('write', self._on_group_toggle)
-        self.view.show_inputs.trace_add('write', self._on_visibility_toggle)
-        self.view.show_outputs.trace_add('write', self._on_visibility_toggle)
         self.view.sort_key.trace_add('write', self._on_sort_change)
         self.view.sort_desc.trace_add('write', self._on_sort_change)
 
@@ -134,6 +136,67 @@ class ControllerDispatcher:
             return
         self.image_ctrl.update_display(idx)
 
+    def _on_keyword_visibility_toggle(self) -> None:
+        """Called when a keyword visibility toggle changes."""
+        self._apply_visibility_filters()
+        self.listbox_ctrl.update_listbox()
+        idx = self.listbox_ctrl.get_listbox_index()
+        if idx is None:
+            return
+        self.image_ctrl.update_display(idx)
+
+    def _set_all_keyword_visibility(self, is_visible: bool) -> None:
+        """Set all keyword visibility toggles at once and refresh display."""
+        for var in self.keyword_visibility_vars.values():
+            var.set(is_visible)
+        self._on_keyword_visibility_toggle()
+
+    def _refresh_keyword_filter_menu(self) -> None:
+        """Rebuild the View->Show menu with one toggle per discovered keyword."""
+        keywords = sorted({item.keyword for item in self.model.metadata.items if item.keyword})
+        previous = self.keyword_visibility_vars
+        self.keyword_visibility_vars = {
+            keyword: previous.get(keyword, tk.BooleanVar(value=True))
+            for keyword in keywords
+        }
+
+        self.view.show_menu.delete(0, 'end')
+        if not keywords:
+            self.view.show_menu.add_command(label="No Keywords Available", state='disabled')
+            return
+
+        self.view.show_menu.add_command(
+            label="Select All Keywords",
+            command=lambda: self._set_all_keyword_visibility(True),
+        )
+        self.view.show_menu.add_command(
+            label="Clear All Keywords",
+            command=lambda: self._set_all_keyword_visibility(False),
+        )
+        self.view.show_menu.add_separator()
+
+        for keyword in keywords:
+            self.view.show_menu.add_checkbutton(
+                label=f"Show Keyword {keyword}",
+                onvalue=1,
+                offvalue=0,
+                variable=self.keyword_visibility_vars[keyword],
+                command=self._on_keyword_visibility_toggle,
+            )
+
+    def get_keyword_visibility_state(self) -> dict[str, bool]:
+        """Return serializable keyword visibility toggle state."""
+        return {keyword: bool(var.get()) for keyword, var in self.keyword_visibility_vars.items()}
+
+    def set_keyword_visibility_state(self, state: dict[str, Any]) -> None:
+        """Restore keyword visibility toggle state and refresh filters/display."""
+        if not isinstance(state, dict):
+            return
+        for keyword, value in state.items():
+            if keyword in self.keyword_visibility_vars:
+                self.keyword_visibility_vars[keyword].set(bool(value))
+        self._on_keyword_visibility_toggle()
+
     def _on_sort_change(self, *_: Any) -> None:
         """Resort listbox items and refresh current display."""
         self.listbox_ctrl.sort_items()
@@ -144,16 +207,18 @@ class ControllerDispatcher:
         self.image_ctrl.update_display(idx)
 
     def _apply_visibility_filters(self) -> None:
-        """Apply input/output visibility flags to metadata items."""
-        show_inputs = self.view.show_inputs.get()
-        show_outputs = self.view.show_outputs.get()
-        for item in self.model.metadata.items:
-            if item.kind == "input":
-                item.visible = show_inputs
-            elif item.kind == "processed":
-                item.visible = show_outputs
-            else:
+        """Apply keyword-based visibility flags to metadata items."""
+        if not self.keyword_visibility_vars:
+            for item in self.model.metadata.items:
                 item.visible = True
+            return
+
+        for item in self.model.metadata.items:
+            keyword = item.keyword
+            if keyword is None or keyword not in self.keyword_visibility_vars:
+                item.visible = True
+            else:
+                item.visible = bool(self.keyword_visibility_vars[keyword].get())
 
     def handle_menu_toggle(self, event: Any) -> None:
         """Read current menu state when the menu toggle event fires."""
@@ -161,8 +226,7 @@ class ControllerDispatcher:
         _state = {
             'Group View': self.view.view_menu.entrycget('Group View', 'variable'),
             'Histograms': self.view.view_menu.entrycget('Histograms', 'variable'),
-            'Show Inputs': self.view.show_inputs.get(),
-            'Show Outputs': self.view.show_outputs.get(),
+            'Keyword Visibility': {k: v.get() for k, v in self.keyword_visibility_vars.items()},
             'View Mode': self.view.view_mode.get()
 
         }
@@ -214,6 +278,7 @@ class ControllerDispatcher:
         """Decorator to update view after function call."""
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             result = func(*args, **kwargs)
+            self._refresh_keyword_filter_menu()
             self._apply_visibility_filters()
             self.listbox_ctrl.update_listbox()
             idx = self.listbox_ctrl.get_listbox_index()

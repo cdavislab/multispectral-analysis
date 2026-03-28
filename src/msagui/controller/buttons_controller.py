@@ -66,10 +66,6 @@ class ButtonsController:
             logger.warning("Analyze blocked: attempted in group view")
             messagebox.showerror("Group View", "Cannot analyze in group view.")
             return None
-        if not self.view.show_inputs.get():
-            logger.warning("Analyze blocked: inputs are hidden")
-            messagebox.showerror("Inputs Hidden", "Please show inputs before analyzing.")
-            return None
         # Get the values from the entries
         entry_keys = ('freq1', 'freq2', 'freq1c', 'freq2c', 'threshold', 'freq1cf', 'freq2cf')
         args = self.view.get_settings()

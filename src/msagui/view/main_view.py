@@ -103,10 +103,7 @@ class MultispectralView():
 
         self.show_menu = tk.Menu(self.view_menu, tearoff=0)
         self.view_menu.add_cascade(label="Show", menu=self.show_menu)
-        self.show_menu.add_checkbutton(label="Inputs", onvalue=1, offvalue=0,
-                           variable=self.show_inputs)
-        self.show_menu.add_checkbutton(label="Outputs", onvalue=1, offvalue=0,
-                           variable=self.show_outputs)
+        self.show_menu.add_command(label="No Keywords Available", state='disabled')
 
         self.fpath_menu = tk.Menu(self.view_menu, tearoff=0)
         self.view_menu.add_cascade(label="File Path", menu=self.fpath_menu)
