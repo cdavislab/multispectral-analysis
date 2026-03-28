@@ -72,3 +72,11 @@ def test_edge_cases() -> None:
     kwargs = settings.imshow_kwargs()
     assert "cmap" not in kwargs
     assert "interpolation" not in kwargs
+
+def test_bad_color_setting_stored_but_not_direct_imshow_kwarg() -> None:
+    """Verify bad color preference is stored on settings and applied downstream by renderer."""
+    settings = ImagingSettings(cmap="gray", bad="#000000")
+    kwargs = settings.imshow_kwargs()
+    assert settings.bad == "#000000"
+    assert kwargs["cmap"] == "gray"
+    assert "bad" not in kwargs

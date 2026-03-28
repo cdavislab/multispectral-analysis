@@ -94,7 +94,15 @@ def decorate_image(image: npt.NDArray[Any], ax: Axes, settings: ImagingSettings)
 
     Returns the AxesImage so the caller can attach a colorbar.
     """
-    im = ax.imshow(image, **settings.imshow_kwargs())
+    imshow_options = settings.imshow_kwargs()
+    bad_color = getattr(settings, "bad", None)
+    if bad_color:
+        cmap_option = imshow_options.get("cmap", plt.get_cmap())
+        cmap = plt.get_cmap(cmap_option).copy() if isinstance(cmap_option, str) else cmap_option.copy()
+        cmap.set_bad(color=bad_color)
+        imshow_options["cmap"] = cmap
+
+    im = ax.imshow(image, **imshow_options)
     _apply_font_and_ticks(ax, settings)
     _add_scale_bar(image, ax, settings)
     return im

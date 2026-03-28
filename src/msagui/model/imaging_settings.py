@@ -6,6 +6,7 @@ from typing import Any
 class ImagingSettings:
     dpi: int = 300
     cmap: str | None = "CMRmap"
+    bad: str | None = None
     interpolation: str | None= "nearest"
     vmin: float | None = None
     vmax: float | None = None

@@ -69,6 +69,40 @@ def test_decorate_image(monkeypatch: Any) -> None:
     assert np.allclose(called['image'], arr)
     assert called['kwargs'] == {"cmap": "gray"}
 
+def test_decorate_image_applies_bad_color_for_nan() -> None:
+    """Verify decorate_image applies configured bad color to the colormap."""
+    import matplotlib.colors as mcolors
+
+    class DummySettingsWithBad(DummySettings):
+        bad = "magenta"
+
+    called: dict[str, Any] = {}
+
+    class DummyAx:
+        def imshow(self, image: Any, **kwargs: Any) -> str:
+            called["image"] = image
+            called["kwargs"] = kwargs
+            return "image_obj"
+        def get_xticklabels(self) -> list[Any]:
+            return []
+        def get_yticklabels(self) -> list[Any]:
+            return []
+        def set_xticks(self, ticks: Any) -> None:
+            pass
+        def set_yticks(self, ticks: Any) -> None:
+            pass
+        def add_artist(self, _artist: Any) -> None:
+            pass
+
+    arr = np.array([[1.0, np.nan], [2.0, 3.0]])
+    result = msa_utils.decorate_image(arr, DummyAx(), DummySettingsWithBad())  # type: ignore
+
+    assert result == "image_obj"
+    assert np.allclose(called["image"], arr, equal_nan=True)
+    assert "cmap" in called["kwargs"]
+    cmap = called["kwargs"]["cmap"]
+    assert np.allclose(cmap.get_bad(), mcolors.to_rgba("magenta"))
+
 def test_find_substring() -> None:
     """Verify find_substring returns all indices containing the target token."""
     l = ["apple", "banana", "grape", "pineapple"]
