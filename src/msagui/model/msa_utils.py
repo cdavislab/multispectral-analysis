@@ -334,6 +334,34 @@ def match_substr(substr: list[str], strings: list[str]) -> dict[str, list[str]]:
                 break  # stop at first (longest) match
     return substr_match
 
+def otsu_threshold(image: npt.NDArray[Any], bins: int = 256) -> float:
+    """Compute Otsu threshold from finite image values."""
+    values = np.asarray(image, dtype=float)
+    values = values[np.isfinite(values)]
+
+    if values.size == 0:
+        raise ValueError("Cannot compute auto threshold from empty/non-finite image.")
+
+    data_min = float(np.min(values))
+    data_max = float(np.max(values))
+    if data_min == data_max:
+        return data_min
+
+    hist, edges = np.histogram(values, bins=bins, range=(data_min, data_max))
+    centers = (edges[:-1] + edges[1:]) / 2.0
+    hist = hist.astype(float)
+
+    weight1 = np.cumsum(hist)
+    weight2 = np.cumsum(hist[::-1])[::-1]
+    mean1 = np.cumsum(hist * centers) / np.maximum(weight1, 1e-12)
+    mean2 = (
+        np.cumsum((hist * centers)[::-1]) / np.maximum(weight2[::-1], 1e-12)
+    )[::-1]
+
+    between = weight1[:-1] * weight2[1:] * (mean1[:-1] - mean2[1:]) ** 2
+    best_idx = int(np.argmax(between))
+    return float(centers[best_idx])
+
 def operate(a: npt.NDArray[Any], b: npt.NDArray[Any] | float, operation: str) -> npt.NDArray[Any]:
     """Apply an element-wise operation between arrays or array and scalar.
 

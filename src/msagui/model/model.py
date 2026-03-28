@@ -506,8 +506,29 @@ class MultiSpectralModel:
         value = step.get('value')
 
         if item_2 is None:
-            data1 = self.get_images(item_1)
-            return utils.operate(data1, float(value), step['operation'])
+            data1_obj = self.get_images(item_1)
+            if isinstance(data1_obj, list):
+                raise ValueError("Expected a single image for single-input operation.")
+            data1 = data1_obj
+            operation = step['operation']
+            if isinstance(value, str) and value.strip().lower() == 'auto':
+                if operation == 'threshold':
+                    auto_t = utils.otsu_threshold(data1)
+                    return utils.operate(data1, auto_t, 'threshold')
+                if operation == 'maxthresh':
+                    raise ValueError("Auto threshold is only supported for 'threshold' operation.")
+            if value is None:
+                raise ValueError(f"Missing value for operation '{operation}'.")
+            try:
+                numeric_value = float(value)
+            except (TypeError, ValueError) as exc:
+                expected = "a numeric value"
+                if operation == 'threshold':
+                    expected = "a numeric value or 'auto'"
+                raise ValueError(
+                    f"Invalid constant value {value!r} for operation '{operation}'. Expected {expected}."
+                ) from exc
+            return utils.operate(data1, numeric_value, operation)
         
         data1, data2 = self.get_images([item_1, item_2])
         return utils.operate(data1, data2, step['operation'])

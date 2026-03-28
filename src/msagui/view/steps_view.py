@@ -345,7 +345,7 @@ class MultiCorrectionsDialog(tk.Toplevel):
             self.keyword2 = tk.Entry(self)
             self.keyword2.grid(row=4, column=1, padx=5, pady=5)
 
-            hint = "Use image key for image mode, numeric value for proportion/constant modes"
+            hint = "Use image key for image mode; proportion needs numeric value; constant accepts numeric or 'auto'"
             tk.Label(self, text=hint, fg='gray').grid(row=5, column=0, columnspan=2, padx=5, pady=(0,5), sticky="w")
 
             tk.Label(self, text="Output key:").grid(row=6, column=0, padx=5, pady=5, sticky="e")

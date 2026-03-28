@@ -104,6 +104,19 @@ def test_process_step(monkeypatch: Any) -> None:
 	result = model.process_step(group, step)
 	assert np.allclose(result, [[np.nan, 0.6], [0.7, np.nan]], equal_nan=True)
 
+	# Test auto threshold
+	step = {"keyword1": "A", "keyword2": "", "operation": "threshold", "output_key": "C", "value": "auto"}
+	model.get_images = lambda key: np.array([[0.2, 0.6], [0.7, 0.1]]) # type: ignore
+	monkeypatch.setattr("msagui.model.msa_utils.otsu_threshold", lambda image: 0.5)
+	result = model.process_step(group, step)
+	assert np.allclose(result, [[np.nan, 0.6], [0.7, np.nan]], equal_nan=True)
+
+	# Test tailored error for invalid constant threshold value
+	step = {"keyword1": "A", "keyword2": "", "operation": "threshold", "output_key": "C", "value": "not-a-number"}
+	model.get_images = lambda key: np.array([[0.2, 0.6], [0.7, 0.1]]) # type: ignore
+	with pytest.raises(ValueError, match="Invalid constant value 'not-a-number' for operation 'threshold'\\. Expected a numeric value or 'auto'\\."):
+		model.process_step(group, step)
+
 	# Test image threshold
 	step = {"keyword1": "A", "keyword2": "B", "operation": "threshold", "output_key": "C", "value": ""}
 	model.get_images = lambda keys: [ # type: ignore

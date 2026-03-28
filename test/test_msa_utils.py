@@ -159,6 +159,17 @@ def test_operate_maxthresh_uses_proportion_of_max() -> None:
     result = msa_utils.operate(image, 0.5, "maxthresh")
     assert np.allclose(result, [[np.nan, 0.6], [0.7, np.nan]], equal_nan=True)
 
+def test_otsu_threshold_returns_value_in_data_range() -> None:
+    """Verify Otsu threshold is finite and bounded by the finite data range."""
+    image = np.array(
+        [[0.0, 0.1, 0.2], [0.15, 0.2, 0.1], [0.8, 0.85, 0.9], [0.95, 1.0, np.nan]]
+    )
+    threshold = msa_utils.otsu_threshold(image)
+
+    finite = image[np.isfinite(image)]
+    assert np.isfinite(threshold)
+    assert float(np.min(finite)) <= threshold <= float(np.max(finite))
+
 def test_operate_division_by_zero_returns_nan() -> None:
     """Verify division writes NaN when denominator is zero."""
     numerator = np.array([[2, 4], [6, 8]])
