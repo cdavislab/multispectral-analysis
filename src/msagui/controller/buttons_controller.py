@@ -5,6 +5,7 @@ import tkinter.messagebox as messagebox
 import os
 import logging
 from typing import Any
+import matplotlib.pyplot as plt
 from msagui.view.progress_bar import ProgressBar
 
 logger = logging.getLogger(__name__)
@@ -282,12 +283,30 @@ class ButtonsController:
 
         ext = self.model.settings.export_format.lstrip(".")
         ext = "." + ext
+        is_svg = ext.lower() == ".svg"
 
         def convert_for_format(image: Any) -> Any:
             # JPEG/BMP don't support alpha — convert to RGB when needed.
             if ext.lower() in (".jpg", ".jpeg", ".bmp") and image.mode in ("RGBA", "LA", "P"):
                 return image.convert("RGB")
             return image
+
+        def save_figure_svg(kind: str, out_path: str, task: dict[str, Any]) -> None:
+            if kind == "item_image":
+                fig = self.model.make_image_figure(int(task["idx"]))
+            elif kind == "item_histogram":
+                fig = self.model.make_histogram_figure(int(task["idx"]))
+            elif kind == "group_image":
+                fig = self.model.make_group_image_figure(task["group_id"])
+            elif kind == "group_histogram":
+                fig = self.model.make_group_histogram_figure(task["group_id"])
+            else:
+                raise ValueError(f"Unknown export task kind: {kind}")
+
+            try:
+                fig.savefig(out_path, format="svg", **self.model.settings.imsave_kwargs())
+            finally:
+                plt.close(fig)
 
         def build_subfolder(meta: Any, create: bool = True) -> str:
             if not do_subdivide:
@@ -419,12 +438,28 @@ class ButtonsController:
                 try:
                     kind = str(task["kind"])
                     if kind == "item_image":
+                        if is_svg:
+                            save_figure_svg(kind, out_path, task)
+                            export_count += 1
+                            continue
                         image, _stats = self.model.make_image(int(task["idx"]))
                     elif kind == "item_histogram":
+                        if is_svg:
+                            save_figure_svg(kind, out_path, task)
+                            export_count += 1
+                            continue
                         image, _stats = self.model.make_histogram(int(task["idx"]))
                     elif kind == "group_image":
+                        if is_svg:
+                            save_figure_svg(kind, out_path, task)
+                            export_count += 1
+                            continue
                         image, _stats = self.model.make_group_image(task["group_id"])
                     elif kind == "group_histogram":
+                        if is_svg:
+                            save_figure_svg(kind, out_path, task)
+                            export_count += 1
+                            continue
                         image, _stats = self.model.make_group_histogram(task["group_id"])
                     else:
                         raise ValueError(f"Unknown export task kind: {kind}")

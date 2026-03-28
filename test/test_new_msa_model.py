@@ -1,6 +1,7 @@
 import numpy as np
 import h5py
 import pytest
+import matplotlib.pyplot as plt
 from pathlib import Path
 from typing import Any, cast
 from msagui.model.model import MultiSpectralModel
@@ -274,6 +275,31 @@ def test_set_groups_uses_fullpath_signature(monkeypatch: Any) -> None:
 
 	groups = [item.group for item in model.metadata.items if item.kind == "input"]
 	assert groups[0] != groups[1]
+
+def test_make_figure_helpers_for_svg_export(monkeypatch: Any) -> None:
+	"""Verify figure helper methods return matplotlib figures for SVG export."""
+	from msagui.model.metadata import ImageMeta
+
+	model = MultiSpectralModel()
+	model.metadata.add(ImageMeta(key="1", nickname="/tmp/in.csv", group=1, keyword="img", kind="input"))
+
+	monkeypatch.setattr("msagui.model.parseH5.get_data", lambda hdf5, key: [np.ones((2, 2))])
+
+	fig1 = model.make_image_figure(0)
+	assert fig1 is not None
+	plt.close(fig1)
+
+	fig2 = model.make_histogram_figure(0)
+	assert fig2 is not None
+	plt.close(fig2)
+
+	fig3 = model.make_group_image_figure(1)
+	assert fig3 is not None
+	plt.close(fig3)
+
+	fig4 = model.make_group_histogram_figure(1)
+	assert fig4 is not None
+	plt.close(fig4)
 
 def test_analyze_surfaces_step_operation_error() -> None:
 	"""Verify _analyze raises contextual RuntimeError when a step operation fails."""

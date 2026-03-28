@@ -18,6 +18,7 @@ from msagui.model.histogram_settings import HistogramSettings
 from msagui.model.steps import Steps
 import matplotlib.pyplot as plt
 from PIL.Image import Image
+from matplotlib.figure import Figure
 
 import logging
 logger = logging.getLogger(__name__)
@@ -363,6 +364,14 @@ class MultiSpectralModel:
             progress_callback()
         return stream, item.statistics
 
+    def make_image_figure(self, idx: int) -> Figure:
+        """Build and return a matplotlib figure for a single image item."""
+        item = self.metadata.items[idx]
+        data = parseH5.get_data(self.hdf5_path, item.hdf5_path)
+        fig, axs = utils.construct_image(data, self.settings)
+        _ = axs
+        return fig
+
     def make_histogram(
         self,
         idx: int,
@@ -390,6 +399,12 @@ class MultiSpectralModel:
         if progress_callback:
             progress_callback()
         return stream, item.statistics
+
+    def make_histogram_figure(self, idx: int) -> Figure:
+        """Build and return a matplotlib histogram figure for a single item."""
+        item = self.metadata.items[idx]
+        data = parseH5.get_data(self.hdf5_path, item.hdf5_path)
+        return utils.construct_histogram(data, self.histogram_settings)
 
     def make_group_image(
         self,
@@ -423,6 +438,20 @@ class MultiSpectralModel:
             progress_callback()
         return stream, {}
 
+    def make_group_image_figure(self, group_id: str | int) -> Figure:
+        """Build and return a composite image figure for a group."""
+        items = [item for item in self.metadata.by_group(group_id)]
+        paths = [item.hdf5_path for item in items]
+        data_list = parseH5.get_data(self.hdf5_path, paths)
+        fig, axs = utils.construct_image(data_list, self.settings)
+        axs_flat = np.atleast_1d(axs).flatten()
+        for i, item in enumerate(items):
+            axs_flat[i].set_title(item.keyword, fontsize=self.settings.font_size,
+                                  fontfamily=self.settings.font,
+                                  fontweight=self.settings.font_weight)
+        fig.tight_layout()
+        return fig
+
     def make_group_histogram(
         self,
         group_id: str | int,
@@ -452,6 +481,18 @@ class MultiSpectralModel:
         if progress_callback:
             progress_callback()
         return stream, {}
+
+    def make_group_histogram_figure(self, group_id: str | int) -> Figure:
+        """Build and return a composite histogram figure for a group."""
+        items = [item for item in self.metadata.by_group(group_id)]
+        paths = [item.hdf5_path for item in items]
+        data_list = parseH5.get_data(self.hdf5_path, paths)
+        fig = utils.construct_histogram(data_list, self.histogram_settings)
+        axs_flat = np.atleast_1d(fig.axes).flatten()
+        for i, item in enumerate(items):
+            axs_flat[i].set_title(item.keyword)
+        fig.tight_layout()
+        return fig
 
     def process_step(self, group: dict[str, str], step: dict[str, Any]) -> npt.NDArray[Any]:
         """
