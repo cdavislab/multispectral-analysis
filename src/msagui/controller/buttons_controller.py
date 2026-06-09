@@ -123,16 +123,22 @@ class ButtonsController:
         self.model.set_groups()
 
     def analyze(self) -> None:
-        """Run model analysis for selected list entries."""
+        """Run model analysis for selected list entries, or all if none selected."""
         if self.listbox_ctrl is not None:
             selected_idx = self.listbox_ctrl.get_selected_metadata_indices()
         else:
             selected_idx = self.view.listbox.get_selected_indices()
+        
+        # If no selection, analyze all files
         if not selected_idx:
-            logger.warning("Analyze requested with no selection")
-            messagebox.showerror("No Selection", "Please select at least one file to analyze.")
+            selected_idx = list(range(len(self.model.metadata.items)))
+        
+        if not selected_idx:
+            logger.warning("Analyze requested with no files available")
+            messagebox.showwarning("No Files", "There are no files to analyze.")
             return
-        logger.info("Starting analyze for %d selected item(s)", len(selected_idx))
+        
+        logger.info("Starting analyze for %d item(s)", len(selected_idx))
         try:
             with ProgressBar(title="Analyzing", total=len(selected_idx)) as progress:
                 error = self.model.analyze(selected_idx, progress_callback=progress.step)
