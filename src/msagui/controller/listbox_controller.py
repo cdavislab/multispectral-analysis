@@ -30,6 +30,7 @@ class FileListController:
         self._drag_start_list_idx: int | None = None
         self._drag_hover_list_idx: int | None = None
         self._drag_hover_after: bool = False
+        self._drag_active: bool = False
 
     def _emit_listbox_select_event(self) -> None:
         event_generate = getattr(self.listbox.file_list, "event_generate", None)
@@ -78,14 +79,13 @@ class FileListController:
         else:
             self._drag_start_list_idx = None
 
-        if not ctrl_pressed and not shift_pressed and clicked_is_selected and len(selected_indices) > 1:
-            self.update_selection()
-            self._emit_listbox_select_event()
-            return 'break'
-
         if not ctrl_pressed and not shift_pressed:
-            self.listbox.file_list.selection_clear(0, tk.END)
-            self.listbox.file_list.selection_set(index)
+            # Preserve multi-selection if clicking on an already-selected item
+            # (allow drag to proceed without losing other selections)
+            if not (clicked_is_selected and len(selected_indices) > 1):
+                self.listbox.file_list.selection_clear(0, tk.END)
+                self.listbox.file_list.selection_set(index)
+            # else: keep existing selection for potential multi-item drag
 
         if shift_pressed:
             if selected_indices:
@@ -346,13 +346,27 @@ class FileListController:
             self._drag_start_list_idx = None
             self._drag_hover_list_idx = None
             self._drag_hover_after = False
+            self._drag_active = False
             self.update_selection()
             return False
 
         if self._drag_start_list_idx is None:
             self._drag_hover_list_idx = None
             self._drag_hover_after = False
+            self._drag_active = False
             self.update_selection()
+            return False
+
+        # If no actual drag motion occurred, apply single-click logic
+        if not self._drag_active:
+            self.listbox.file_list.selection_clear(0, tk.END)
+            self.listbox.file_list.selection_set(self._drag_start_list_idx)
+            self._drag_start_list_idx = None
+            self._drag_hover_list_idx = None
+            self._drag_hover_after = False
+            self._drag_active = False
+            self.update_selection()
+            self._emit_listbox_select_event()
             return False
 
         from_row = self._drag_start_list_idx
@@ -360,6 +374,7 @@ class FileListController:
         self._drag_start_list_idx = None
         self._drag_hover_list_idx = None
         self._drag_hover_after = False
+        self._drag_active = False
 
         if insert_row < 0 or insert_row > len(self._visible_indices):
             self.update_selection()
@@ -412,6 +427,9 @@ class FileListController:
             return
         if len(self._visible_indices) == 0:
             return
+
+        # Mark that actual dragging is in progress
+        self._drag_active = True
 
         insert_row = self._drop_insert_row(event.y)
         if insert_row <= 0:
