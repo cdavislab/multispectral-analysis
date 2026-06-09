@@ -121,8 +121,9 @@ class MetadataStore:
             return False
         if to_index < 0 or to_index > len(self.items):
             return False
-        if to_index >= unique_sorted[0] and to_index <= (unique_sorted[-1] + 1):
-            return False
+
+        # Store original order to detect true no-ops
+        original_order = self.items[:]
 
         move_set = set(unique_sorted)
         block = [self.items[i] for i in unique_sorted]
@@ -136,7 +137,9 @@ class MetadataStore:
             insert_at = len(remaining)
 
         self.items = remaining[:insert_at] + block + remaining[insert_at:]
-        return True
+        
+        # Only return True if the order actually changed
+        return self.items != original_order
 
     def sort_items(self, sort_key: str, reverse: bool = False) -> None:
         def text_key(value: Any) -> str:

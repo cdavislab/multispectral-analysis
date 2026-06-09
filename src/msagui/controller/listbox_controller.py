@@ -393,11 +393,8 @@ class FileListController:
             self.update_selection()
             return False
 
-        if insert_row >= moving_rows[0] and insert_row <= (moving_rows[-1] + 1):
-            self.update_selection()
-            return False
-
         from_meta_indices = [self._visible_indices[row] for row in moving_rows]
+
         if insert_row == len(self._visible_indices):
             to_meta_idx = len(self.model.metadata.items)
         else:
@@ -416,7 +413,7 @@ class FileListController:
 
         self._pending_selected_keys = original_keys
         self._pending_selected_key = original_keys[0]
-        self.update_selection()
+        self.update_listbox()
         return True
 
     def on_drag_motion(self, event: Any) -> None:
