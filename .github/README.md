@@ -41,6 +41,23 @@ To install and run the Multispectral Analysis application, follow these steps:
 5. Display the results individually, as groups, or as histograms.
 6. Apply variable factor corrections if needed.
 
+## Bug Reports: Export Logs
+
+When reporting a bug, please include a diagnostic log bundle:
+
+1. Open the app.
+2. Go to **File > Export > Logs**.
+3. Save the generated `.zip` file.
+4. Attach that `.zip` file to your bug report.
+
+The ZIP includes application logs and metadata useful for debugging.
+
+### Default Log Location
+
+- macOS: `~/Library/Application Support/msaGUI/logs/`
+- Windows: `%APPDATA%\\msaGUI\\logs\\` (or `%LOCALAPPDATA%\\msaGUI\\logs\\`)
+- Linux: `$XDG_DATA_HOME/msaGUI/logs/` (or `~/.local/share/msaGUI/logs/`)
+
 # Sample Data 
 
 ## Contributing
