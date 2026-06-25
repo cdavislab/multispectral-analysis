@@ -413,6 +413,9 @@ class ButtonsController:
                 sections.append(existing_msg)
 
             overwrite_msg = "\n\n".join(sections) + "\n\nDo you want to continue?"
+            # Truncate the message if it's too long for the dialog
+            if len(overwrite_msg) > 1000:
+                overwrite_msg = overwrite_msg[:1000] + "\n\n[Message truncated]\n\nDo you want to continue?"
             should_continue = messagebox.askyesno("Overwrite Warning", overwrite_msg)
             if not should_continue:
                 logger.info("Export canceled by user after overwrite warning")

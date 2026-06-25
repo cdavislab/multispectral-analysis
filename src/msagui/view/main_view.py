@@ -137,8 +137,12 @@ class MultispectralView():
     def show_error(self, errors: dict[Any, Exception]) -> None:
         """Show error dialog for failed file additions."""
         lines = ["Some files could not be processed:", ""]
+        
         for item, error in errors.items():
             lines.append(f"- {item}: {error}")
+        # Truncate the message if it's too long for the dialog
+        if len(lines) > 20:
+            lines = lines[:20] + ["", "[Additional errors truncated]"]
         messagebox.showerror("Input Data Error", "\n".join(lines))
         return
     
