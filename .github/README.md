@@ -1,10 +1,11 @@
 # Multispectral Analysis
 
-Multispectral Analysis is a graphical user interface (GUI) application designed to facilitate the ratioing of two images and analyze the differences between them. This tool is particularly useful for scientific and technical fields where image analysis is crucial.
+Multispectral Analysis is a graphical user interface (GUI) application designed to facilitate the batch analysis for custom imaging pipelines.
 
 ## Features
 
 - **CSV to Image Conversion**: Convert CSV files to images with scalebars.
+- **Custom Analysis Pipelines**: Design reusuable analysis pipelines with modular arithmetic.
 - **Image Ratioing**: Ratio two images together to analyze differences.
 - **Result Display**: Display the results individually or as groups.
 - **Histogram Display**: Display data as either images or histograms 
@@ -67,7 +68,3 @@ Contributions are welcome! Please fork the repository and submit a pull request 
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-## Contact
-
-For any questions or suggestions, please contact [yourname@example.com](mailto:yourname@example.com).
