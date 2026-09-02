@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 PREFS_SCHEMA = [
     {"kind": "section", "label": "Export"},
     {"kind": "entry",       "key": "export_format",    "label": "Export File Type",
-     "hint": "File format for the Export button (e.g. png, tif, jpg)"},
+     "hint": "File format for the Export button (e.g. png, tif, jpg, csv; csv exports raw image data)"},
     {"kind": "entry",       "key": "dpi",              "label": "DPI",
      "hint": "Resolution for saved images (dots per inch)"},
     {"kind": "checkbutton", "key": "transparent",      "label": "Transparent Background",

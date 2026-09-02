@@ -5,6 +5,7 @@ import tkinter.messagebox as messagebox
 import os
 import logging
 from typing import Any
+import numpy as np
 import matplotlib.pyplot as plt
 from msagui.view.progress_bar import ProgressBar
 
@@ -15,6 +16,19 @@ class ButtonsController:
         self.model = model
         self.view = view
         self.listbox_ctrl = listbox_ctrl
+
+    def _save_image_csv(self, out_path: str, task: dict[str, Any]) -> None:
+        if str(task["kind"]) != "item_image":
+            raise ValueError("CSV export is only supported for individual images")
+
+        item = self.model.metadata.items[int(task["idx"])]
+        data = np.asarray(self.model.get_images(item.hdf5_path))
+        if data.ndim != 2:
+            raise ValueError(
+                f"CSV export requires a 2D image array, got shape {data.shape}"
+            )
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
+        np.savetxt(out_path, data, delimiter=",")
 
     def add(self) -> None:
         """Open file picker and add selected files to the model."""
@@ -286,6 +300,7 @@ class ButtonsController:
         ext = self.model.settings.export_format.lstrip(".")
         ext = "." + ext
         is_svg = ext.lower() == ".svg"
+        is_csv = ext.lower() == ".csv"
 
         def convert_for_format(image: Any) -> Any:
             # JPEG/BMP don't support alpha — convert to RGB when needed.
@@ -442,6 +457,10 @@ class ButtonsController:
                 out_path = str(task["path"])
                 try:
                     kind = str(task["kind"])
+                    if is_csv:
+                        self._save_image_csv(out_path, task)
+                        export_count += 1
+                        continue
                     if kind == "item_image":
                         if is_svg:
                             save_figure_svg(kind, out_path, task)
